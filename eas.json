@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 0.52.0"
+    "version": ">= 0.52.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -13,11 +14,8 @@
       "channel": "preview"
     },
     "production": {
-      "channel": "production",
-      "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
-      }
+      "distribution": "store",
+      "channel": "production"
     }
   },
   "submit": {

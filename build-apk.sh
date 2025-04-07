@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Скрипт для локальной сборки APK без использования сервера Expo
+# Скрипт для локальной сборки APK для пользователей без использования сервера Expo
 
 # Путь к проекту
 PROJECT_PATH="/Users/savaleserg/CascadeProjects/DomGoMobile"
@@ -8,7 +8,7 @@ PROJECT_PATH="/Users/savaleserg/CascadeProjects/DomGoMobile"
 # Путь для выходного APK файла
 OUTPUT_DIR="/Users/savaleserg/Desktop"
 APP_VERSION="0.3.0" # Берем версию из app.json
-OUTPUT_FILE="$OUTPUT_DIR/DomGoMobile-v$APP_VERSION-dev.apk"
+OUTPUT_FILE="$OUTPUT_DIR/DomGoMobile-v$APP_VERSION-user.apk"
 
 # Переходим в директорию проекта
 cd "$PROJECT_PATH" || { echo "Ошибка: Не удалось перейти в директорию проекта"; exit 1; }
@@ -30,8 +30,8 @@ npx react-native bundle --platform android --dev false --entry-file index.ts --b
 echo "Очищаем предыдущие сборки..."
 cd android && ./gradlew clean
 
-# Собираем APK для разработки
-echo "Собираем девелоперский APK..."
+# Собираем APK для версии пользователя (используем debug версию, так как release требует подписи)
+echo "Собираем APK для пользователей..."
 ./gradlew assembleDebug
 
 # Проверяем, что сборка прошла успешно
@@ -42,7 +42,7 @@ if [ -f "$PROJECT_PATH/android/app/build/outputs/apk/debug/app-debug.apk" ]; the
     
     # Создаем информацию о версии
     INFO_FILE="$OUTPUT_DIR/DomGoMobile-v$APP_VERSION-info.txt"
-    echo "DomGoMobile версия $APP_VERSION (dev)" > "$INFO_FILE"
+    echo "DomGoMobile версия $APP_VERSION (для пользователей)" > "$INFO_FILE"
     echo "Дата сборки: $(date)" >> "$INFO_FILE"
     echo "APK сохранен на рабочем столе: $OUTPUT_FILE" >> "$INFO_FILE"
     echo "Размер файла: $(du -h "$OUTPUT_FILE" | cut -f1)" >> "$INFO_FILE"
