@@ -6,21 +6,24 @@ import {
   StyleSheet, 
   ScrollView, 
   Switch, 
-  Alert, 
   TouchableOpacity, 
   Image, 
   ActivityIndicator, 
   Platform, 
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  Modal,
+  FlatList
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import { compressImage } from '../utils/imageCompression';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { propertyService } from '../services/propertyService';
+import { useTheme } from '../contexts/ThemeContext';
+import Colors from '../constants/colors';
+import { showErrorAlert, showSuccessAlert } from '../utils/alertUtils';
 
 interface City {
   id: string;
@@ -39,6 +42,8 @@ const AddPropertyScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [cities, setCities] = useState<City[]>([]);
+  const { darkMode } = useTheme();
+  const theme = darkMode ? Colors.dark : Colors.light;
   
   // Добавляем состояния для имени и телефона пользователя
   const [userData, setUserData] = useState({
@@ -62,20 +67,31 @@ const AddPropertyScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
 
+  // Состояние для модальных окон
+  const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [selectedCityName, setSelectedCityName] = useState(t('common.selectCity'));
+  
+  const [propertyTypeModalVisible, setPropertyTypeModalVisible] = useState(false);
+  const [selectedPropertyTypeName, setSelectedPropertyTypeName] = useState(t('property.sale'));
+  
+  const [propertyCategoryModalVisible, setPropertyCategoryModalVisible] = useState(false);
+  const [selectedPropertyCategoryName, setSelectedPropertyCategoryName] = useState(t('property.apartment'));
+
   useEffect(() => {
-    loadCities();
+    const fetchCities = async () => {
+      try {
+        const { data, error } = await supabase.from('cities').select('*');
+        if (error) throw error;
+        setCities(data);
+      } catch (error) {
+        console.error('Error fetching cities:', error);
+        showErrorAlert(t('property.errorLoadingCities'));
+      }
+    };
+
+    fetchCities();
     loadUserData();
   }, []);
-
-  const loadCities = async () => {
-    try {
-      const data = await propertyService.getCities();
-      setCities(data);
-    } catch (error) {
-      console.error('Ошибка при загрузке городов:', error);
-      Alert.alert('Ошибка', 'Ошибка при загрузке городов');
-    }
-  };
 
   const loadUserData = async () => {
     try {
@@ -103,13 +119,13 @@ const AddPropertyScreen = ({ navigation }: any) => {
   // Проверяем, авторизован ли пользователь
   if (!user) {
     return (
-      <View style={styles.centeredContainer}>
-        <Text style={styles.title}>Авторизация требуется для добавления объявления</Text>
-        <TouchableOpacity
-          style={styles.loginButton}
-          onPress={() => navigation.navigate('Profile')}
+      <View style={[styles.centeredContainer, { backgroundColor: theme.background }]}>
+        <Text style={[styles.title, { color: theme.text }]}>{t('common.loginRequired')}</Text>
+        <TouchableOpacity 
+          style={[styles.loginButton, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate('Login')}
         >
-          <Text style={styles.loginButtonText}>Войти</Text>
+          <Text style={styles.loginButtonText}>{t('common.login')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -127,148 +143,103 @@ const AddPropertyScreen = ({ navigation }: any) => {
 
   const pickImage = async () => {
     if (images.length >= 10) {
-      Alert.alert('Ограничение', 'Максимальное количество фотографий - 10');
+      showErrorAlert(t('addProperty.validation.maxPhotosReached'));
       return;
     }
-
-    // Максимально простой вариант, как в веб-версии
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images', // Самый простой вариант без использования констант
-      allowsEditing: false,
-      quality: 0.5,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setUploadingImages(true);
-      try {
-        const asset = result.assets[0];
-        console.log('Выбрано изображение:', asset.uri);
-        
-        // Получаем исходное имя файла
-        const fileName = asset.uri.split('/').pop() || 'image.jpg';
-        const fileExt = fileName.split('.').pop() || 'jpg';
-        console.log('Имя файла:', fileName);
-        
-        // Используем простой и прямой метод, как в веб-версии
-        // Читаем как Base64
-        const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        
-        // Загружаем через простой метод напрямую (без лишних преобразований)
-        const imageUrl = await propertyService.uploadSimple(base64, fileName);
-        
-        if (!imageUrl) {
-          throw new Error('Не получен URL изображения');
+    
+    try {
+      // Запрашиваем разрешения, если это необходимо
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          showErrorAlert(t('property.errors.permissionDenied'));
+          return;
         }
-        
-        console.log('Получен URL:', imageUrl);
-        setImages(prevImages => [...prevImages, imageUrl]);
-      } catch (error) {
-        console.error('Ошибка при загрузке изображения:', error);
-        Alert.alert('Ошибка', 'Ошибка при загрузке изображения. Пожалуйста, попробуйте другое изображение.');
-      } finally {
-        setUploadingImages(false);
       }
+      
+      // Запускаем выбор изображения
+      console.log('Запускаем выбор изображения...');
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 1,
+        allowsMultipleSelection: false,
+      });
+      
+      console.log('Результат выбора изображения:', JSON.stringify(result, null, 2));
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setUploadingImages(true);
+        try {
+          const asset = result.assets[0];
+          console.log('Выбранное изображение:', asset.uri);
+          console.log('Тип файла:', asset.mimeType);
+          console.log('Размер файла:', asset.fileSize ? `${asset.fileSize} байт` : 'неизвестно');
+          
+          // Сжимаем изображение
+          console.log('Начинаем сжатие изображения...');
+          const compressedImage = await compressImage(asset.uri);
+          console.log('Изображение сжато:', compressedImage.uri);
+          
+          // Добавляем в массив URI из локального хранилища для отображения
+          setImages(prev => [...prev, compressedImage.uri]);
+          console.log('Изображение добавлено в список');
+          
+        } catch (error) {
+          console.error('Ошибка при сжатии или добавлении изображения:', error);
+          showErrorAlert(t('property.errors.imageUploadFailed'));
+        } finally {
+          setUploadingImages(false);
+        }
+      } else {
+        console.log('Выбор изображения отменен или не выбрано ни одного изображения');
+      }
+    } catch (error) {
+      console.error('Ошибка при выборе изображения:', error);
+      showErrorAlert(t('property.errors.imageSelectFailed'));
+      setUploadingImages(false);
     }
-  };
-
-  const removeImage = (index: number) => {
-    setImages(prevImages => {
-      const newImages = [...prevImages];
-      newImages.splice(index, 1);
-      return newImages;
-    });
-  };
-
-  // Валидация числа как в веб-версии
-  const validateNumber = (value: string, min: number, max: number) => {
-    const num = Number(value);
-    return !isNaN(num) && num >= min && num <= max;
   };
 
   const handleSubmit = async () => {
     // Проверка на обязательные поля
     if (!title || !price || !area || !rooms || !location || !description) {
-      Alert.alert('Ошибка', 'Пожалуйста, заполните все обязательные поля (название, цена, площадь, количество комнат, адрес, описание)');
+      showErrorAlert(t('addProperty.validation.fillAllFields'));
       return;
     }
 
-    // Проверка контактных данных
+    // Проверка на имя пользователя
     if (!userData.name.trim()) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите ваше имя');
+      showErrorAlert(t('profile.errors.nameRequired'));
       return;
     }
     
+    // Проверка на телефон пользователя
     if (!userData.phone.trim()) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите ваш телефон');
+      showErrorAlert(t('profile.errors.phoneRequired'));
       return;
     }
     
-    // Проверка на загрузку фотографий
+    // Проверка на загрузку изображений
     if (uploadingImages) {
-      Alert.alert('Подождите', 'Дождитесь окончания загрузки фотографий');
+      showErrorAlert(t('addProperty.validation.waitForPhotos'));
       return;
     }
     
-    // Проверка на наличие хотя бы одной фотографии
+    // Проверка на наличие хотя бы одного изображения
     if (images.length === 0) {
-      Alert.alert('Ошибка', 'Пожалуйста, добавьте хотя бы одну фотографию');
-      return;
-    }
-
-    // Проверка, что price и area - числа
-    if (!validateNumber(price, 1, 1000000000)) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите корректную цену (число от 1 до 1000000000)');
-      return;
-    }
-
-    if (!validateNumber(area, 1, 10000)) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите корректную площадь (число от 1 до 10000)');
-      return;
-    }
-
-    if (!validateNumber(rooms, 1, 100)) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите корректное количество комнат (число от 1 до 100)');
-      return;
-    }
-
-    // Проверка на выбор города как в веб-версии
-    if (cityId === '0') {
-      Alert.alert('Ошибка', 'Пожалуйста, выберите город');
-      return;
-    }
-
-    // Локация должна быть указана
-    if (!location.trim()) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите адрес');
-      return;
-    }
-
-    // Валидация числовых полей как в веб-версии
-    if (rooms && !validateNumber(rooms, 1, 20)) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите корректное количество комнат (число от 1 до 20)');
-      return;
-    }
-    
-    if (area && !validateNumber(area, 1, 1000)) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите корректную площадь (число от 1 до 1000)');
-      return;
-    }
-    
-    if (!validateNumber(price, 1, 100000000)) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите корректную цену (число от 1 до 100000000)');
+      showErrorAlert(t('addProperty.validation.addAtLeastOnePhoto'));
       return;
     }
 
     try {
       setLoading(true);
       
-      // Проверка лимита объявлений (максимум 20) - как в веб-версии
+      // Проверка лимита объявлений (максимум 20)
       try {
         const userPropertiesCount = await propertyService.getUserPropertiesCount();
         if (userPropertiesCount >= 20) {
-          Alert.alert('Ошибка', 'Максимальное количество объявлений достигнуто');
+          showErrorAlert(t('property.errors.maxPropertiesReached'));
           setLoading(false);
           return;
         }
@@ -276,7 +247,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
         console.error('Ошибка при проверке количества объявлений:', error);
       }
       
-      // Сначала сохраняем данные пользователя
+      // Сохраняем данные пользователя
       try {
         if (user) {
           const { error: profileError } = await supabase
@@ -287,7 +258,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
               name: userData.name,
               phone: userData.phone
             }, { onConflict: 'id' });
-  
+
           if (profileError) {
             console.error('Ошибка при обновлении профиля:', profileError);
             throw profileError;
@@ -295,12 +266,67 @@ const AddPropertyScreen = ({ navigation }: any) => {
         }
       } catch (error) {
         console.error('Ошибка при сохранении данных пользователя:', error);
-        Alert.alert('Ошибка', 'Не удалось сохранить контактные данные');
+        showErrorAlert(t('profile.errors.saveFailed'));
         setLoading(false);
         return;
       }
       
-      // Создаем объект с данными объявления, точно как в веб-версии
+      // Теперь загружаем фотографии на сервер
+      const uploadedImageUrls = [];
+      setUploadingImages(true);
+      
+      try {
+        console.log(`Начинаем загрузку ${images.length} изображений...`);
+        
+        for (let i = 0; i < images.length; i++) {
+          const imageUri = images[i];
+          
+          try {
+            console.log(`Загрузка изображения ${i+1}/${images.length}: ${imageUri}`);
+            
+            // Получаем расширение файла
+            const uriParts = imageUri.split('.');
+            const imageExtension = uriParts.length > 1 
+              ? uriParts[uriParts.length - 1].toLowerCase() 
+              : 'jpg';
+              
+            const imageName = `property_${Date.now()}_${i}.${imageExtension}`;
+            
+            // Проверяем, что расширение файла допустимо
+            const validExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+            if (!validExtensions.includes(imageExtension)) {
+              console.error('Недопустимое расширение файла:', imageExtension);
+              // Используем jpg как запасной вариант
+              console.log('Используем jpg как запасной вариант');
+            }
+            
+            // Используем метод из propertyService для загрузки изображения
+            console.log('Вызываем propertyService.uploadImage...');
+            const imageUrl = await propertyService.uploadImage(imageUri, imageName);
+            
+            uploadedImageUrls.push(imageUrl);
+            console.log(`Изображение ${i+1}/${images.length} успешно загружено:`, imageUrl);
+          } catch (imageError: any) {
+            console.error(`Ошибка при загрузке изображения ${i+1}/${images.length}:`, imageError);
+            showErrorAlert(`${t('property.errors.imageUploadFailed')} (${i+1}/${images.length}): ${imageError.message || 'Неизвестная ошибка'}`);
+            setLoading(false);
+            setUploadingImages(false);
+            return;
+          }
+        }
+        
+        console.log('Все изображения успешно загружены:', uploadedImageUrls);
+      } catch (error: any) {
+        console.error('Общая ошибка при загрузке изображений:', error);
+        showErrorAlert(`${t('property.errors.imageUploadFailed')}: ${error.message || 'Неизвестная ошибка'}`);
+        setLoading(false);
+        setUploadingImages(false);
+        return;
+      } finally {
+        setUploadingImages(false);
+      }
+      
+      // Создаем объект с данными объявления
       const newProperty = {
         title,
         description,
@@ -312,158 +338,402 @@ const AddPropertyScreen = ({ navigation }: any) => {
         type: propertyType,
         property_type: propertyCategory,
         features: selectedFeatures,
-        images,
+        images: uploadedImageUrls, // Используем загруженные URL изображений
         status: 'active',
       };
+      
+      console.log('Создаем объявление с данными:', JSON.stringify(newProperty, null, 2));
       
       // Создаем объявление через сервис
       await propertyService.createProperty(newProperty);
       
-      Alert.alert(
-        'Успех',
-        'Объявление успешно добавлено',
-        [{ text: 'OK', onPress: () => navigation.navigate('Home') }]
-      );
+      // Очищаем форму после успешного создания
+      resetForm();
+      
+      showSuccessAlert(t('property.messages.createSuccess'), () => navigation.navigate('Home'));
     } catch (error) {
       console.error('Ошибка при создании объявления:', error);
-      Alert.alert('Ошибка', 'Ошибка при создании объявления');
+      showErrorAlert(t('property.errors.createFailed'));
     } finally {
       setLoading(false);
     }
   };
+  
+  // Функция для сброса формы
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setPrice('');
+    setArea('');
+    setRooms('');
+    setLocation('');
+    setPropertyType('sale');
+    setPropertyCategory('apartment');
+    setCityId('0');
+    setSelectedFeatures([]);
+    setImages([]);
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prevImages => {
+      const newImages = [...prevImages];
+      newImages.splice(index, 1);
+      return newImages;
+    });
+  };
+
+  // Валидация ввода только цифр
+  const validateNumericInput = (value: string) => {
+    return value === '' || /^\d+$/.test(value);
+  };
+
+  // Обработчики для числовых полей
+  const handlePriceChange = (value: string) => {
+    if (validateNumericInput(value)) {
+      setPrice(value);
+    }
+  };
+
+  const handleAreaChange = (value: string) => {
+    if (validateNumericInput(value)) {
+      setArea(value);
+    }
+  };
+
+  const handleRoomsChange = (value: string) => {
+    if (validateNumericInput(value)) {
+      setRooms(value);
+    }
+  };
+
+  // Функция для выбора города
+  const selectCity = (id: string, name: string) => {
+    setCityId(id);
+    setSelectedCityName(name);
+    setCityModalVisible(false);
+  };
+  
+  // Функция для выбора типа сделки
+  const selectPropertyType = (type: 'sale' | 'rent', name: string) => {
+    setPropertyType(type);
+    setSelectedPropertyTypeName(name);
+    setPropertyTypeModalVisible(false);
+  };
+  
+  // Функция для выбора типа недвижимости
+  const selectPropertyCategory = (category: string, name: string) => {
+    setPropertyCategory(category);
+    setSelectedPropertyCategoryName(name);
+    setPropertyCategoryModalVisible(false);
+  };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+    <KeyboardAvoidingView 
+      style={[styles.container, { backgroundColor: theme.background }]} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView style={styles.scrollView}>
         <View style={styles.formContainer}>
           {loading && (
             <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color="#1E3A8A" />
+              <ActivityIndicator size="large" color={theme.primary} />
             </View>
           )}
           
-          <Text style={styles.sectionTitle}>Контактная информация</Text>
+          <Text style={[styles.sectionTitle, { color: theme.headerText }]}>{t('addProperty.contactInfo')}</Text>
           
-          <Text style={styles.label}>Имя</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.name')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              backgroundColor: theme.cardBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }]}
             value={userData.name}
             onChangeText={(text) => setUserData({ ...userData, name: text })}
-            placeholder="Введите имя"
+            placeholder={t('addProperty.form.namePlaceholder')}
+            placeholderTextColor={theme.secondary}
           />
           
-          <Text style={styles.label}>Телефон</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.phone')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              backgroundColor: theme.cardBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }]}
             value={userData.phone}
             onChangeText={(text) => setUserData({ ...userData, phone: text })}
-            placeholder="Введите телефон"
+            placeholder={t('addProperty.form.phonePlaceholder')}
+            placeholderTextColor={theme.secondary}
             keyboardType="phone-pad"
           />
           
-          <Text style={styles.sectionTitle}>Основная информация</Text>
+          <Text style={[styles.sectionTitle, { color: theme.headerText }]}>{t('addProperty.basicInfo')}</Text>
           
-          <Text style={styles.label}>Тип сделки</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={propertyType}
-              onValueChange={(value) => setPropertyType(value as 'sale' | 'rent')}
-              style={styles.picker}
-            >
-              <Picker.Item label="Продажа" value="sale" />
-              <Picker.Item label="Аренда" value="rent" />
-            </Picker>
-          </View>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.type')}</Text>
+          <TouchableOpacity 
+            style={[styles.pickerButton, { 
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.border,
+              borderWidth: 1,
+            }]}
+            onPress={() => setPropertyTypeModalVisible(true)}
+          >
+            <Text style={[styles.pickerButtonText, { color: theme.text }]}>
+              {selectedPropertyTypeName}
+            </Text>
+            <Ionicons name="chevron-down" size={24} color={theme.text} />
+          </TouchableOpacity>
           
-          <Text style={styles.label}>Тип недвижимости</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={propertyCategory}
-              onValueChange={(itemValue: string) => setPropertyCategory(itemValue)}
-              style={styles.picker}
-            >
-              <Picker.Item label="Квартира" value="apartment" />
-              <Picker.Item label="Дом" value="house" />
-              <Picker.Item label="Коммерческая недвижимость" value="commercial" />
-              <Picker.Item label="Земельный участок" value="land" />
-            </Picker>
-          </View>
+          {/* Модальное окно для выбора типа сделки */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={propertyTypeModalVisible}
+            onRequestClose={() => setPropertyTypeModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: darkMode ? '#333333' : '#FFFFFF' }]}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {t('addProperty.form.selectType')}
+                </Text>
+                
+                <FlatList
+                  data={[
+                    { id: 'sale', name: t('property.sale') },
+                    { id: 'rent', name: t('property.rent') }
+                  ]}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[styles.cityItem, propertyType === item.id && { backgroundColor: theme.primary + '33' }]}
+                      onPress={() => selectPropertyType(item.id as 'sale' | 'rent', item.name)}
+                    >
+                      <Text style={[styles.cityItemText, { color: darkMode ? '#FFFFFF' : '#000000' }]}>
+                        {item.name}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+                
+                <TouchableOpacity
+                  style={[styles.closeButton, { backgroundColor: theme.primary }]}
+                  onPress={() => setPropertyTypeModalVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+          
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.propertyType')}</Text>
+          <TouchableOpacity 
+            style={[styles.pickerButton, { 
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.border,
+              borderWidth: 1,
+            }]}
+            onPress={() => setPropertyCategoryModalVisible(true)}
+          >
+            <Text style={[styles.pickerButtonText, { color: theme.text }]}>
+              {selectedPropertyCategoryName}
+            </Text>
+            <Ionicons name="chevron-down" size={24} color={theme.text} />
+          </TouchableOpacity>
+          
+          {/* Модальное окно для выбора типа недвижимости */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={propertyCategoryModalVisible}
+            onRequestClose={() => setPropertyCategoryModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: darkMode ? '#333333' : '#FFFFFF' }]}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {t('addProperty.form.selectPropertyType')}
+                </Text>
+                
+                <FlatList
+                  data={[
+                    { id: 'apartment', name: t('property.apartment') },
+                    { id: 'house', name: t('property.house') },
+                    { id: 'commercial', name: t('property.commercial') },
+                    { id: 'land', name: t('property.land') }
+                  ]}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[styles.cityItem, propertyCategory === item.id && { backgroundColor: theme.primary + '33' }]}
+                      onPress={() => selectPropertyCategory(item.id, item.name)}
+                    >
+                      <Text style={[styles.cityItemText, { color: darkMode ? '#FFFFFF' : '#000000' }]}>
+                        {item.name}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+                
+                <TouchableOpacity
+                  style={[styles.closeButton, { backgroundColor: theme.primary }]}
+                  onPress={() => setPropertyCategoryModalVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
 
-          <Text style={styles.label}>Название</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.title')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              backgroundColor: theme.cardBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }]}
             value={title}
             onChangeText={setTitle}
-            placeholder="Введите название"
+            placeholder={t('addProperty.form.titlePlaceholder')}
+            placeholderTextColor={theme.secondary}
           />
 
-          <Text style={styles.label}>Цена {propertyType === 'rent' ? '(€/месяц)' : '(€)'}</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.price')} {propertyType === 'rent' ? `(${t('addProperty.form.pricePerMonth')})` : ''}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              backgroundColor: theme.cardBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }]}
             value={price}
-            onChangeText={setPrice}
-            placeholder="Введите цену"
+            onChangeText={handlePriceChange}
+            placeholder={t('addProperty.form.pricePlaceholder')}
+            placeholderTextColor={theme.secondary}
             keyboardType="numeric"
           />
           
-          <Text style={styles.sectionTitle}>Местоположение</Text>
+          <Text style={[styles.sectionTitle, { color: theme.headerText }]}>{t('addProperty.location')}</Text>
           
-          <Text style={styles.label}>Город</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={cityId}
-              onValueChange={setCityId}
-              style={styles.picker}
-            >
-              <Picker.Item label="Выберите город" value="0" />
-              {cities.map(city => (
-                <Picker.Item key={city.id.toString()} label={city.name} value={city.id.toString()} />
-              ))}
-            </Picker>
-          </View>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.city')}</Text>
+          <TouchableOpacity 
+            style={[styles.pickerButton, { 
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.border,
+              borderWidth: 1,
+            }]}
+            onPress={() => setCityModalVisible(true)}
+          >
+            <Text style={[styles.pickerButtonText, { color: theme.text }]}>
+              {selectedCityName}
+            </Text>
+            <Ionicons name="chevron-down" size={24} color={theme.text} />
+          </TouchableOpacity>
+          
+          {/* Модальное окно для выбора города */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={cityModalVisible}
+            onRequestClose={() => setCityModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: darkMode ? '#333333' : '#FFFFFF' }]}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {t('property.addProperty.selectCity')}
+                </Text>
+                
+                <FlatList
+                  data={[{ id: '0', name: t('common.selectCity') }, ...cities]}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={[styles.cityItem, cityId === item.id && { backgroundColor: theme.primary + '33' }]}
+                      onPress={() => selectCity(item.id.toString(), item.name)}
+                    >
+                      <Text style={[styles.cityItemText, { color: darkMode ? '#FFFFFF' : '#000000' }]}>
+                        {item.name}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+                
+                <TouchableOpacity
+                  style={[styles.closeButton, { backgroundColor: theme.primary }]}
+                  onPress={() => setCityModalVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
 
-          <Text style={styles.label}>Адрес</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.address')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              backgroundColor: theme.cardBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }]}
             value={location}
             onChangeText={setLocation}
-            placeholder="Введите адрес"
+            placeholder={t('addProperty.form.addressPlaceholder')}
+            placeholderTextColor={theme.secondary}
           />
           
-          <Text style={styles.sectionTitle}>Детали</Text>
+          <Text style={[styles.sectionTitle, { color: theme.headerText }]}>{t('addProperty.details')}</Text>
 
-          <Text style={styles.label}>Площадь (м²)</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.area')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              backgroundColor: theme.cardBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }]}
             value={area}
-            onChangeText={setArea}
-            placeholder="Введите площадь"
+            onChangeText={handleAreaChange}
+            placeholder={t('addProperty.form.areaPlaceholder')}
+            placeholderTextColor={theme.secondary}
             keyboardType="numeric"
           />
 
-          <Text style={styles.label}>Количество комнат</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.rooms')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              backgroundColor: theme.cardBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }]}
             value={rooms}
-            onChangeText={setRooms}
-            placeholder="Введите количество комнат"
+            onChangeText={handleRoomsChange}
+            placeholder={t('addProperty.form.roomsPlaceholder')}
+            placeholderTextColor={theme.secondary}
             keyboardType="numeric"
           />
 
-          <Text style={styles.label}>Описание</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.description')}</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { 
+              backgroundColor: theme.cardBackground,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1
+            }]}
             value={description}
             onChangeText={setDescription}
-            placeholder="Введите описание"
+            placeholder={t('addProperty.form.descriptionPlaceholder')}
+            placeholderTextColor={theme.secondary}
             multiline
             textAlignVertical="top"
           />
           
-          <Text style={styles.sectionTitle}>Особенности</Text>
+          <Text style={[styles.sectionTitle, { color: theme.headerText }]}>{t('addProperty.features')}</Text>
           
           <View style={styles.featuresContainer}>
             {FEATURES.map(feature => (
@@ -471,36 +741,36 @@ const AddPropertyScreen = ({ navigation }: any) => {
                 <Switch
                   value={selectedFeatures.includes(feature.id)}
                   onValueChange={() => toggleFeature(feature.id)}
-                  trackColor={{ false: '#D1D5DB', true: '#1E3A8A' }}
-                  thumbColor={selectedFeatures.includes(feature.id) ? '#FFFFFF' : '#FFFFFF'}
+                  trackColor={{ false: theme.border, true: theme.primary }}
+                  thumbColor={selectedFeatures.includes(feature.id) ? theme.primary : theme.secondary}
                 />
-                <Text style={styles.featureText}>{feature.name}</Text>
+                <Text style={[styles.featureText, { color: theme.text }]}>{t(`features.${feature.id}`)}</Text>
               </View>
             ))}
           </View>
           
-          <Text style={styles.sectionTitle}>Фотографии</Text>
+          <Text style={[styles.sectionTitle, { color: theme.headerText }]}>{t('addProperty.photos')}</Text>
           
           <TouchableOpacity 
-            style={styles.uploadButton} 
+            style={[styles.uploadButton, { backgroundColor: theme.primary }]}
             onPress={pickImage}
             disabled={uploadingImages}
           >
             {uploadingImages ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.uploadButtonText}>Добавить фотографию</Text>
+              <Text style={styles.uploadButtonText}>{t('addProperty.form.uploadPhoto')}</Text>
             )}
           </TouchableOpacity>
           
-          <Text style={styles.photoNote}>
-            Максимальное количество фотографий - 10 ({images.length}/10)
+          <Text style={[styles.photoNote, { color: theme.secondary }]}>
+            {t('addProperty.form.maxPhotos', { count: 10 })} ({images.length}/10)
           </Text>
           
           {images.length > 0 && (
             <View style={styles.imagesContainer}>
               {images.map((image, index) => (
-                <View key={index} style={styles.imageWrapper}>
+                <View key={index} style={[styles.imageWrapper, { borderColor: theme.border }]}>
                   <Image 
                     source={{ uri: image }} 
                     style={styles.propertyImage} 
@@ -509,7 +779,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
                     style={styles.removeImageButton}
                     onPress={() => removeImage(index)}
                   >
-                    <Ionicons name="close-circle" size={24} color="#EF4444" />
+                    <Ionicons name="close-circle" size={24} color={theme.notification} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -527,9 +797,9 @@ const AddPropertyScreen = ({ navigation }: any) => {
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : uploadingImages ? (
-              <Text style={styles.submitButtonText}>Загрузка фото...</Text>
+              <Text style={styles.submitButtonText}>{t('addProperty.form.uploadingPhotos')}</Text>
             ) : (
-              <Text style={styles.submitButtonText}>Добавить объявление</Text>
+              <Text style={styles.submitButtonText}>{t('addProperty.form.submit')}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -541,7 +811,6 @@ const AddPropertyScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   scrollView: {
     flex: 1,
@@ -554,12 +823,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginVertical: 12,
-    color: '#1E3A8A',
   },
   label: {
     fontSize: 16,
     marginBottom: 8,
-    color: '#4B5563',
   },
   input: {
     backgroundColor: '#F3F4F6',
@@ -573,12 +840,14 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   pickerContainer: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
     marginBottom: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   picker: {
     height: 50,
+    width: '100%',
+    backgroundColor: 'transparent',
   },
   featuresContainer: {
     marginBottom: 16,
@@ -591,7 +860,6 @@ const styles = StyleSheet.create({
   featureText: {
     marginLeft: 10,
     fontSize: 16,
-    color: '#4B5563',
   },
   uploadButton: {
     backgroundColor: '#1E3A8A',
@@ -607,7 +875,6 @@ const styles = StyleSheet.create({
   },
   photoNote: {
     fontSize: 14,
-    color: '#6B7280',
     marginBottom: 16,
   },
   imagesContainer: {
@@ -624,7 +891,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#F3F4F6',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   propertyImage: {
     width: '100%',
@@ -680,6 +946,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // Стили для кнопки выбора города
+  pickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  pickerButtonText: {
+    fontSize: 16,
+  },
+  // Стили для модального окна
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 8,
+    padding: 16,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  cityItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  cityItemText: {
+    fontSize: 16,
+  },
+  closeButton: {
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  closeButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',

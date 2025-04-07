@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -15,10 +14,15 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { propertyService } from '../services/propertyService';
-import { Property } from '../contexts/PropertyContext';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
+import { showErrorAlert, showSuccessAlert } from '../utils/alertUtils';
+import type { Database } from '../lib/database.types';
+
+type Property = Database['public']['Tables']['properties']['Row'];
+type PropertyInsert = Database['public']['Tables']['properties']['Insert'];
 
 interface City {
   id: string;
@@ -27,15 +31,16 @@ interface City {
 
 // Список возможных особенностей
 const FEATURES = [
-  { id: 'parking', name: 'Парковка' },
-  { id: 'balcony', name: 'Балкон' },
-  { id: 'elevator', name: 'Лифт' },
-  { id: 'furniture', name: 'Мебель' },
+  { id: 'parking', name: 'features.parking' },
+  { id: 'balcony', name: 'features.balcony' },
+  { id: 'elevator', name: 'features.elevator' },
+  { id: 'furniture', name: 'features.furniture' },
 ];
 
 const EditPropertyScreen = ({ route, navigation }: any) => {
   const { propertyId } = route.params;
   const { t } = useTranslation();
+  const { darkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [property, setProperty] = useState<Property | null>(null);
@@ -51,7 +56,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
   const [rooms, setRooms] = useState('');
   const [cityId, setCityId] = useState<string>('0');
   const [propertyType, setPropertyType] = useState<'sale' | 'rent'>('sale');
-  const [propertyCategory, setPropertyCategory] = useState('apartment');
+  const [propertyCategory, setPropertyCategory] = useState<PropertyInsert['property_type']>('apartment');
   const [images, setImages] = useState<string[]>([]);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
 
@@ -75,7 +80,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       setCities(data);
     } catch (error) {
       console.error('Ошибка при загрузке городов:', error);
-      Alert.alert(t('common.error'), t('property.errorLoadingCities'));
+      showErrorAlert(t('property.errorLoadingCities'));
     }
   };
 
@@ -101,7 +106,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       }
       
       setPropertyType(data.type || 'sale');
-      setPropertyCategory(data.category || 'apartment');
+      setPropertyCategory(data.property_type || 'apartment');
       setImages(data.images || []);
       setSelectedFeatures(data.features || []);
 
@@ -109,127 +114,137 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       console.log('ID города:', data.city_id, 'Адрес (location):', data.location);
     } catch (error) {
       console.error('Ошибка при загрузке объявления:', error);
-      Alert.alert(t('common.error'), t('property.errorLoadingProperty'));
+      showErrorAlert(t('property.errorLoadingProperty'));
       navigation.goBack();
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (property) {
+      // Можно добавить дополнительную логику при изменении property
+    }
+  }, [property]);
+
   const toggleFeature = (featureId: string) => {
-    setSelectedFeatures(prevFeatures => {
-      if (prevFeatures.includes(featureId)) {
-        return prevFeatures.filter(id => id !== featureId);
+    setSelectedFeatures(prev => {
+      if (prev.includes(featureId)) {
+        return prev.filter(id => id !== featureId);
       } else {
-        return [...prevFeatures, featureId];
+        return [...prev, featureId];
       }
     });
   };
 
   const pickImage = async () => {
-    if (images.length >= 10) {
-      Alert.alert('Ограничение', 'Максимальное количество фотографий - 10');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: 'images',
-      allowsEditing: false,
-      quality: 0.5,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setUploadingImages(true);
-      try {
-        const asset = result.assets[0];
-        const fileName = asset.uri.split('/').pop() || 'image.jpg';
-        const imageUrl = await propertyService.uploadImage(asset.uri, fileName);
-        
-        setImages(prevImages => [...prevImages, imageUrl]);
-      } catch (error) {
-        console.error('Ошибка при загрузке изображения:', error);
-        Alert.alert(t('common.error'), t('property.errorUploadingImage'));
-      } finally {
-        setUploadingImages(false);
+    try {
+      console.log('Запрос на выбор изображения...');
+      
+      // Запрашиваем разрешение на доступ к галерее
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        console.log('Разрешение на доступ к галерее не получено');
+        showErrorAlert(t('property.permissionDenied'));
+        return;
       }
+      
+      console.log('Разрешение получено, открываем галерею');
+      
+      // Открываем галерею для выбора изображения
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+      
+      console.log('Результат выбора изображения:', result);
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedAsset = result.assets[0];
+        console.log('Выбрано изображение:', selectedAsset.uri);
+        
+        try {
+          setUploadingImages(true);
+          
+          // Получаем имя файла из URI
+          const fileName = selectedAsset.uri.split('/').pop() || 'image.jpg';
+          console.log('Имя файла:', fileName);
+          
+          // Загружаем изображение на сервер
+          const imageUrl = await propertyService.uploadImage(selectedAsset.uri, fileName);
+          console.log('Изображение загружено, URL:', imageUrl);
+          
+          // Добавляем URL в список изображений
+          setImages(prev => [...prev, imageUrl]);
+        } catch (error) {
+          console.error('Ошибка при загрузке изображения:', error);
+          showErrorAlert(t('property.errorUploadingImage'));
+        } finally {
+          setUploadingImages(false);
+        }
+      } else {
+        console.log('Выбор изображения отменен или произошла ошибка');
+      }
+    } catch (error) {
+      console.error('Ошибка при выборе изображения:', error);
+      showErrorAlert(t('property.errorSelectingImage'));
+      setUploadingImages(false);
     }
   };
 
   const removeImage = (index: number) => {
-    setImages(prevImages => {
-      const newImages = [...prevImages];
-      newImages.splice(index, 1);
-      return newImages;
-    });
+    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
-    if (!title || !price) {
-      Alert.alert(t('common.error'), t('property.requiredFieldsMissing'));
-      return;
-    }
-
-    // Проверка на загрузку фотографий
-    if (uploadingImages) {
-      Alert.alert('Подождите', 'Дождитесь окончания загрузки фотографий');
-      return;
-    }
-    
-    // Проверка на наличие хотя бы одной фотографии
-    if (images.length === 0) {
-      Alert.alert('Ошибка', 'Пожалуйста, добавьте хотя бы одну фотографию');
-      return;
-    }
-
-    // Валидация числовых полей как в веб-версии
-    if (rooms && (isNaN(Number(rooms)) || Number(rooms) < 1 || Number(rooms) > 20)) {
-      Alert.alert(t('common.error'), t('property.invalidRooms'));
-      return;
-    }
-    
-    if (area && (isNaN(Number(area)) || Number(area) < 1 || Number(area) > 1000)) {
-      Alert.alert(t('common.error'), t('property.invalidArea'));
-      return;
-    }
-    
-    if (isNaN(Number(price)) || Number(price) < 1 || Number(price) > 100000000) {
-      Alert.alert(t('common.error'), t('property.invalidPrice'));
-      return;
-    }
-
-    // Проверяем, что город выбран (не 0)
-    if (cityId === '0') {
-      Alert.alert(t('common.error'), t('property.selectCity'));
-      return;
-    }
-
     try {
+      if (images.length === 0) {
+        showErrorAlert(t('property.noImages'));
+        return;
+      }
+
       setSaving(true);
+      console.log('Сохранение объявления...');
+      console.log('ID объявления:', propertyId);
       
-      const updatedProperty = {
+      // Проверяем обязательные поля
+      if (!title || !price || !cityId || !address) {
+        showErrorAlert(t('property.requiredFields'));
+        setSaving(false);
+        return;
+      }
+      
+      // Собираем данные для обновления
+      const updatedProperty: Partial<PropertyInsert> = {
         title,
         description,
-        price: Number(price), // используем Number вместо parseFloat как в веб-версии
-        location: address, // поле location вместо address
-        area: area ? Number(area) : undefined, // Number вместо parseFloat
-        rooms: rooms ? Number(rooms) : undefined, // Number вместо parseInt
-        city_id: cityId !== '0' ? Number(cityId) : undefined, // Проверяем, что не 0 
+        price: parseFloat(price),
+        location: address, // В API используется поле location вместо address
+        area: area ? parseFloat(area) : undefined,
+        rooms: rooms ? parseInt(rooms, 10) : undefined,
+        city_id: parseInt(cityId, 10),
         type: propertyType,
-        category: propertyCategory, // в веб-версии это property_type, но оставим как есть
+        property_type: propertyCategory,
         features: selectedFeatures,
-        images
+        images,
       };
       
+      console.log('Данные для обновления:', updatedProperty);
+      
+      // Отправляем запрос на обновление
       await propertyService.updateProperty(propertyId, updatedProperty);
       
-      Alert.alert(
-        t('common.success'),
-        t('property.updateSuccess'),
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      console.log('Объявление успешно обновлено');
+      showSuccessAlert(t('property.updateSuccess'), () => {
+        // Вместо goBack используем navigate для предотвращения ошибки навигации
+        navigation.navigate('MyProperties');
+      });
     } catch (error) {
       console.error('Ошибка при сохранении объявления:', error);
-      Alert.alert(t('common.error'), t('property.updateError'));
+      showErrorAlert(t('property.errorUpdatingProperty'));
     } finally {
       setSaving(false);
     }
@@ -237,158 +252,171 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1E3A8A" />
+      <View style={[styles.loadingContainer, darkMode && styles.darkContainer]}>
+        <ActivityIndicator size="large" color={darkMode ? "#FFFFFF" : "#1E3A8A"} />
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+    <KeyboardAvoidingView 
+      style={[styles.container, darkMode && styles.darkContainer]} 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView style={styles.scrollView}>
         <View style={styles.formContainer}>
-          <Text style={styles.sectionTitle}>{t('property.basicInfo')}</Text>
+          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>{t('property.basicInfo')}</Text>
           
-          <Text style={styles.label}>{t('property.dealType')}</Text>
-          <View style={styles.pickerContainer}>
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.dealType')}</Text>
+          <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
             <Picker
               selectedValue={propertyType}
-              onValueChange={(value) => setPropertyType(value as 'sale' | 'rent')}
-              style={styles.picker}
+              onValueChange={(itemValue) => setPropertyType(itemValue as 'sale' | 'rent')}
+              style={[styles.picker, darkMode && styles.darkPicker]}
+              dropdownIconColor={darkMode ? "#FFFFFF" : "#1E3A8A"}
             >
               <Picker.Item label={t('property.sale')} value="sale" />
               <Picker.Item label={t('property.rent')} value="rent" />
             </Picker>
           </View>
           
-          <Text style={styles.label}>{t('property.propertyType')}</Text>
-          <View style={styles.pickerContainer}>
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.propertyType')}</Text>
+          <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
             <Picker
               selectedValue={propertyCategory}
-              onValueChange={(itemValue: string) => setPropertyCategory(itemValue)}
-              style={styles.picker}
+              onValueChange={(itemValue) => setPropertyCategory(itemValue as PropertyInsert['property_type'])}
+              style={[styles.picker, darkMode && styles.darkPicker]}
+              dropdownIconColor={darkMode ? "#FFFFFF" : "#1E3A8A"}
             >
               <Picker.Item label={t('property.apartment')} value="apartment" />
               <Picker.Item label={t('property.house')} value="house" />
-              <Picker.Item label={t('property.commercial')} value="commercial" />
               <Picker.Item label={t('property.land')} value="land" />
+              <Picker.Item label={t('property.commercial')} value="commercial" />
             </Picker>
           </View>
-
-          <Text style={styles.label}>{t('property.title')}</Text>
+          
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.title')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, darkMode && styles.darkInput]}
             value={title}
             onChangeText={setTitle}
             placeholder={t('property.titlePlaceholder')}
+            placeholderTextColor={darkMode ? "#6B7280" : "#9CA3AF"}
           />
-
-          <Text style={styles.label}>{t('property.price')} {propertyType === 'rent' ? '(€/месяц)' : '(€)'}</Text>
+          
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.price')} (€)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, darkMode && styles.darkInput]}
             value={price}
             onChangeText={setPrice}
-            placeholder={t('property.pricePlaceholder')}
             keyboardType="numeric"
+            placeholder={t('property.pricePlaceholder')}
+            placeholderTextColor={darkMode ? "#6B7280" : "#9CA3AF"}
           />
           
-          <Text style={styles.sectionTitle}>{t('property.location')}</Text>
+          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>{t('property.location')}</Text>
           
-          <Text style={styles.label}>{t('property.city')}</Text>
-          <View style={styles.pickerContainer}>
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.city')}</Text>
+          <View style={[styles.pickerContainer, darkMode && styles.darkPickerContainer]}>
             <Picker
               selectedValue={cityId}
-              onValueChange={setCityId}
-              style={styles.picker}
+              onValueChange={(itemValue) => setCityId(itemValue.toString())}
+              style={[styles.picker, darkMode && styles.darkPicker]}
+              dropdownIconColor={darkMode ? "#FFFFFF" : "#1E3A8A"}
             >
-              <Picker.Item label={t('property.selectCity')} value="0" />
-              {cities.map(city => (
-                <Picker.Item key={city.id.toString()} label={city.name} value={city.id.toString()} />
+              {cities.map((city) => (
+                <Picker.Item key={city.id} label={t(`cities.${city.name}`, { defaultValue: city.name })} value={city.id.toString()} />
               ))}
             </Picker>
           </View>
-
-          <Text style={styles.label}>{t('property.address')}</Text>
+          
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.address')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, darkMode && styles.darkInput]}
             value={address}
             onChangeText={setAddress}
             placeholder={t('property.addressPlaceholder')}
+            placeholderTextColor={darkMode ? "#6B7280" : "#9CA3AF"}
           />
           
-          <Text style={styles.sectionTitle}>{t('property.details')}</Text>
-
-          <Text style={styles.label}>{t('property.area')} (м²)</Text>
+          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>{t('property.details')}</Text>
+          
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.area')} (м²)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, darkMode && styles.darkInput]}
             value={area}
             onChangeText={setArea}
-            placeholder={t('property.areaPlaceholder')}
             keyboardType="numeric"
+            placeholder={t('property.areaPlaceholder')}
+            placeholderTextColor={darkMode ? "#6B7280" : "#9CA3AF"}
           />
-
-          <Text style={styles.label}>{t('property.rooms')}</Text>
+          
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.rooms')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, darkMode && styles.darkInput]}
             value={rooms}
             onChangeText={setRooms}
-            placeholder={t('property.roomsPlaceholder')}
             keyboardType="numeric"
+            placeholder={t('property.roomsPlaceholder')}
+            placeholderTextColor={darkMode ? "#6B7280" : "#9CA3AF"}
           />
-
-          <Text style={styles.label}>{t('property.description')}</Text>
+          
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.description')}</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, darkMode && styles.darkInput]}
             value={description}
             onChangeText={setDescription}
-            placeholder={t('property.descriptionPlaceholder')}
             multiline
-            textAlignVertical="top"
+            placeholder={t('property.descriptionPlaceholder')}
+            placeholderTextColor={darkMode ? "#6B7280" : "#9CA3AF"}
           />
           
-          <Text style={styles.sectionTitle}>{t('property.features')}</Text>
+          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>{t('property.features')}</Text>
           
           <View style={styles.featuresContainer}>
-            {FEATURES.map(feature => (
+            {FEATURES.map((feature) => (
               <View key={feature.id} style={styles.featureItem}>
                 <Switch
                   value={selectedFeatures.includes(feature.id)}
                   onValueChange={() => toggleFeature(feature.id)}
-                  trackColor={{ false: '#D1D5DB', true: '#1E3A8A' }}
-                  thumbColor={selectedFeatures.includes(feature.id) ? '#FFFFFF' : '#FFFFFF'}
+                  trackColor={{ false: "#D1D5DB", true: darkMode ? "#3B82F6" : "#1E3A8A" }}
+                  thumbColor={selectedFeatures.includes(feature.id) ? "#FFFFFF" : "#F3F4F6"}
                 />
-                <Text style={styles.featureText}>{feature.name}</Text>
+                <Text style={[styles.featureText, darkMode && styles.darkText]}>
+                  {t(feature.name)}
+                </Text>
               </View>
             ))}
           </View>
           
-          <Text style={styles.sectionTitle}>{t('property.photos')}</Text>
+          <Text style={[styles.sectionTitle, darkMode && styles.darkText]}>{t('property.photos')}</Text>
           
-          <TouchableOpacity 
-            style={styles.uploadButton} 
+          <TouchableOpacity
+            style={[styles.uploadButton, uploadingImages && styles.disabledButton]}
             onPress={pickImage}
             disabled={uploadingImages}
           >
             {uploadingImages ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <Text style={styles.uploadButtonText}>{t('property.addPhoto')}</Text>
             )}
           </TouchableOpacity>
           
-          <Text style={styles.photoNote}>
-            {t('property.maxPhotos')} ({images.length}/10)
+          <Text style={[styles.photoNote, darkMode && styles.darkText]}>
+            {t('property.photoNote')}
           </Text>
           
           {images.length > 0 && (
             <View style={styles.imagesContainer}>
-              {images.map((image, index) => (
+              {images.map((imageUrl, index) => (
                 <View key={index} style={styles.imageWrapper}>
-                  <Image source={{ uri: image }} style={styles.propertyImage} />
-                  <TouchableOpacity 
+                  <Image
+                    source={{ uri: imageUrl }}
+                    style={styles.propertyImage}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
                     style={styles.removeImageButton}
                     onPress={() => removeImage(index)}
                   >
@@ -401,10 +429,10 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={[styles.cancelButton, darkMode && styles.darkCancelButton]}
               onPress={() => navigation.goBack()}
             >
-              <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+              <Text style={[styles.cancelButtonText, darkMode && styles.darkCancelButtonText]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[
@@ -417,7 +445,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
               {saving ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : uploadingImages ? (
-                <Text style={styles.saveButtonText}>Загрузка фото...</Text>
+                <Text style={styles.saveButtonText}>{t('property.uploadingPhotos')}</Text>
               ) : (
                 <Text style={styles.saveButtonText}>{t('common.save')}</Text>
               )}
@@ -433,6 +461,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA'
+  },
+  darkContainer: {
+    backgroundColor: '#1F2937'
   },
   scrollView: {
     flex: 1
@@ -452,6 +483,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: '#1E3A8A'
   },
+  darkText: {
+    color: '#F3F4F6'
+  },
   label: {
     fontSize: 16,
     fontWeight: '500',
@@ -465,7 +499,13 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 12,
     fontSize: 16,
-    marginBottom: 16
+    marginBottom: 16,
+    color: '#111827'
+  },
+  darkInput: {
+    backgroundColor: '#374151',
+    borderColor: '#4B5563',
+    color: '#F3F4F6'
   },
   pickerContainer: {
     backgroundColor: '#FFFFFF',
@@ -475,9 +515,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden'
   },
+  darkPickerContainer: {
+    backgroundColor: '#374151',
+    borderColor: '#4B5563'
+  },
   picker: {
     height: 50,
-    width: '100%'
+    width: '100%',
+    color: '#111827'
+  },
+  darkPicker: {
+    color: '#F3F4F6'
   },
   textArea: {
     height: 120,
@@ -567,10 +615,17 @@ const styles = StyleSheet.create({
     marginRight: 8,
     alignItems: 'center'
   },
+  darkCancelButton: {
+    backgroundColor: '#374151',
+    borderColor: '#4B5563'
+  },
   cancelButtonText: {
     color: '#374151',
     fontSize: 16,
     fontWeight: '600'
+  },
+  darkCancelButtonText: {
+    color: '#F3F4F6'
   },
   disabledButton: {
     opacity: 0.5
