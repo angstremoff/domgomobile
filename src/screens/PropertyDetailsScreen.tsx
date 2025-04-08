@@ -134,8 +134,21 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
     <style>
-      body { margin: 0; padding: 0; }
+      body { margin: 0; padding: 0; overflow: hidden; }
       #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
+      #log { 
+        position: absolute; 
+        bottom: 10px; 
+        left: 10px; 
+        z-index: 999; 
+        background: rgba(255,255,255,0.8); 
+        padding: 5px; 
+        font-size: 12px; 
+        max-width: 80%; 
+        max-height: 100px; 
+        overflow: auto; 
+        display: none; 
+      }
       .marker {
         width: 25px;
         height: 25px;
@@ -148,60 +161,122 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   </head>
   <body>
     <div id="map"></div>
+    <div id="log"></div>
     <script>
+      // Функция для логирования
+      function log(message) {
+        try {
+          const logElement = document.getElementById('log');
+          logElement.style.display = 'block';
+          logElement.innerHTML += '<div>' + message + '</div>';
+          console.log(message);
+          // Отправляем лог в React Native
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage('log:' + message);
+          }
+        } catch (e) {
+          console.error('Error in log function:', e);
+        }
+      }
+
+      // Инициализация карты
       function initMap(lat, lng) {
-        const map = new maplibregl.Map({
-          container: 'map',
-          style: {
-            version: 8,
-            sources: {
-              'osm': {
-                type: 'raster',
-                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                tileSize: 256
-              }
-            },
-            layers: [{
-              id: 'osm',
-              type: 'raster',
-              source: 'osm',
-              minzoom: 0,
-              maxzoom: 19
-            }]
-          },
-          center: [lng, lat],
-          zoom: 15
-        });
-        
-        map.addControl(new maplibregl.NavigationControl());
-        
-        const el = document.createElement('div');
-        el.className = 'marker';
-        
-        new maplibregl.Marker(el)
-          .setLngLat([lng, lat])
-          .addTo(map);
+        try {
+          log('Initializing map with coords: ' + lat + ', ' + lng);
+          if (!maplibregl) {
+            log('Error: maplibregl is not defined');
+            return;
+          }
           
-        // Сообщаем о загрузке карты
-        map.on('load', function() {
-          window.ReactNativeWebView.postMessage('mapLoaded');
-        });
+          const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+              version: 8,
+              sources: {
+                'osm': {
+                  type: 'raster',
+                  tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                  tileSize: 256
+                }
+              },
+              layers: [{
+                id: 'osm',
+                type: 'raster',
+                source: 'osm',
+                minzoom: 0,
+                maxzoom: 19
+              }]
+            },
+            center: [lng, lat],
+            zoom: 15
+          });
+          
+          log('Map object created');
+          
+          map.addControl(new maplibregl.NavigationControl());
+          
+          const el = document.createElement('div');
+          el.className = 'marker';
+          
+          new maplibregl.Marker(el)
+            .setLngLat([lng, lat])
+            .addTo(map);
+          
+          log('Marker added to map');
+          
+          // Сообщаем о загрузке карты
+          map.on('load', function() {
+            log('Map loaded');
+            window.ReactNativeWebView.postMessage('mapLoaded');
+          });
+          
+          map.on('error', function(e) {
+            log('Map error: ' + JSON.stringify(e));
+          });
+        } catch (e) {
+          log('Error initializing map: ' + e.toString());
+        }
       }
       
       // Слушаем сообщения от React Native
       window.addEventListener('message', function(e) {
         try {
+          log('Received message: ' + e.data);
           const message = JSON.parse(e.data);
           if (message && message.coords) {
+            log('Parsed coordinates: ' + message.coords.lat + ', ' + message.coords.lng);
             initMap(message.coords.lat, message.coords.lng);
           }
         } catch (e) {
-          console.error(e);
+          log('Error parsing message: ' + e.toString());
         }
       });
       
       // Сообщаем, что страница загружена
-      window.ReactNativeWebView.postMessage('ready');
+      document.addEventListener('DOMContentLoaded', function() {
+        log('DOM loaded');
+        setTimeout(function() {
+          if (window.ReactNativeWebView) {
+            log('WebView ready, sending ready message');
+            window.ReactNativeWebView.postMessage('ready');
+          } else {
+            log('ReactNativeWebView is not available');
+          }
+        }, 500);
+      });
+      
+      // Дополнительная проверка, если DOMContentLoaded уже сработал
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        log('Document already loaded');
+        setTimeout(function() {
+          if (window.ReactNativeWebView) {
+            log('WebView ready (from direct check), sending ready message');
+            window.ReactNativeWebView.postMessage('ready');
+          } else {
+            log('ReactNativeWebView is not available (from direct check)');
+          }
+        }, 500);
+      }
     </script>
   </body>
   </html>
@@ -211,12 +286,23 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const handleWebViewMessage = (event: any) => {
     try {
       const data = event.nativeEvent.data;
+      console.log('Получено сообщение от WebView:', data);
+      
+      // Обработка логов из WebView
+      if (data.startsWith('log:')) {
+        console.log('Лог из WebView:', data.substring(4));
+        return;
+      }
       
       if (data === 'ready') {
         // WebView готов, отправляем координаты
-        sendCoordinatesToMap();
+        console.log('WebView готов, отправляем координаты');
+        setTimeout(() => {
+          sendCoordinatesToMap();
+        }, 500); // Добавляем задержку перед отправкой координат
       } else if (data === 'mapLoaded') {
         // Карта загружена
+        console.log('Карта загружена');
         setMapLoading(false);
       }
     } catch (error) {
@@ -227,21 +313,35 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   // Отправка координат в WebView
   const sendCoordinatesToMap = useCallback(() => {
     if (!webViewRef.current || !property) {
+      console.log('Нет ссылки на webView или нет данных объявления');
       return;
     }
 
     try {
       let lat, lng;
       
+      // Дебаг: выводим все данные о координатах
+      console.log('Данные координат:', {
+        coordinates: property.coordinates,
+        coordinatesType: typeof property.coordinates,
+        latitude: property.latitude,
+        longitude: property.longitude
+      });
+      
       // Пробуем получить координаты из разных источников
       if (property.coordinates) {
         // Из поля coordinates
         if (typeof property.coordinates === 'object') {
+          // Если координаты уже как объект
+          console.log('Координаты как объект:', property.coordinates);
           lat = property.coordinates.lat;
           lng = property.coordinates.lng;
         } else if (typeof property.coordinates === 'string') {
+          // Если координаты как строка JSON
+          console.log('Координаты как строка:', property.coordinates);
           try {
             const coords = JSON.parse(property.coordinates);
+            console.log('Распарсенные координаты:', coords);
             lat = coords.lat;
             lng = coords.lng;
           } catch (e) {
@@ -250,9 +350,16 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         }
       } else if (property.latitude && property.longitude) {
         // Из прямых полей latitude и longitude
+        console.log('Используем прямые поля latitude/longitude:', { 
+          lat: property.latitude, 
+          lng: property.longitude 
+        });
         lat = parseFloat(property.latitude);
         lng = parseFloat(property.longitude);
       }
+      
+      // Проверка наличия корректных координат
+      console.log('Финальные координаты для карты:', { lat, lng });
       
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
         console.error('Нет корректных координат для объявления');
@@ -265,6 +372,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         coords: { lat, lng }
       };
       
+      console.log('Отправляем координаты в WebView:', message);
       webViewRef.current.postMessage(JSON.stringify(message));
     } catch (error) {
       console.error('Ошибка отправки координат:', error);
