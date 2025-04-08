@@ -2,7 +2,7 @@
   "expo": {
     "name": "DomGoMobile",
     "slug": "DomGoMobile",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -26,7 +26,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.DomGoMobile"
+      "package": "com.anonymous.DomGoMobile",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC-7lcRdJ9zPKdyC7PPZW0iiomUS_wnR4E"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

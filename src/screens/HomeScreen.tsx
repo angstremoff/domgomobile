@@ -5,6 +5,7 @@ import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import PropertyCard from '../components/PropertyCard';
 import PropertyCardCompact from '../components/PropertyCardCompact';
 import FilterModal from '../components/FilterModal';
+import PropertyMapView from '../components/PropertyMapView';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { useProperties } from '../contexts/PropertyContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -758,6 +759,13 @@ const HomeScreen = ({ navigation }: any) => {
         darkMode={darkMode}
       />
       
+      {/* Компонент карты объектов */}
+      <PropertyMapView 
+        properties={filteredProperties}
+        selectedCity={selectedCity}
+        onPropertySelect={(property) => navigation.navigate('PropertyDetails', { propertyId: property.id })}
+      />
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
@@ -802,9 +810,12 @@ const HomeScreen = ({ navigation }: any) => {
           onEndReached={() => {
             if (!loadingMore && hasMoreProperties) {
               setLoadingMore(true);
-              loadMoreProperties(propertyType)
-                .then(() => setLoadingMore(false))
-                .catch(() => setLoadingMore(false));
+              // Загрузка дополнительных объектов недвижимости
+              loadMoreProperties(propertyType);
+              // Сбросим состояние загрузки через небольшую задержку
+              setTimeout(() => {
+                setLoadingMore(false);
+              }, 1000); 
             }
           }}
           onEndReachedThreshold={0.3}

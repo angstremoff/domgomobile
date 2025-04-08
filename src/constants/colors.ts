@@ -16,6 +16,7 @@ const Colors = {
     inputBackground: '#F8FAFC', // светло-серый для полей ввода
     headerBackground: '#1E3A8A', // синий для заголовка
     headerText: '#FFFFFF',     // белый для текста заголовка
+    error: '#EF4444',          // красный для ошибок и отмены
   },
   dark: {
     primary: '#3B82F6',        // синий
@@ -33,6 +34,7 @@ const Colors = {
     inputBackground: '#1F2937', // темно-серый для полей ввода
     headerBackground: '#1F2937', // темный для заголовка
     headerText: '#F1F5F9',     // светлый текст для заголовка
+    error: '#EF4444',          // красный для ошибок и отмены
   }
 };
 

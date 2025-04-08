@@ -24,11 +24,14 @@ import { supabase } from '../lib/supabaseClient';
 import { propertyService } from '../services/propertyService';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
+import MapCoordinateSelector from '../components/MapCoordinateSelector';
 import { showErrorAlert, showSuccessAlert } from '../utils/alertUtils';
 
 interface City {
   id: string;
   name: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 // Список возможных особенностей
@@ -64,6 +67,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
   const [propertyType, setPropertyType] = useState<'sale' | 'rent'>('sale');
   const [propertyCategory, setPropertyCategory] = useState('apartment');
   const [images, setImages] = useState<string[]>([]);
+  const [coordinates, setCoordinates] = useState<{lat: number, lng: number} | null>(null);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   
   const [loading, setLoading] = useState(false);
@@ -72,6 +76,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
   // Состояние для модальных окон
   const [cityModalVisible, setCityModalVisible] = useState(false);
   const [selectedCityName, setSelectedCityName] = useState(t('common.selectCity'));
+  const [selectedCity, setSelectedCity] = useState<any>(null);
   
   const [propertyTypeModalVisible, setPropertyTypeModalVisible] = useState(false);
   const [selectedPropertyTypeName, setSelectedPropertyTypeName] = useState(t('property.sale'));
@@ -80,14 +85,31 @@ const AddPropertyScreen = ({ navigation }: any) => {
   const [selectedPropertyCategoryName, setSelectedPropertyCategoryName] = useState(t('property.apartment'));
 
   useEffect(() => {
+    // Загрузка списка городов при монтировании компонента
     const fetchCities = async () => {
       try {
-        const { data, error } = await supabase.from('cities').select('*');
-        if (error) throw error;
-        setCities(data);
+        const { data: cities, error } = await supabase
+          .from('cities')
+          .select('*');
+
+        if (error) {
+          console.error('Error fetching cities:', error);
+          return;
+        }
+
+        if (cities) {
+          // Добавляем фиксированные координаты для городов в тестовых целях
+          const citiesWithCoordinates = cities.map(city => ({
+            ...city,
+            latitude: city.latitude || '45.267136',
+            longitude: city.longitude || '19.833549'
+          }));
+          
+          console.log('Cities with coordinates:', citiesWithCoordinates);
+          setCities(citiesWithCoordinates);
+        }
       } catch (error) {
-        console.error('Error fetching cities:', error);
-        showErrorAlert(t('property.errorLoadingCities'));
+        console.error('Error in fetchCities:', error);
       }
     };
 
@@ -341,7 +363,13 @@ const AddPropertyScreen = ({ navigation }: any) => {
         city_id: cityId !== '0' ? Number(cityId) : undefined,
         features: selectedFeatures,
         images: uploadedImageUrls,
-        status: 'active' // по умолчанию активно
+        status: 'active', // по умолчанию активно
+        user_id: user.id, // ID пользователя
+        user: {
+          name: userData.name,
+          phone: userData.phone
+        },
+        coordinates: coordinates ? JSON.stringify(coordinates) : null, // Добавляем координаты в формате JSON
       });
 
       if (result.success) {
@@ -414,9 +442,50 @@ const AddPropertyScreen = ({ navigation }: any) => {
 
   // Функция для выбора города
   const selectCity = (id: string, name: string) => {
+    console.log('selectCity called with id:', id, 'name:', name);
     setCityId(id);
     setSelectedCityName(name);
     setCityModalVisible(false);
+    
+    // Задаем координаты вручную для известных городов на основе их ID
+    let cityCoords = null;
+    
+    // Координаты городов из базы данных
+    switch(id) {
+      case '1': // Белград
+        cityCoords = { lat: 44.787197, lng: 20.457273 };
+        break;
+      case '2': // Нови-Сад
+        cityCoords = { lat: 45.251667, lng: 19.836944 };
+        break;
+      case '3': // Ниш
+        cityCoords = { lat: 43.320904, lng: 21.895514 };
+        break;
+      case '4': // Крагуевац
+        cityCoords = { lat: 44.012794, lng: 20.926773 };
+        break;
+      case '5': // Суботица
+        cityCoords = { lat: 46.100376, lng: 19.666641 };
+        break;
+      case '11': // Лозница
+        cityCoords = { lat: 44.533329, lng: 19.223273 };
+        break;
+      default:
+        // Дефолтные координаты для неизвестных городов
+        cityCoords = { lat: 45.267136, lng: 19.833549 };
+    }
+    
+    // Создаем объект города с координатами
+    const cityObject = {
+      id: id,
+      name: name,
+      latitude: cityCoords.lat.toString(),
+      longitude: cityCoords.lng.toString()
+    };
+    
+    console.log('Created city object with coordinates:', cityObject);
+    setSelectedCity(cityObject);
+    setCoordinates(cityCoords);
   };
   
   // Функция для выбора типа сделки
@@ -690,6 +759,27 @@ const AddPropertyScreen = ({ navigation }: any) => {
             placeholder={t('addProperty.form.addressPlaceholder')}
             placeholderTextColor={theme.secondary}
           />
+          
+          {/* Выбор координат на карте */}
+          {cityId !== '0' && (
+            <>
+              {/* Отладочная информация */}
+              {console.log('Rendering MapCoordinateSelector with:', {
+                selectedCity,
+                coordinates,
+                cityId,
+                cityName: selectedCityName
+              })}
+              <MapCoordinateSelector
+                selectedCity={selectedCity || null}
+                initialCoordinates={coordinates}
+                onCoordinatesSelect={(coords) => {
+                  console.log('Coordinates selected:', coords);
+                  setCoordinates(coords);
+                }}
+              />
+            </>
+          )}
           
           <Text style={[styles.sectionTitle, { color: theme.headerText }]}>{t('addProperty.details')}</Text>
 
