@@ -1,5 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
+import * as Updates from 'expo-updates';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
@@ -13,6 +14,26 @@ import { logError } from './src/utils/sentry';
 import './src/translations';
 
 export default function App() {
+  // Функция для проверки и установки обновлений
+  React.useEffect(() => {
+    async function checkForUpdates() {
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          console.log('Доступно обновление, загружаем...');
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        } else {
+          console.log('Обновлений не найдено, используем текущую версию');
+        }
+      } catch (e) {
+        console.log('Ошибка при проверке обновлений:', e);
+      }
+    }
+    
+    checkForUpdates();
+  }, []);
+
   // Обработчик глобальных ошибок в приложении
   React.useEffect(() => {
     // Функция обработки непойманных ошибок
