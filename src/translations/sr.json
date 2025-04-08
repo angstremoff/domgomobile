@@ -226,7 +226,9 @@
       "waitForPhotos": "Sačekajte da se fotografije učitaju",
       "addAtLeastOnePhoto": "Dodajte bar jednu fotografiju",
       "fillAllFields": "Popunite sva obavezna polja"
-    }
+    },
+    "success": "Oglas je uspešno dodat!",
+    "failure": "Greška prilikom dodavanja oglasa"
   },
   "settings": {
     "title": "Podešavanja",

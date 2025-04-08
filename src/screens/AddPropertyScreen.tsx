@@ -365,11 +365,9 @@ const AddPropertyScreen = ({ navigation }: any) => {
         images: uploadedImageUrls,
         status: 'active', // по умолчанию активно
         user_id: user.id, // ID пользователя
-        user: {
-          name: userData.name,
-          phone: userData.phone
-        },
-        coordinates: coordinates ? JSON.stringify(coordinates) : null, // Добавляем координаты в формате JSON
+        // Поле user удалено, так как его нет в таблице properties
+        // Передаем координаты как объект, а не как строку JSON
+        coordinates: coordinates || null,
       });
 
       if (result.success) {
