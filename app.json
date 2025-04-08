@@ -36,9 +36,7 @@
         "projectId": "313d8153-28aa-426a-a0f3-b580238521e5"
       }
     },
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "owner": "angstremoff"
   }
 }
