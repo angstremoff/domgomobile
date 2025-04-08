@@ -15,28 +15,14 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      },
-      "autoIncrement": true
+      }
     },
     "production": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
-      "channel": "production",
-      "runtimeVersion": {
-        "policy": "sdkVersion"
-      }
-    }
-  },
-  "github": {
-    "autoSubmit": true,
-    "branches": ["main"],
-    "workflow": {
-      "preview": {
-        "platforms": ["android"],
-        "track": "preview"
-      }
+      "channel": "production"
     }
   },
   "submit": {
