@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Linking, ActivityIndicator, FlatList, SafeAreaView, Share, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
-import { Property, useProperties } from '../contexts/PropertyContext';
+import { Ionicons } from '@expo/vector-icons';
+import { Property } from '../contexts/PropertyContext';
 import { useFavorites } from '../contexts/FavoritesContext';
-import { useAuth } from '../contexts/AuthContext';
 import { propertyService } from '../services/propertyService';
 import ImageViewer from '../components/ImageViewer';
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,8 +24,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   // Получаем ID объявления из параметров навигации
   const { propertyId } = route.params;
   const { t } = useTranslation();
-  const { favorites, toggleFavorite, isFavorite } = useFavorites();
-  const { properties } = useProperties();
+  const { toggleFavorite, isFavorite } = useFavorites();
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
   
@@ -60,34 +58,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     fetchProperty();
   }, [propertyId]);
 
-  // Функция для открытия полноэкранного просмотра фото
-  const openImageViewer = (index: number) => {
-    setActiveImageIndex(index);
-    setIsViewerVisible(true);
-  };
-  
-  // Функция для закрытия полноэкранного просмотра фото
-  const closeImageViewer = () => {
-    setIsViewerVisible(false);
-  };
-
-  // Прокрутка к определенному изображению в карусели
-  const scrollToImage = (index: number) => {
-    if (flatListRef.current) {
-      flatListRef.current.scrollToIndex({
-        index,
-        animated: true
-      });
-    }
-    setActiveImageIndex(index);
-  };
-
-  // Функция для проверки и переключения избранного
-  const handleToggleFavorite = () => {
-    if (property) {
-      toggleFavorite(property.id);
-    }
-  };
+  // Обработка событий изображений и избранного происходит через обработчики событий в JSX
 
   // Обработка события скролла для определения активного изображения
   const handleScroll = (event: any) => {
@@ -117,12 +88,6 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     }
   };
 
-  // Обработчик нажатия на номер телефона
-  const handleCall = (phoneNumber: string) => {
-    if (phoneNumber) {
-      Linking.openURL(`tel:${phoneNumber}`);
-    }
-  };
 
   // HTML-код для карты с использованием MapLibre GL
   const mapHTML = `
@@ -134,21 +99,8 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
     <style>
-      body { margin: 0; padding: 0; overflow: hidden; }
+      body { margin: 0; padding: 0; }
       #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
-      #log { 
-        position: absolute; 
-        bottom: 10px; 
-        left: 10px; 
-        z-index: 999; 
-        background: rgba(255,255,255,0.8); 
-        padding: 5px; 
-        font-size: 12px; 
-        max-width: 80%; 
-        max-height: 100px; 
-        overflow: auto; 
-        display: none; 
-      }
       .marker {
         width: 25px;
         height: 25px;
@@ -161,122 +113,87 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   </head>
   <body>
     <div id="map"></div>
-    <div id="log"></div>
     <script>
-      // Функция для логирования
-      function log(message) {
-        try {
-          const logElement = document.getElementById('log');
-          logElement.style.display = 'block';
-          logElement.innerHTML += '<div>' + message + '</div>';
-          console.log(message);
-          // Отправляем лог в React Native
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage('log:' + message);
-          }
-        } catch (e) {
-          console.error('Error in log function:', e);
-        }
-      }
-
-      // Инициализация карты
       function initMap(lat, lng) {
-        try {
-          log('Initializing map with coords: ' + lat + ', ' + lng);
-          if (!maplibregl) {
-            log('Error: maplibregl is not defined');
-            return;
-          }
-          
-          const map = new maplibregl.Map({
-            container: 'map',
-            style: {
-              version: 8,
-              sources: {
-                'osm': {
-                  type: 'raster',
-                  tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                  tileSize: 256
-                }
-              },
-              layers: [{
-                id: 'osm',
+        const map = new maplibregl.Map({
+          container: 'map',
+          style: {
+            version: 8,
+            sources: {
+              'osm': {
                 type: 'raster',
-                source: 'osm',
-                minzoom: 0,
-                maxzoom: 19
-              }]
+                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256
+              }
             },
-            center: [lng, lat],
-            zoom: 15
-          });
+            layers: [{
+              id: 'osm',
+              type: 'raster',
+              source: 'osm',
+              minzoom: 0,
+              maxzoom: 19
+            }]
+          },
+          center: [lng, lat],
+          zoom: 15
+        });
+        
+        map.addControl(new maplibregl.NavigationControl());
+        
+        const el = document.createElement('div');
+        el.className = 'marker';
+        
+        new maplibregl.Marker(el)
+          .setLngLat([lng, lat])
+          .addTo(map);
           
-          log('Map object created');
-          
-          map.addControl(new maplibregl.NavigationControl());
-          
-          const el = document.createElement('div');
-          el.className = 'marker';
-          
-          new maplibregl.Marker(el)
-            .setLngLat([lng, lat])
-            .addTo(map);
-          
-          log('Marker added to map');
-          
-          // Сообщаем о загрузке карты
-          map.on('load', function() {
-            log('Map loaded');
-            window.ReactNativeWebView.postMessage('mapLoaded');
-          });
-          
-          map.on('error', function(e) {
-            log('Map error: ' + JSON.stringify(e));
-          });
-        } catch (e) {
-          log('Error initializing map: ' + e.toString());
-        }
+        // Сообщаем о загрузке карты
+        map.on('load', function() {
+          window.ReactNativeWebView.postMessage('mapLoaded');
+        });
       }
       
-      // Слушаем сообщения от React Native
+      // Отправляем сообщение, что DOM загружен
+      window.ReactNativeWebView.postMessage('log:DOM loaded');
+
+      // Сообщаем, что WebView готов
+      window.ReactNativeWebView.postMessage('log:WebView ready, sending ready message');
+      window.ReactNativeWebView.postMessage('ready');
+      
+      // Обработчик сообщений для iOS
       window.addEventListener('message', function(e) {
+        const data = e.data;
+        processMessage(data);
+      });
+      
+      // Обработчик сообщений для Android
+      document.addEventListener('message', function(e) {
+        const data = e.data;
+        processMessage(data);
+      });
+      
+      // Единая функция обработки сообщений
+      function processMessage(data) {
+        // Проверяем, не вызывалась ли эта функция ранее с этими же данными
+        if (window.lastProcessedData === data) {
+          return; // Предотвращаем дублирование
+        }
+        
+        window.lastProcessedData = data;
+        window.ReactNativeWebView.postMessage('log:Получено сообщение: ' + data);
+        
         try {
-          log('Received message: ' + e.data);
-          const message = JSON.parse(e.data);
+          const message = JSON.parse(data);
           if (message && message.coords) {
-            log('Parsed coordinates: ' + message.coords.lat + ', ' + message.coords.lng);
+            window.ReactNativeWebView.postMessage('log:Инициализация карты с координатами: ' + JSON.stringify(message.coords));
             initMap(message.coords.lat, message.coords.lng);
           }
         } catch (e) {
-          log('Error parsing message: ' + e.toString());
+          window.ReactNativeWebView.postMessage('log:Ошибка парсинга JSON: ' + e.toString());
         }
-      });
-      
-      // Сообщаем, что страница загружена
-      document.addEventListener('DOMContentLoaded', function() {
-        log('DOM loaded');
-        setTimeout(function() {
-          if (window.ReactNativeWebView) {
-            log('WebView ready, sending ready message');
-            window.ReactNativeWebView.postMessage('ready');
-          } else {
-            log('ReactNativeWebView is not available');
-          }
-        }, 500);
-      });
-      
-      // Дополнительная проверка, если DOMContentLoaded уже сработал
-      if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        log('Document already loaded');
-        setTimeout(function() {
-          if (window.ReactNativeWebView) {
-            log('WebView ready (from direct check), sending ready message');
-            window.ReactNativeWebView.postMessage('ready');
-          } else {
-            log('ReactNativeWebView is not available (from direct check)');
-          }
-        }, 500);
       }
+      
+      // При загрузке страницы уже было отправлено 'ready'
     </script>
   </body>
   </html>
@@ -286,23 +203,26 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const handleWebViewMessage = (event: any) => {
     try {
       const data = event.nativeEvent.data;
-      console.log('Получено сообщение от WebView:', data);
       
-      // Обработка логов из WebView
       if (data.startsWith('log:')) {
+        // Это логи для отладки
         console.log('Лог из WebView:', data.substring(4));
         return;
       }
       
+      console.log('Получено сообщение от WebView:', data);
+      
       if (data === 'ready') {
         // WebView готов, отправляем координаты
         console.log('WebView готов, отправляем координаты');
+        
+        // Добавляем небольшую задержку перед отправкой координат
         setTimeout(() => {
           sendCoordinatesToMap();
-        }, 500); // Добавляем задержку перед отправкой координат
+        }, 500);
       } else if (data === 'mapLoaded') {
         // Карта загружена
-        console.log('Карта загружена');
+        console.log('Карта успешно загружена');
         setMapLoading(false);
       }
     } catch (error) {
@@ -313,35 +233,21 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   // Отправка координат в WebView
   const sendCoordinatesToMap = useCallback(() => {
     if (!webViewRef.current || !property) {
-      console.log('Нет ссылки на webView или нет данных объявления');
       return;
     }
 
     try {
       let lat, lng;
       
-      // Дебаг: выводим все данные о координатах
-      console.log('Данные координат:', {
-        coordinates: property.coordinates,
-        coordinatesType: typeof property.coordinates,
-        latitude: property.latitude,
-        longitude: property.longitude
-      });
-      
       // Пробуем получить координаты из разных источников
       if (property.coordinates) {
         // Из поля coordinates
         if (typeof property.coordinates === 'object') {
-          // Если координаты уже как объект
-          console.log('Координаты как объект:', property.coordinates);
           lat = property.coordinates.lat;
           lng = property.coordinates.lng;
         } else if (typeof property.coordinates === 'string') {
-          // Если координаты как строка JSON
-          console.log('Координаты как строка:', property.coordinates);
           try {
             const coords = JSON.parse(property.coordinates);
-            console.log('Распарсенные координаты:', coords);
             lat = coords.lat;
             lng = coords.lng;
           } catch (e) {
@@ -350,16 +256,9 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         }
       } else if (property.latitude && property.longitude) {
         // Из прямых полей latitude и longitude
-        console.log('Используем прямые поля latitude/longitude:', { 
-          lat: property.latitude, 
-          lng: property.longitude 
-        });
         lat = parseFloat(property.latitude);
         lng = parseFloat(property.longitude);
       }
-      
-      // Проверка наличия корректных координат
-      console.log('Финальные координаты для карты:', { lat, lng });
       
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
         console.error('Нет корректных координат для объявления');
@@ -372,7 +271,6 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         coords: { lat, lng }
       };
       
-      console.log('Отправляем координаты в WebView:', message);
       webViewRef.current.postMessage(JSON.stringify(message));
     } catch (error) {
       console.error('Ошибка отправки координат:', error);
