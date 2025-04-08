@@ -760,6 +760,16 @@ const HomeScreen = ({ navigation }: any) => {
       />
       
       {/* Компонент карты объектов */}
+      <TouchableOpacity 
+        style={[styles.filterButtonStandalone, { backgroundColor: theme.card, borderColor: theme.border }]}
+        onPress={() => {/* Здесь можно добавить действие при нажатии */}}
+      >
+        <View style={styles.filterButtonContent}>
+          <Ionicons name="map-outline" size={18} color={theme.primary} style={styles.filterIcon} />
+          <Text style={[styles.filterButtonText, { color: theme.text }]}>{t('property.mapView')}</Text>
+        </View>
+      </TouchableOpacity>
+      
       <PropertyMapView 
         properties={filteredProperties}
         selectedCity={selectedCity}

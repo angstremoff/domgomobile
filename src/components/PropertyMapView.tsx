@@ -277,8 +277,8 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 10,
-    marginBottom: 10,
+    marginHorizontal: 16,
+    marginBottom: 12,
     borderRadius: 8,
     borderWidth: 1,
     overflow: 'hidden'

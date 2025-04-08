@@ -91,8 +91,8 @@ android {
         applicationId 'com.anonymous.DomGoMobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10
-        versionName "0.5.5"
+        versionCode 11
+        versionName "0.5.6"
     }
     
     // Исправление конфликта ресурсов Material Design
