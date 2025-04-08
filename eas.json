@@ -22,7 +22,10 @@
       "android": {
         "buildType": "apk"
       },
-      "channel": "production"
+      "channel": "production",
+      "runtimeVersion": {
+        "policy": "sdkVersion"
+      }
     }
   },
   "submit": {
