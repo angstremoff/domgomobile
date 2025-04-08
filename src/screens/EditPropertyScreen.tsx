@@ -18,6 +18,7 @@ import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useProperties } from '../contexts/PropertyContext';
 import { showErrorAlert, showSuccessAlert } from '../utils/alertUtils';
 import type { Database } from '../lib/database.types';
 
@@ -41,6 +42,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
   const { propertyId } = route.params;
   const { t } = useTranslation();
   const { darkMode } = useTheme();
+  const { invalidateCache } = useProperties(); // Получаем функцию обновления кэша
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [property, setProperty] = useState<Property | null>(null);
@@ -236,6 +238,10 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       
       // Отправляем запрос на обновление
       await propertyService.updateProperty(propertyId, updatedProperty);
+      
+      // Принудительно очищаем кэш и перезагружаем данные
+      await invalidateCache();
+      console.log('Кэш объявлений очищен после обновления объявления');
       
       console.log('Объявление успешно обновлено');
       showSuccessAlert(t('property.updateSuccess'), () => {

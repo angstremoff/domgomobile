@@ -96,9 +96,18 @@ const HomeScreen = ({ navigation }: any) => {
     features: []
   });
 
+  // Обновляем свойства только при существенных изменениях в избранном
+  // Добавляем useRef для предотвращения повторных запросов
+  const previousFavoritesLength = React.useRef(0);
+  
   useEffect(() => {
-    refreshProperties();
-  }, [favorites]);
+    // Обновляем только если количество избранных изменилось
+    if (!favoritesLoading && favorites && previousFavoritesLength.current !== favorites.length) {
+      console.log(`Количество избранных изменилось: ${previousFavoritesLength.current} -> ${favorites.length}`);
+      previousFavoritesLength.current = favorites.length;
+      refreshProperties();
+    }
+  }, [favorites, favoritesLoading, refreshProperties]);
 
   // Мемоизированная функция для фильтрации объектов недвижимости
   // использует вынесенную логику из filterHelpers.ts
@@ -116,9 +125,27 @@ const HomeScreen = ({ navigation }: any) => {
     }
   }, [propertyType, propertyCategory, selectedCity, properties, activeFilters]);
   
-  // Применяем фильтры при изменении зависимостей
+  // Используем debounce для applyFilters, чтобы не вызывать фильтрацию слишком часто
+  const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  
+  // Применяем фильтры при изменении зависимостей с debounce
   useEffect(() => {
-    applyFilters();
+    // Очищаем предыдущий таймер, если он был установлен
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
+    }
+    
+    // Устанавливаем новый таймер для фильтрации с задержкой
+    debounceTimeout.current = setTimeout(() => {
+      applyFilters();
+    }, 300); // 300ms задержка перед применением фильтров
+    
+    // Очистка таймера при размонтировании компонента
+    return () => {
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
+    };
   }, [applyFilters]);
 
   useEffect(() => {
@@ -151,7 +178,25 @@ const HomeScreen = ({ navigation }: any) => {
     }
   }, [propertyType, rentFilters, saleFilters]);
 
+  // Предотвращаем множественные запросы в handleCombinedFilter
+  // Используем useRef для отслеживания последнего запроса
+  const lastFilterRequest = React.useRef({ type: '', category: '', timestamp: 0 });
+  const FILTER_THROTTLE_MS = 300; // 300ms задержка между запросами
+
   const handleCombinedFilter = async (type: 'sale' | 'rent', category: string) => {
+    const now = Date.now();
+    
+    // Пропускаем частые запросы с одинаковыми параметрами
+    if (lastFilterRequest.current.type === type && 
+        lastFilterRequest.current.category === category &&
+        now - lastFilterRequest.current.timestamp < FILTER_THROTTLE_MS) {
+      console.log(`Пропускаем дублирующий запрос фильтра: ${type} - ${category}`);
+      return;
+    }
+    
+    // Обновляем данные о последнем запросе
+    lastFilterRequest.current = { type, category, timestamp: now };
+    
     setPropertyType(type);
     setPropertyCategory(category);
     
@@ -179,6 +224,13 @@ const HomeScreen = ({ navigation }: any) => {
     try {
       // Загружаем объявления выбранного типа (первая страница)
       const { data } = await getPropertiesByType(type, 1, 10);
+      
+      // Проверяем, не устарел ли наш запрос (другой мог стартовать пока этот выполнялся)
+      if (lastFilterRequest.current.type !== type || 
+          lastFilterRequest.current.category !== category) {
+        console.log('Запрос устарел, пропускаем обработку результатов');
+        return;
+      }
       
       let filtered = [...data];
       

@@ -4,79 +4,352 @@ import type { Database } from '../lib/database.types';
 import { compressImage } from '../utils/imageCompression';
 import { Buffer } from 'buffer';
 import * as FileSystem from 'expo-file-system';
+import { retry, withTimeout } from '../utils/apiHelpers';
+import { logError } from '../utils/sentry';
+
+// Тип для кэшированных данных
+type CachedData = {
+  data: any[];
+  totalCount: number;
+  timestamp: number;
+  hasMore: boolean;
+};
+
+// Кэш для хранения результатов запросов и предотвращения дублирования
+const requestCache: Record<string, CachedData> = {
+  all: { data: [], totalCount: 0, timestamp: 0, hasMore: false },
+  sale: { data: [], totalCount: 0, timestamp: 0, hasMore: false },
+  rent: { data: [], totalCount: 0, timestamp: 0, hasMore: false }
+};
+
+// Таймштамп последнего обновления данных в БД
+// Для отслеживания изменений и своевременной инвалидации кэша
+const lastDataUpdate = { timestamp: Date.now() };
+
+/**
+ * Инвалидирует кэш для обновления данных после изменений
+ * @param type - Тип кэша для инвалидации ('all', 'sale', 'rent') или undefined для всех типов
+ * @param propertyId - ID объявления для инвалидации конкретного кэша деталей объявления
+ */
+export const invalidateCache = (type?: 'all' | 'sale' | 'rent', propertyId?: string) => {
+  console.log(`Инвалидация кэша: ${type || 'все'} ${propertyId ? `для объявления ${propertyId}` : ''}`);
+  
+  // Если указан ID объявления, инвалидируем только его кэш
+  if (propertyId) {
+    if (requestCache[`detail-${propertyId}`]) {
+      requestCache[`detail-${propertyId}`].timestamp = 0;
+    }
+  }
+  
+  // Инвалидируем кэш по указанному типу или все типы
+  if (type) {
+    if (requestCache[type]) {
+      requestCache[type].timestamp = 0;
+    }
+  } else {
+    // Инвалидируем все типы кэша
+    ['all', 'sale', 'rent'].forEach(cacheType => {
+      if (requestCache[cacheType]) {
+        requestCache[cacheType].timestamp = 0;
+      }
+    });
+    
+    // Инвалидируем все кэши деталей объявлений
+    Object.keys(requestCache).forEach(key => {
+      if (key.startsWith('detail-')) {
+        requestCache[key].timestamp = 0;
+      }
+    });
+  }
+};
+
+// Флаги для отслеживания активных запросов
+const activeRequests = {
+  all: false,
+  sale: false,
+  rent: false,
+  byId: new Set()
+};
+
+// Минимальный интервал между запросами в мс
+// 5 минут для списков объявлений
+const MIN_REQUEST_INTERVAL = 300000; // 5 минут = 300 секунд = 300000 мс
+
+// 15 минут для детальной информации об объявлении
+const MIN_DETAIL_REQUEST_INTERVAL = 900000; // 15 минут = 900 секунд = 900000 мс
 
 type PropertyInsert = Database['public']['Tables']['properties']['Insert'];
 
+/**
+ * Полная очистка кэша объявлений
+ * Вызывается после создания или изменения объявления
+ */
+const clearCache = () => {
+  console.log('Полная очистка кэша объявлений');
+  
+  // Очищаем все кэши списков
+  ['all', 'sale', 'rent'].forEach(cacheType => {
+    if (requestCache[cacheType]) {
+      requestCache[cacheType] = { data: [], totalCount: 0, timestamp: 0, hasMore: false };
+    }
+  });
+  
+  // Очищаем кэши деталей объявлений
+  Object.keys(requestCache).forEach(key => {
+    if (key.startsWith('detail-')) {
+      delete requestCache[key];
+    }
+  });
+  
+  // Сбрасываем флаги активных запросов
+  activeRequests.all = false;
+  activeRequests.sale = false;
+  activeRequests.rent = false;
+  activeRequests.byId.clear();
+  
+  // Обновляем время последнего обновления
+  lastDataUpdate.timestamp = Date.now();
+};
+
 export const propertyService = {
+  clearCache,
+  /**
+   * Инвалидирует кэш для обновления данных после изменений
+   * @param type - Тип кэша для инвалидации ('all', 'sale', 'rent') или undefined для всех типов
+   * @param propertyId - ID объявления для инвалидации конкретного кэша деталей объявления
+   */
+  invalidateCache(type?: 'all' | 'sale' | 'rent', propertyId?: string) {
+    invalidateCache(type, propertyId);
+  },
   async getProperties(page = 1, pageSize = 10) {
+    // Проверяем есть ли активный запрос
+    if (activeRequests.all && page === 1) {
+      console.log('Активный запрос getProperties уже выполняется, ожидаем...');
+      // Возвращаем кэшированные данные, если они есть
+      if (requestCache.all.data.length > 0) {
+        console.log('Возвращаем кэшированные данные вместо нового запроса');
+        return { 
+          data: requestCache.all.data, 
+          totalCount: requestCache.all.totalCount,
+          hasMore: requestCache.all.hasMore
+        };
+      }
+    }
+    
+    // Проверяем, не было ли уже недавнего запроса
+    const now = Date.now();
+    if (page === 1 && 
+        requestCache.all.data.length > 0 && 
+        now - requestCache.all.timestamp < MIN_REQUEST_INTERVAL) {
+      console.log(`Недавний запрос (${Math.round((now - requestCache.all.timestamp)/1000)}с назад), возвращаем кэш`);
+      return { 
+        data: requestCache.all.data, 
+        totalCount: requestCache.all.totalCount,
+        hasMore: requestCache.all.hasMore
+      };
+    }
+    
     try {
+      activeRequests.all = true;
+      
       // Вычисляем начальную позицию для пагинации
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
       
       console.log(`Загружаем объявления: страница ${page}, размер страницы ${pageSize}, диапазон ${from}-${to}`);
       
-      const { data, error, count } = await supabase
-        .from('properties')
-        .select(`
-          *,
-          user:users(name, phone),
-          city:cities(name)
-        `, { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
+      // Используем retry и withTimeout для улучшения надежности запросов
+      const response = await retry<{
+        data: any[] | null;
+        error: any | null;
+        count: number | null;
+      }>(async () => {
+        const promise = supabase
+          .from('properties')
+          .select(`
+            *,
+            user:users(name, phone),
+            city:cities(name)
+          `, { count: 'exact' })
+          .order('created_at', { ascending: false })
+          .range(from, to);
+          
+        return withTimeout(
+          promise,
+          15000, // 15 секунд таймаут
+          'Превышено время ожидания запроса списка объявлений'
+        );
+      }, 3, 1000); // 3 попытки с интервалом 1 секунда
         
-      if (error) throw error;
+      const { data, error, count } = response as {
+        data: any[] | null;
+        error: any | null;
+        count: number | null;
+      };
       
-      console.log(`Загружено объявлений: ${data?.length || 0} из ${count || 'неизвестно'}`);
-      return { 
+      if (error) {
+        logError(error, { context: 'getProperties', page, pageSize });
+        throw error;
+      }
+      
+      const result = { 
         data: data || [], 
         totalCount: count || 0,
         hasMore: (count || 0) > to + 1
       };
+      
+      // Обновляем кэш, если это первая страница
+      if (page === 1) {
+        requestCache.all = {
+          data: result.data,
+          totalCount: result.totalCount,
+          hasMore: result.hasMore,
+          timestamp: Date.now()
+        };
+      }
+      
+      console.log(`Загружено объявлений: ${data?.length || 0} из ${count || 'неизвестно'}`);
+      return result;
     } catch (error) {
       console.error('Ошибка при получении объявлений:', error);
+      logError(error as Error, { context: 'getProperties', page, pageSize });
       return { data: [], totalCount: 0, hasMore: false };
+    } finally {
+      activeRequests.all = false;
     }
   },
 
   async getPropertyById(id: string) {
-    const { data, error } = await supabase
-      .from('properties')
-      .select(`
-        *,
-        user:users(name, phone),
-        city:cities(id, name)
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-    console.log('Данные объявления из базы:', data);
-    return data;
+    // Проверяем есть ли активный запрос на это объявление
+    if (activeRequests.byId.has(id)) {
+      console.log(`Активный запрос getPropertyById(${id}) уже выполняется, ожидаем...`);
+      // Проверяем наличие кэша по ID
+      if (requestCache[`detail-${id}`]?.data?.length > 0) {
+        console.log(`Возвращаем кэшированные данные объявления ${id}`);
+        return requestCache[`detail-${id}`].data[0];
+      }
+    }
+    
+    // Проверяем, не было ли уже недавнего запроса
+    const now = Date.now();
+    if (requestCache[`detail-${id}`]?.data?.length > 0 && 
+        now - requestCache[`detail-${id}`].timestamp < MIN_DETAIL_REQUEST_INTERVAL) {
+      console.log(`Недавний запрос объявления ${id} (${Math.round((now - requestCache[`detail-${id}`].timestamp)/1000)}с назад), возвращаем кэш`);
+      return requestCache[`detail-${id}`].data[0];
+    }
+    
+    try {
+      // Помечаем запрос как активный
+      activeRequests.byId.add(id);
+      
+      // Используем retry и withTimeout для улучшения надежности запроса
+      const response = await retry<{
+        data: any | null;
+        error: any | null;
+      }>(async () => {
+        // Создаем запрос к Supabase
+        const query = supabase
+          .from('properties')
+          .select(`
+            *,
+            user:users(name, phone),
+            city:cities(name)
+          `)
+          .eq('id', id)
+          .single();
+          
+        // Добавляем таймаут к запросу
+        // Преобразуем в Promise для корректной типизации
+        return withTimeout<{ data: any | null; error: any | null }>(
+          Promise.resolve(query) as Promise<{ data: any | null; error: any | null }>,
+          10000, // 10 секунд таймаут
+          `Превышено время ожидания данных объявления ${id}`
+        );
+      }, 3, 1000); // 3 попытки с интервалом 1 секунда
+        
+      const { data, error } = response as {
+        data: any | null;
+        error: any | null;
+      };
+      
+      if (error) {
+        logError(error, { context: 'getPropertyById', propertyId: id });
+        throw error;
+      }
+      
+      // Сохраняем в кэш
+      if (data) {
+        requestCache[`detail-${id}`] = {
+          data: [data],
+          totalCount: 1,
+          hasMore: false,
+          timestamp: Date.now()
+        };
+      }
+      
+      console.log('Данные объявления из базы:', JSON.stringify(data));
+      return data;
+    } catch (error) {
+      console.error('Ошибка при получении объявления:', error);
+      logError(error as Error, { context: 'getPropertyById', propertyId: id });
+      return null;
+    } finally {
+      // Удаляем из списка активных запросов
+      activeRequests.byId.delete(id);
+    }
   },
 
   async getUserProperties() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Получаем текущего пользователя с использованием retry
+      const userResponse = await retry<{ data: { user: any | null }, error: any | null }>(async () => {
+        return withTimeout(
+          supabase.auth.getUser(),
+          8000,
+          'Превышено время ожидания данных пользователя'
+        );
+      }, 2);
+      
+      const { data: { user } } = userResponse;
       
       if (!user) return [];
       
-      const { data, error } = await supabase
-        .from('properties')
-        .select(`
-          *,
-          user:users(name, phone),
-          city:cities(name)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      // Получаем объявления пользователя с использованием retry
+      const response = await retry<{
+        data: any[] | null;
+        error: any | null;
+      }>(async () => {
+        const promise = supabase
+          .from('properties')
+          .select(`
+            *,
+            user:users(name, phone),
+            city:cities(name)
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        return withTimeout(
+          promise,
+          12000, // 12 секунд таймаут
+          'Превышено время ожидания списка ваших объявлений'
+        );
+      }, 3, 1000);
         
-      if (error) throw error;
+      const { data, error } = response as {
+        data: any[] | null;
+        error: any | null;
+      };
+      
+      if (error) {
+        logError(error, { context: 'getUserProperties', userId: user.id });
+        throw error;
+      }
       
       return data || [];
     } catch (error) {
-      console.error('Ошибка при получении объявлений пользователя:', error);
+      console.error('Ошибка при получении списка объявлений пользователя:', error);
+      logError(error as Error, { context: 'getUserProperties' });
       return [];
     }
   },
@@ -103,27 +376,39 @@ export const propertyService = {
 
   async createProperty(propertyData: any) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Получение UUID пользователя
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       
       if (!user) throw new Error('Пользователь не авторизован');
       
-      // Добавляем ID пользователя к данным объявления
-      const fullData = {
+      // Подготовка данных для вставки
+      const propertyForInsert: PropertyInsert = {
         ...propertyData,
         user_id: user.id,
+        // Добавляем пустой массив изображений, если он не предоставлен
+        images: propertyData.images || [],
+        status: 'active', // По умолчанию активное объявление
       };
       
+      // Добавление объявления в базу данных
       const { data, error } = await supabase
         .from('properties')
-        .insert(fullData)
-        .select();
+        .insert(propertyForInsert)
+        .select()
+        .single();
         
       if (error) throw error;
       
-      return data?.[0];
+      // Инвалидируем весь кэш после успешного создания
+      invalidateCache(); // Обновляем все списки, т.к. добавлено новое объявление
+      
+      console.log('Объявление успешно создано:', data);
+      return { success: true, data };
     } catch (error) {
       console.error('Ошибка при создании объявления:', error);
-      throw error;
+      return { success: false, error };
     }
   },
   
@@ -146,26 +431,76 @@ export const propertyService = {
   },
   
   async markAsActive(id: string) {
-    const { error } = await supabase
-      .from('properties')
-      .update({ status: 'active' })
-      .eq('id', id);
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .update({ status: 'active' })
+        .eq('id', id);
+        
+      if (error) throw error;
       
-    if (error) throw error;
-    return true;
+      // Инвалидируем кэш, т.к. изменился статус объявления
+      invalidateCache(undefined, id);
+      
+      console.log('Статус объявления успешно обновлен на active:', id);
+      return { success: true };
+    } catch (error) {
+      console.error('Ошибка при обновлении статуса объявления:', error);
+      return { success: false, error };
+    }
   },
   
   async deleteProperty(propertyId: string) {
-    const { error } = await supabase
-      .from('properties')
-      .delete()
-      .eq('id', propertyId);
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', propertyId);
+        
+      if (error) throw error;
       
-    if (error) throw error;
+      // Инвалидируем весь кэш после удаления объявления
+      invalidateCache(); // Полностью обновляем все списки
+      
+      console.log('Объявление успешно удалено:', propertyId);
+      return { success: true };
+    } catch (error) {
+      console.error('Ошибка при удалении объявления:', error);
+      return { success: false, error };
+    }
   },
 
   async getPropertiesByType(type: 'sale' | 'rent', page = 1, pageSize = 10) {
+    // Проверяем есть ли активный запрос
+    if (activeRequests[type] && page === 1) {
+      console.log(`Активный запрос getPropertiesByType(${type}) уже выполняется, ожидаем...`);
+      // Возвращаем кэшированные данные, если они есть
+      if (requestCache[type].data.length > 0) {
+        console.log(`Возвращаем кэшированные данные типа ${type} вместо нового запроса`);
+        return { 
+          data: requestCache[type].data, 
+          totalCount: requestCache[type].totalCount,
+          hasMore: requestCache[type].hasMore
+        };
+      }
+    }
+    
+    // Проверяем, не было ли уже недавнего запроса
+    const now = Date.now();
+    if (page === 1 && 
+        requestCache[type].data.length > 0 && 
+        now - requestCache[type].timestamp < MIN_REQUEST_INTERVAL) {
+      console.log(`Недавний запрос типа ${type} (${Math.round((now - requestCache[type].timestamp)/1000)}с назад), возвращаем кэш`);
+      return { 
+        data: requestCache[type].data, 
+        totalCount: requestCache[type].totalCount,
+        hasMore: requestCache[type].hasMore
+      };
+    }
+    
     try {
+      activeRequests[type] = true;
+      
       // Вычисляем начальную позицию для пагинации
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
@@ -182,18 +517,32 @@ export const propertyService = {
         .eq('type', type)
         .order('created_at', { ascending: false })
         .range(from, to);
-        
+      
       if (error) throw error;
       
-      console.log(`Загружено объявлений типа ${type}: ${data?.length || 0} из ${count || 'неизвестно'}`);
-      return { 
+      const result = { 
         data: data || [], 
         totalCount: count || 0,
         hasMore: (count || 0) > to + 1
       };
+      
+      // Обновляем кэш, если это первая страница
+      if (page === 1) {
+        requestCache[type] = {
+          data: result.data,
+          totalCount: result.totalCount,
+          hasMore: result.hasMore,
+          timestamp: Date.now()
+        };
+      }
+      
+      console.log(`Загружено объявлений типа ${type}: ${data?.length || 0} из ${count || 'неизвестно'}`);
+      return result;
     } catch (error) {
       console.error(`Ошибка при получении объявлений типа ${type}:`, error);
       return { data: [], totalCount: 0, hasMore: false };
+    } finally {
+      activeRequests[type] = false;
     }
   },
 
@@ -263,18 +612,25 @@ export const propertyService = {
   },
 
   async updateProperty(id: string, propertyData: Partial<PropertyInsert>) {
-    const { data, error } = await supabase
-      .from('properties')
-      .update(propertyData)
-      .eq('id', id)
-      .select();
-    
-    if (error) {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .update(propertyData)
+        .eq('id', id)
+        .select();
+      
+      if (error) throw error;
+      
+      // Инвалидируем кэш после успешного обновления
+      // Инвалидируем как общие списки, так и кэш детальной информации об объявлении
+      invalidateCache(undefined, id);
+      
+      console.log('Объявление успешно обновлено:', data[0]);
+      return { success: true, data: data[0] };
+    } catch (error) {
       console.error('Ошибка при обновлении объявления:', error);
-      throw error;
+      return { success: false, error };
     }
-    
-    return data[0];
   },
   
   async getCities() {

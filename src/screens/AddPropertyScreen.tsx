@@ -19,6 +19,7 @@ import { compressImage } from '../utils/imageCompression';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { useProperties } from '../contexts/PropertyContext';
 import { supabase } from '../lib/supabaseClient';
 import { propertyService } from '../services/propertyService';
 import { useTheme } from '../contexts/ThemeContext';
@@ -44,6 +45,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
   const [cities, setCities] = useState<City[]>([]);
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
+  const { invalidateCache } = useProperties(); // Получаем функцию обновления кэша
   
   // Добавляем состояния для имени и телефона пользователя
   const [userData, setUserData] = useState({
@@ -327,30 +329,34 @@ const AddPropertyScreen = ({ navigation }: any) => {
       }
       
       // Создаем объект с данными объявления
-      const newProperty = {
+      const result = await propertyService.createProperty({
         title,
         description,
         price: Number(price),
-        location: location.trim(),
-        area: area ? Number(area) : undefined,
-        rooms: rooms ? Number(rooms) : undefined,
-        city_id: Number(cityId),
         type: propertyType,
         property_type: propertyCategory,
+        area: Number(area),
+        rooms: Number(rooms),
+        location,
+        city_id: cityId !== '0' ? Number(cityId) : undefined,
         features: selectedFeatures,
-        images: uploadedImageUrls, // Используем загруженные URL изображений
-        status: 'active',
-      };
-      
-      console.log('Создаем объявление с данными:', JSON.stringify(newProperty, null, 2));
-      
-      // Создаем объявление через сервис
-      await propertyService.createProperty(newProperty);
-      
-      // Очищаем форму после успешного создания
-      resetForm();
-      
-      showSuccessAlert(t('property.messages.createSuccess'), () => navigation.navigate('Home'));
+        images: uploadedImageUrls,
+        status: 'active' // по умолчанию активно
+      });
+
+      if (result.success) {
+        // Принудительно очищаем кэш и перезагружаем данные
+        await invalidateCache();
+        console.log('Кэш объявлений очищен после создания нового объявления');
+        
+        resetForm();
+        // Показываем уведомление и переходим на страницу с моими объявлениями
+        showSuccessAlert(t('addProperty.success'), () => {
+          navigation.navigate('MyProperties');
+        });
+      } else {
+        showErrorAlert(t('addProperty.failure'));
+      }
     } catch (error) {
       console.error('Ошибка при создании объявления:', error);
       showErrorAlert(t('property.errors.createFailed'));

@@ -92,7 +92,19 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "0.3.0"
+        versionName "0.4.0"
+    }
+    
+    // Исправление конфликта ресурсов Material Design
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+    
+    // Исключение дублирующихся ресурсов
+    configurations.all {
+        resolutionStrategy {
+            force "com.google.android.material:material:1.9.0"
+        }
     }
     signingConfigs {
         debug {

@@ -1,0 +1,14 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index 88a06de..a6fe7a5 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -30,7 +30,7 @@ android {
+ }
+ 
+ dependencies {
+-    compile fileTree(dir: 'libs', include: ['*.jar'])
+-    compile 'com.facebook.react:react-native:+'
++    implementation fileTree(dir: 'libs', include: ['*.jar'])
++    implementation 'com.facebook.react:react-native:+'
+ }
+ 
