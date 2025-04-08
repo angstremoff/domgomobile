@@ -15,7 +15,8 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "autoIncrement": true
     },
     "production": {
       "distribution": "internal",
@@ -25,6 +26,16 @@
       "channel": "production",
       "runtimeVersion": {
         "policy": "sdkVersion"
+      }
+    }
+  },
+  "github": {
+    "autoSubmit": true,
+    "branches": ["main"],
+    "workflow": {
+      "preview": {
+        "platforms": ["android"],
+        "track": "preview"
       }
     }
   },
