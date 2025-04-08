@@ -61,13 +61,39 @@ export const AlertProvider = ({ children }: AlertProviderProps) => {
 
   // Функция для показа алерта об успехе
   const showSuccessAlert = useCallback((message: string, onClose?: () => void) => {
-    showAlert(t('common.success'), message, [{ text: t('common.ok'), onPress: onClose }]);
-  }, [showAlert, t]);
+    // Создаем обработчик, который сначала закроет окно, а потом выполнит коллбэк
+    const combinedOnPress = () => {
+      // Сначала закроем модальное окно
+      setVisible(false);
+      
+      // Задержка перед выполнением коллбэка, чтобы окно успело закрыться
+      if (onClose) {
+        setTimeout(() => {
+          onClose();
+        }, 100);
+      }
+    };
+    
+    showAlert(t('common.success'), message, [{ text: t('common.ok'), onPress: combinedOnPress }]);
+  }, [showAlert, t, setVisible]);
 
   // Функция для показа алерта об ошибке
   const showErrorAlert = useCallback((message: string, onClose?: () => void) => {
-    showAlert(t('common.error'), message, [{ text: t('common.ok'), onPress: onClose }]);
-  }, [showAlert, t]);
+    // Создаем обработчик, который сначала закроет окно, а потом выполнит коллбэк
+    const combinedOnPress = () => {
+      // Сначала закроем модальное окно
+      setVisible(false);
+      
+      // Задержка перед выполнением коллбэка, чтобы окно успело закрыться
+      if (onClose) {
+        setTimeout(() => {
+          onClose();
+        }, 100);
+      }
+    };
+    
+    showAlert(t('common.error'), message, [{ text: t('common.ok'), onPress: combinedOnPress }]);
+  }, [showAlert, t, setVisible]);
 
   // Функция для закрытия алерта
   const handleClose = useCallback(() => {
