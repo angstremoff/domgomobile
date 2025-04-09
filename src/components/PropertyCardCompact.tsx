@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useCallback } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,16 +12,16 @@ interface PropertyCardCompactProps {
   darkMode?: boolean;
 }
 
-const PropertyCardCompact = ({ property, onPress, darkMode = false }: PropertyCardCompactProps) => {
+const PropertyCardCompact = memo(({ property, onPress, darkMode = false }: PropertyCardCompactProps) => {
   const { t } = useTranslation();
   const { toggleFavorite, isFavorite } = useFavorites();
   const propertyIsFavorite = isFavorite(property.id);
   const theme = darkMode ? Colors.dark : Colors.light;
   
-  const handleFavoritePress = (e: any) => {
+  const handleFavoritePress = useCallback((e: any) => {
     e.stopPropagation();
     toggleFavorite(property.id);
-  };
+  }, [property.id, toggleFavorite]);
 
   return (
     <TouchableOpacity 
@@ -94,7 +94,7 @@ const PropertyCardCompact = ({ property, onPress, darkMode = false }: PropertyCa
       </View>
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

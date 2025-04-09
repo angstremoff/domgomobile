@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useCallback } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,16 +12,16 @@ interface PropertyCardProps {
   darkMode?: boolean;
 }
 
-const PropertyCard = ({ property, onPress, darkMode = false }: PropertyCardProps) => {
+const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCardProps) => {
   const { t } = useTranslation();
   const { toggleFavorite, isFavorite } = useFavorites();
   const propertyIsFavorite = isFavorite(property.id);
   const theme = darkMode ? Colors.dark : Colors.light;
   
-  const handleFavoritePress = (e: any) => {
+  const handleFavoritePress = useCallback((e: any) => {
     e.stopPropagation();
     toggleFavorite(property.id);
-  };
+  }, [property.id, toggleFavorite]);
 
   // Получаем название города из объекта city, если оно доступно
   const cityName = property.city?.name || '';
@@ -107,7 +107,7 @@ const PropertyCard = ({ property, onPress, darkMode = false }: PropertyCardProps
       </View>
     </TouchableOpacity>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

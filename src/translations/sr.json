@@ -72,6 +72,7 @@
   },
   "property": {
     "add": "Dodaj oglas",
+    "addNew": "Dodaj oglas",
     "sell": "Prodaj",
     "rent": "Izdaj",
     "area": "Površina",
@@ -139,6 +140,9 @@
     "uploadingPhotos": "Učitavanje fotografija...",
     "errorUpdatingProperty": "Greška prilikom ažuriranja oglasa",
     "errorLoadingCities": "Greška prilikom učitavanja gradova",
+    "messages": {
+      "propertyDeleted": "Oglas je uspešno obrisan"
+    },
     "addProperty": {
       "title": "Dodaj oglas",
       "selectType": "Izaberite tip",
@@ -166,8 +170,7 @@
       "addSuccess": "Oglas je uspešno objavljen",
       "addError": "Greška prilikom objavljivanja oglasa",
       "updateSuccess": "Oglas je uspešno ažuriran",
-      "deleteSuccess": "Oglas je uspešno obrisan",
-      "propertyDeleted": "Oglas je uspešno obrisan"
+      "deleteSuccess": "Oglas je uspešno obrisan"
     }
   },
   "status": {

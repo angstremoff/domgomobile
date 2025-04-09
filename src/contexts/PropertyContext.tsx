@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useCa
 import { propertyService } from '../services/propertyService';
 import { Alert } from 'react-native';
 import { debounce } from '../utils/debounce';
+import { supabase } from '../lib/supabaseClient';
 
 // Тип для свойства
 export interface Property {
@@ -42,6 +43,9 @@ export interface Property {
 export interface City {
   id: number;
   name: string;
+  latitude?: string;
+  longitude?: string;
+  coordinates?: { lat: number; lng: number } | null;
 }
 
 interface PropertyContextType {
@@ -61,6 +65,9 @@ interface PropertyContextType {
   invalidateCache: () => Promise<void>; // Добавлен новый метод для обновления кэша
   hasMoreProperties: boolean;
   totalProperties: number;
+  cities: City[];
+  loadCities: () => Promise<City[]>;
+  citiesLoading: boolean;
 }
 
 const PropertyContext = createContext<PropertyContextType | undefined>(undefined);
@@ -70,6 +77,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [cities, setCities] = useState<City[]>([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState<{
     all: number;
     sale: number;
@@ -361,6 +370,45 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     console.log('Кэш объявлений обновлен после создания нового объявления');
   }, [refreshProperties]);
 
+  // Загрузка списка городов с кэшированием
+  const loadCities = useCallback(async () => {
+    if (cities.length > 0) {
+      // Если города уже загружены, возвращаем их из кэша
+      return cities;
+    }
+    
+    setCitiesLoading(true);
+    try {
+      const { data: citiesData, error } = await supabase
+        .from('cities')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching cities:', error);
+        setCitiesLoading(false);
+        return [];
+      }
+
+      if (citiesData) {
+        // Добавляем координаты для городов
+        const citiesWithCoordinates = citiesData.map(city => ({
+          ...city,
+          latitude: city.latitude || '45.267136',
+          longitude: city.longitude || '19.833549',
+          coordinates: city.coordinates || { lat: parseFloat(city.latitude || '45.267136'), lng: parseFloat(city.longitude || '19.833549') }
+        }));
+        
+        setCities(citiesWithCoordinates);
+        setCitiesLoading(false);
+        return citiesWithCoordinates;
+      }
+    } catch (error) {
+      console.error('Error in loadCities:', error);
+      setCitiesLoading(false);
+    }
+    return [];
+  }, [cities]);
+
   return (
     <PropertyContext.Provider 
       value={{
@@ -375,7 +423,10 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         loadMoreProperties: debouncedLoadMoreProperties,
         invalidateCache, // Добавляем новый метод
         hasMoreProperties: hasMore.all,
-        totalProperties: totalCount.all
+        totalProperties: totalCount.all,
+        cities,
+        loadCities,
+        citiesLoading
       }}
     >
       {children}

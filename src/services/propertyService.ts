@@ -452,6 +452,58 @@ export const propertyService = {
   
   async deleteProperty(propertyId: string) {
     try {
+      // Получаем текущего пользователя
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Пользователь не авторизован');
+      }
+      
+      // Проверяем, является ли пользователь владельцем объявления
+      const { data: property, error: checkError } = await supabase
+        .from('properties')
+        .select('user_id, images')
+        .eq('id', propertyId)
+        .single();
+      
+      if (checkError) throw checkError;
+      
+      // Если текущий пользователь не владелец объявления
+      if (!property || property.user_id !== user.id) {
+        console.error('Отказано в доступе: пользователь не является владельцем объявления');
+        return { success: false, error: 'Отказано в доступе: вы не являетесь владельцем этого объявления' };
+      }
+      
+      // Удаляем фотографии из хранилища, если они есть
+      if (property.images && property.images.length > 0) {
+        try {
+          // Получаем имена файлов из полных URL
+          const fileNames = property.images.map((imageUrl: string) => {
+            // Извлекаем имя файла из URL
+            const parts = imageUrl.split('/');
+            return parts[parts.length - 1];
+          });
+          
+          console.log('Удаление файлов из хранилища:', fileNames);
+          
+          // Удаляем все файлы из бакета property-images
+          const { error: storageError } = await supabase
+            .storage
+            .from('property-images')
+            .remove(fileNames);
+          
+          if (storageError) {
+            console.error('Ошибка при удалении файлов из хранилища:', storageError);
+            // Продолжаем удаление объявления даже если не удалось удалить фото
+          } else {
+            console.log('Все фотографии успешно удалены из хранилища');
+          }
+        } catch (storageError) {
+          console.error('Ошибка при попытке удаления файлов:', storageError);
+          // Продолжаем процесс удаления объявления даже если не удалось удалить фото
+        }
+      }
+      
+      // Продолжаем удаление объявления из базы данных
       const { error } = await supabase
         .from('properties')
         .delete()
@@ -613,6 +665,28 @@ export const propertyService = {
 
   async updateProperty(id: string, propertyData: Partial<PropertyInsert>) {
     try {
+      // Получаем текущего пользователя
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Пользователь не авторизован');
+      }
+      
+      // Проверяем, является ли пользователь владельцем объявления
+      const { data: propertyCheck, error: checkError } = await supabase
+        .from('properties')
+        .select('user_id')
+        .eq('id', id)
+        .single();
+      
+      if (checkError) throw checkError;
+      
+      // Если текущий пользователь не владелец объявления
+      if (!propertyCheck || propertyCheck.user_id !== user.id) {
+        console.error('Отказано в доступе: пользователь не является владельцем объявления');
+        return { success: false, error: 'Отказано в доступе: вы не являетесь владельцем этого объявления' };
+      }
+      
+      // Продолжаем обновление, если проверка пройдена
       const { data, error } = await supabase
         .from('properties')
         .update(propertyData)

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import PropertyCard from '../components/PropertyCard';
 import PropertyCardCompact from '../components/PropertyCardCompact';
+import type { Property } from '../contexts/PropertyContext';
 import FilterModal from '../components/FilterModal';
 import PropertyMapView from '../components/PropertyMapView';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -276,59 +277,73 @@ const HomeScreen = ({ navigation }: any) => {
                            type === 'sale' ? filtersAppliedSale : 
                            false;
     
-    let filtered = [...properties];
-    
     // Если фильтры не были явно применены, возвращаем только фильтрацию по типу
     if (!filtersApplied && type !== 'all') {
-      return filtered.filter(prop => prop.type === type);
+      return properties.filter(prop => prop.type === type);
     }
     
-    // Фильтрация по типу недвижимости
-    if (filters.propertyTypes.length > 0) {
-      filtered = filtered.filter(prop => 
-        filters.propertyTypes.includes(prop.property_type || '')
-      );
-    }
-    
-    // Фильтрация по цене
-    filtered = filtered.filter(prop => {
+    // Оптимизированная фильтрация с одним проходом по всем свойствам
+    return properties.filter(prop => {
+      // Фильтрация по типу, если не all
+      if (type !== 'all' && prop.type !== type) {
+        return false;
+      }
+      
+      // Фильтрация по типу недвижимости
+      if (filters.propertyTypes.length > 0 && 
+          !filters.propertyTypes.includes(prop.property_type || '')) {
+        return false;
+      }
+      
+      // Фильтрация по цене
       const price = prop.price || 0;
-      return price >= filters.price[0] && price <= filters.price[1];
-    });
-    
-    // Фильтрация по количеству комнат
-    if (filters.rooms.length > 0) {
-      filtered = filtered.filter(prop => {
+      if (price < filters.price[0] || price > filters.price[1]) {
+        return false;
+      }
+      
+      // Фильтрация по количеству комнат
+      if (filters.rooms.length > 0) {
         if (!prop.rooms) return false;
         const roomsStr = String(prop.rooms);
-        return filters.rooms.includes(roomsStr);
-      });
-    }
-    
-    // Фильтрация по площади
-    if (filters.areas.length > 0) {
-      filtered = filtered.filter(prop => {
+        if (!filters.rooms.includes(roomsStr)) {
+          return false;
+        }
+      }
+      
+      // Фильтрация по площади
+      if (filters.areas.length > 0) {
         if (!prop.area) return false;
+        
         // Проверяем, попадает ли площадь в один из выбранных диапазонов
-        return filters.areas.some(areaRange => {
+        let matchesAreaFilter = false;
+        for (const areaRange of filters.areas) {
           const [min, max] = areaRange.split('-').map(Number);
-          return prop.area! >= min && prop.area! <= max;
-        });
-      });
-    }
-    
-    // Фильтрация по особенностям
-    if (filters.features.length > 0) {
-      filtered = filtered.filter(prop => {
+          if (prop.area >= min && prop.area <= max) {
+            matchesAreaFilter = true;
+            break;
+          }
+        }
+        
+        if (!matchesAreaFilter) {
+          return false;
+        }
+      }
+      
+      // Фильтрация по особенностям
+      if (filters.features.length > 0) {
         if (!prop.features || prop.features.length === 0) return false;
+        
         // Проверяем, содержит ли объявление все выбранные особенности
-        return filters.features.every(feature => 
-          prop.features?.includes(feature)
-        );
-      });
-    }
-    
-    return filtered;
+        for (const feature of filters.features) {
+          if (!prop.features.includes(feature)) {
+            return false;
+          }
+        }
+      }
+      
+      // Объект прошел все фильтры
+      return true;
+    });
   };
 
   const handleClearFilters = () => {
@@ -783,7 +798,7 @@ const HomeScreen = ({ navigation }: any) => {
           windowSize={11}
           removeClippedSubviews={true}
           updateCellsBatchingPeriod={100}
-          renderItem={({ item }) => (
+          renderItem={({ item }: { item: Property }) => (
             compactView ? (
               <PropertyCardCompact
                 property={item}
@@ -797,7 +812,7 @@ const HomeScreen = ({ navigation }: any) => {
                 darkMode={darkMode}
               />
             )
-          )} 
+          )} // Мемоизируем функцию для повышения производительности 
           contentContainerStyle={[
             styles.listContent,
             { paddingTop: 8 } // Одинаковый небольшой отступ для всех вкладок

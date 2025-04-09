@@ -19,7 +19,7 @@ import { compressImage } from '../utils/imageCompression';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { useProperties } from '../contexts/PropertyContext';
+import { useProperties, City } from '../contexts/PropertyContext';
 import { supabase } from '../lib/supabaseClient';
 import { propertyService } from '../services/propertyService';
 import { useTheme } from '../contexts/ThemeContext';
@@ -27,12 +27,7 @@ import Colors from '../constants/colors';
 import MapCoordinateSelector from '../components/MapCoordinateSelector';
 import { showErrorAlert, showSuccessAlert } from '../utils/alertUtils';
 
-interface City {
-  id: string;
-  name: string;
-  latitude?: string;
-  longitude?: string;
-}
+// Используем интерфейс City из PropertyContext
 
 // Список возможных особенностей
 const FEATURES = [
@@ -45,10 +40,9 @@ const FEATURES = [
 const AddPropertyScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const [cities, setCities] = useState<City[]>([]);
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
-  const { invalidateCache } = useProperties(); // Получаем функцию обновления кэша
+  const { invalidateCache, cities, loadCities } = useProperties(); // Используем города из контекста
   
   // Добавляем состояния для имени и телефона пользователя
   const [userData, setUserData] = useState({
@@ -64,6 +58,15 @@ const AddPropertyScreen = ({ navigation }: any) => {
   const [area, setArea] = useState('');
   const [rooms, setRooms] = useState('');
   const [cityId, setCityId] = useState<string>('0'); // По умолчанию 0, как в веб-версии
+  
+  // Интерфейс для локального использования типа City внутри этого компонента
+  interface LocalCity {
+    id: string;
+    name: string;
+    latitude?: string;
+    longitude?: string;
+    coordinates?: { lat: number; lng: number } | null;
+  }
   const [propertyType, setPropertyType] = useState<'sale' | 'rent'>('sale');
   const [propertyCategory, setPropertyCategory] = useState('apartment');
   const [images, setImages] = useState<string[]>([]);
@@ -76,7 +79,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
   // Состояние для модальных окон
   const [cityModalVisible, setCityModalVisible] = useState(false);
   const [selectedCityName, setSelectedCityName] = useState(t('common.selectCity'));
-  const [selectedCity, setSelectedCity] = useState<any>(null);
+  const [selectedCity, setSelectedCity] = useState<LocalCity | null>(null);
   
   const [propertyTypeModalVisible, setPropertyTypeModalVisible] = useState(false);
   const [selectedPropertyTypeName, setSelectedPropertyTypeName] = useState(t('property.sale'));
@@ -85,35 +88,8 @@ const AddPropertyScreen = ({ navigation }: any) => {
   const [selectedPropertyCategoryName, setSelectedPropertyCategoryName] = useState(t('property.apartment'));
 
   useEffect(() => {
-    // Загрузка списка городов при монтировании компонента
-    const fetchCities = async () => {
-      try {
-        const { data: cities, error } = await supabase
-          .from('cities')
-          .select('*');
-
-        if (error) {
-          console.error('Error fetching cities:', error);
-          return;
-        }
-
-        if (cities) {
-          // Добавляем фиксированные координаты для городов в тестовых целях
-          const citiesWithCoordinates = cities.map(city => ({
-            ...city,
-            latitude: city.latitude || '45.267136',
-            longitude: city.longitude || '19.833549'
-          }));
-          
-          console.log('Cities with coordinates:', citiesWithCoordinates);
-          setCities(citiesWithCoordinates);
-        }
-      } catch (error) {
-        console.error('Error in fetchCities:', error);
-      }
-    };
-
-    fetchCities();
+    // Загружаем города только по необходимости при открытии модального окна,
+    // а не при монтировании всего компонента
     loadUserData();
   }, []);
 
@@ -439,53 +415,28 @@ const AddPropertyScreen = ({ navigation }: any) => {
   };
 
   // Функция для выбора города
-  const selectCity = (id: string, name: string) => {
-    console.log('selectCity called with id:', id, 'name:', name);
-    setCityId(id);
-    setSelectedCityName(name);
+  const selectCity = (city: City | LocalCity) => {
+    setCityId(city.id.toString());
+    // Преобразуем City в локальный тип с id как string
+    const localCity: LocalCity = {
+      ...city,
+      id: city.id.toString()
+    };
+    setSelectedCity(localCity);
+    setSelectedCityName(city.name);
     setCityModalVisible(false);
     
-    // Задаем координаты вручную для известных городов на основе их ID
-    let cityCoords = null;
-    
-    // Координаты городов из базы данных
-    switch(id) {
-      case '1': // Белград
-        cityCoords = { lat: 44.787197, lng: 20.457273 };
-        break;
-      case '2': // Нови-Сад
-        cityCoords = { lat: 45.251667, lng: 19.836944 };
-        break;
-      case '3': // Ниш
-        cityCoords = { lat: 43.320904, lng: 21.895514 };
-        break;
-      case '4': // Крагуевац
-        cityCoords = { lat: 44.012794, lng: 20.926773 };
-        break;
-      case '5': // Суботица
-        cityCoords = { lat: 46.100376, lng: 19.666641 };
-        break;
-      case '11': // Лозница
-        cityCoords = { lat: 44.533329, lng: 19.223273 };
-        break;
-      default:
-        // Дефолтные координаты для неизвестных городов
-        cityCoords = { lat: 45.267136, lng: 19.833549 };
+    // Устанавливаем координаты из города, если они доступны
+    if (city.coordinates) {
+      setCoordinates(city.coordinates);
+    } else if (city.latitude && city.longitude) {
+      setCoordinates({
+        lat: parseFloat(city.latitude),
+        lng: parseFloat(city.longitude)
+      });
     }
-    
-    // Создаем объект города с координатами
-    const cityObject = {
-      id: id,
-      name: name,
-      latitude: cityCoords.lat.toString(),
-      longitude: cityCoords.lng.toString()
-    };
-    
-    console.log('Created city object with coordinates:', cityObject);
-    setSelectedCity(cityObject);
-    setCoordinates(cityCoords);
   };
-  
+
   // Функция для выбора типа сделки
   const selectPropertyType = (type: 'sale' | 'rent', name: string) => {
     setPropertyType(type);
@@ -698,7 +649,11 @@ const AddPropertyScreen = ({ navigation }: any) => {
               borderColor: theme.border,
               borderWidth: 1,
             }]}
-            onPress={() => setCityModalVisible(true)}
+            onPress={() => {
+              // Загружаем города только при открытии модального окна
+              loadCities();
+              setCityModalVisible(true);
+            }}
           >
             <Text style={[styles.pickerButtonText, { color: theme.text }]}>
               {selectedCityName}
@@ -720,16 +675,21 @@ const AddPropertyScreen = ({ navigation }: any) => {
                 </Text>
                 
                 <FlatList
-                  data={[{ id: '0', name: t('common.selectCity') }, ...cities]}
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
+                  data={[
+                    { id: '0', name: t('common.selectCity') } as LocalCity, 
+                    ...cities.map(city => ({
+                      ...city,
+                      id: city.id.toString()
+                    }) as LocalCity)
+                  ]}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }: { item: LocalCity }) => (
                     <TouchableOpacity
-                      style={[styles.cityItem, cityId === item.id && { backgroundColor: theme.primary + '33' }]}
-                      onPress={() => selectCity(item.id.toString(), item.name)}
+                      style={styles.cityItem}
+                      key={item.id}
+                      onPress={() => selectCity(item)}
                     >
-                      <Text style={[styles.cityItemText, { color: darkMode ? '#FFFFFF' : '#000000' }]}>
-                        {item.name}
-                      </Text>
+                      <Text style={styles.cityItemText}>{item.name}</Text>
                     </TouchableOpacity>
                   )}
                 />
