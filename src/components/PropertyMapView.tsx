@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
@@ -44,9 +44,12 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
           style={styles.header} 
           onPress={() => setExpanded(!expanded)}
         >
-          <Text style={[styles.title, { color: theme.text }]}>
-            {t('property.mapView')}
-          </Text>
+          <View style={styles.titleContainer}>
+            <Ionicons name="map-outline" size={18} color={theme.primary} style={styles.mapIcon} />
+            <Text style={[styles.title, { color: theme.text }]}>
+              {t('property.mapView')}
+            </Text>
+          </View>
           <MaterialIcons 
             name={expanded ? "expand-less" : "expand-more"} 
             size={24} 
@@ -276,9 +279,16 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
 };
 
 const styles = StyleSheet.create({
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mapIcon: {
+    marginRight: 6,
+  },
   container: {
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
     overflow: 'hidden'

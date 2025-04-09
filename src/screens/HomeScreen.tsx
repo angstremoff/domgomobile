@@ -604,7 +604,7 @@ const HomeScreen = ({ navigation }: any) => {
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false} 
-            style={[styles.categoryFilterContainer, { zIndex: 10, marginBottom: 5 }]}
+            style={[styles.categoryFilterContainer, { zIndex: 10 }]}
             contentContainerStyle={styles.categoryFilterContent}
           >
             {(propertyType === 'rent') && (
@@ -759,16 +759,6 @@ const HomeScreen = ({ navigation }: any) => {
         darkMode={darkMode}
       />
       
-      {/* Компонент карты объектов */}
-      <TouchableOpacity 
-        style={[styles.filterButtonStandalone, { backgroundColor: theme.card, borderColor: theme.border }]}
-        onPress={() => {/* Здесь можно добавить действие при нажатии */}}
-      >
-        <View style={styles.filterButtonContent}>
-          <Ionicons name="map-outline" size={18} color={theme.primary} style={styles.filterIcon} />
-          <Text style={[styles.filterButtonText, { color: theme.text }]}>{t('property.mapView')}</Text>
-        </View>
-      </TouchableOpacity>
       
       <PropertyMapView 
         properties={filteredProperties}
@@ -810,7 +800,7 @@ const HomeScreen = ({ navigation }: any) => {
           )} 
           contentContainerStyle={[
             styles.listContent,
-            propertyType === 'all' && { paddingTop: 16 } // Добавляем отступ только для вкладки "Все"
+            { paddingTop: 8 } // Одинаковый небольшой отступ для всех вкладок
           ]}
           showsVerticalScrollIndicator={false}
           numColumns={compactView ? 2 : 1} // Используем 2 колонки в компактном режиме
@@ -963,8 +953,8 @@ const styles = StyleSheet.create({
   },
   filterButtonStandalone: {
     marginHorizontal: 16,
-    marginBottom: 12, // Увеличен отступ между блоком "Фильтры" и блоком объявлений
-    marginTop: 2, // Уменьшен отступ между кнопками быстрой фильтрации и блоком "Фильтры"
+    marginBottom: 4, // Еще больше уменьшен отступ между блоками
+    marginTop: 4, // Максимально компактный отступ
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -973,8 +963,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   listContent: {
-    padding: 16,
-    paddingTop: 0,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   loadingContainer: {
     flex: 1,
