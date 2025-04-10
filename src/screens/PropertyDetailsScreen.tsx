@@ -74,8 +74,11 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     if (!property) return;
     
     try {
-      // Формируем текст для шаринга
-      const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\nПодробнее в приложении DomGo`;
+      // Ссылка на приложение в Google Play
+      const appLink = 'https://play.google.com/store/apps/details?id=com.anonymous.DomGoMobile';
+      
+      // Формируем текст для шаринга с ссылкой
+      const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\nПодробнее в приложении DomGo: ${appLink}`;
       
       // Вызываем системный диалог шаринга
       await Share.share({
