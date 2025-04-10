@@ -37,37 +37,76 @@ const RegisterScreen = ({ navigation }: any) => {
     setLoading(true);
 
     try {
-      // Регистрация пользователя
+      // Регистрация пользователя с настройкой подтверждения email
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          // URL для возврата после подтверждения email с параметром источника (мобильное приложение)
+          emailRedirectTo: 'domgomobile://auth/callback?source=mobile',
+          // Добавляем метаданные для идентификации источника регистрации
+          data: {
+            source: 'mobile_app',
+            platform: 'android'
+          }
+        }
       });
 
       if (authError) throw authError;
 
       if (authData?.user) {
-        // Сохранение базовой информации в таблицу пользователей
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert([
-            {
-              id: authData.user.id,
-              email,
-              created_at: new Date().toISOString(),
-            },
-          ]);
-
-        if (profileError) throw profileError;
-
-        // Автоматически входим после успешной регистрации
-        await login(email, password);
+        // Проверка статуса подтверждения email
+        if (authData.user.identities && authData.user.identities.length === 0) {
+          // Уже существует пользователь с таким email
+          showErrorAlert(t('auth.emailAlreadyExists'));
+          return;
+        }
         
-        showSuccessAlert(t('auth.registerSuccess'));
-        navigation.navigate('Home');
+        if (authData.session === null) {
+          // Email требует подтверждения
+          showSuccessAlert(t('auth.confirmEmailSent'));
+          navigation.navigate('Login');
+          return;
+        }
+
+        // Если пользователь сразу создан и авторизован, пытаемся создать профиль
+        try {
+          // Сохраняем базовую информацию в таблицу пользователей
+          const { error: profileError } = await supabase
+            .from('users')
+            .insert([
+              {
+                id: authData.user.id,
+                email,
+                created_at: new Date().toISOString(),
+              },
+            ]);
+
+          if (profileError) {
+            console.log('Профиль будет создан после подтверждения email:', profileError);
+            // Не выбрасываем ошибку, так как пользователь уже создан в auth
+          }
+
+          // Автоматически входим после успешной регистрации
+          await login(email, password);
+          
+          showSuccessAlert(t('auth.registerSuccess'));
+          navigation.navigate('Home');
+        } catch (profileError) {
+          // Ошибка создания профиля, но пользователь создан
+          console.log('Ошибка создания профиля:', profileError);
+          showSuccessAlert(t('auth.confirmEmailSent'));
+          navigation.navigate('Login');
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
-      showErrorAlert(t('auth.registerFailed'));
+      // Показываем более конкретную ошибку, если она доступна
+      if (error.message) {
+        showErrorAlert(`${t('auth.registerFailed')}: ${error.message}`);
+      } else {
+        showErrorAlert(t('auth.registerFailed'));
+      }
     } finally {
       setLoading(false);
     }

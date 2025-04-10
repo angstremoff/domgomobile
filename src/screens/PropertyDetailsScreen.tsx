@@ -74,11 +74,12 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     if (!property) return;
     
     try {
-      // Ссылка на приложение в Google Play
-      const appLink = 'https://play.google.com/store/apps/details?id=com.anonymous.DomGoMobile';
+      // Создаем динамическую ссылку на объявление, которая откроет приложение, если оно установлено
+      // или перенаправит на веб-сайт для скачивания приложения
+      const propertyLink = `https://domgo.rs/property/${property.id}`;
       
-      // Формируем текст для шаринга с ссылкой
-      const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\nПодробнее в приложении DomGo: ${appLink}`;
+      // Формируем текст для шаринга с динамической ссылкой
+      const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\nПодробнее в приложении DomGo: ${propertyLink}`;
       
       // Вызываем системный диалог шаринга
       await Share.share({

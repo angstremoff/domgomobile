@@ -317,7 +317,9 @@
     "invalidEmail": "Некорректный email",
     "passwordTooShort": "Пароль должен содержать не менее 6 символов",
     "invalidPhone": "Некорректный номер телефона",
-    "requiredField": "Обязательное поле"
+    "requiredField": "Обязательное поле",
+    "confirmEmailSent": "На ваш email отправлено письмо с подтверждением. Пожалуйста, проверьте вашу почту.",
+    "emailAlreadyExists": "Пользователь с таким email уже существует"
   },
   "settings": {
     "title": "Настройки",

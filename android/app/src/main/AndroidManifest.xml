@@ -32,6 +32,36 @@
         <data android:scheme="com.anonymous.DomGoMobile"/>
         <data android:scheme="exp+domgomobile"/>
       </intent-filter>
+      
+      <!-- Фильтр для обработки ссылок подтверждения email из Supabase -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="domgomobile"/>
+        <data android:host="auth"/>
+        <data android:path="/callback"/>
+      </intent-filter>
+      
+      <!-- Фильтр для обработки ссылок на объявления -->
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="https"/>
+        <data android:scheme="http"/>
+        <data android:host="domgo.rs"/>
+        <data android:pathPattern="/property/*"/>
+      </intent-filter>
+      
+      <!-- Фильтр для обработки ссылок на объявления с использованием кастомной схемы -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="domgomobile"/>
+        <data android:host="property"/>
+      </intent-filter>
     </activity>
   </application>
 </manifest>

@@ -266,16 +266,64 @@ const MainTabs = () => {
 };
 
 const AppNavigator = () => {
-  const { loading } = useAuth();
+  const { } = useAuth(); // Используем пустую деструктуризацию, так как user не используется
   const { darkMode } = useTheme();
-
-  if (loading) {
-    return null; // or loading indicator
-  }
+  const { fetchPropertyById } = useProperties();
+  
+  // Выбор темы для навигации в зависимости от настроек
+  const navigationTheme = darkMode ? {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      background: Colors.dark.background,
+    },
+  } : {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: Colors.light.background,
+    },
+  };
+  
+  // Обработка глубоких ссылок на объявления
+  React.useEffect(() => {
+    // Проверяем, есть ли ID объявления для открытия (установленный обработчиком глубоких ссылок)
+    const checkDeepLink = async () => {
+      if (globalThis.propertyDeepLinkId) {
+        console.log('Открываем объявление из ссылки, ID:', globalThis.propertyDeepLinkId);
+        
+        // Загружаем данные объявления по ID
+        try {
+          const propertyData = await fetchPropertyById(globalThis.propertyDeepLinkId);
+          if (propertyData) {
+            // Таймер нужен, чтобы дать навигатору время на инициализацию
+            setTimeout(() => {
+              // @ts-ignore - TS не знает о navigationRef, но он будет доступен
+              if (navigationRef.current) {
+                // @ts-ignore
+                navigationRef.current.navigate('PropertyDetails', { property: propertyData });
+                // Очищаем глобальный ID после использования
+                globalThis.propertyDeepLinkId = null;
+              }
+            }, 500);
+          }
+        } catch (error) {
+          console.error('Ошибка при загрузке объявления по ссылке:', error);
+          globalThis.propertyDeepLinkId = null;
+        }
+      }
+    };
+    
+    checkDeepLink();
+  }, [fetchPropertyById]);
+  
+  // Создаем реф для доступа к навигационному контейнеру извне
+  const navigationRef = React.useRef(null);
 
   return (
     <NavigationContainer
-      theme={darkMode ? DarkTheme : DefaultTheme}
+      theme={navigationTheme}
+      ref={navigationRef}
     >
       <MainStack />
     </NavigationContainer>

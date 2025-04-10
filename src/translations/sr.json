@@ -344,7 +344,9 @@
     "resetPasswordInstructions": "Da biste resetovali lozinku, idite na veb sajt i koristite funkciju za oporavak lozinke.",
     "loginRequired": "Potrebna prijava",
     "loginRequiredDesc": "Morate biti prijavljeni da biste koristili ovu funkciju",
-    "requiredForAddingProperty": "Morate biti prijavljeni da biste dodali oglas"
+    "requiredForAddingProperty": "Morate biti prijavljeni da biste dodali oglas",
+    "confirmEmailSent": "Poslali smo vam potvrdu na vaš email. Molimo proverite vašu poštu.",
+    "emailAlreadyExists": "Korisnik sa ovom email adresom već postoji"
   },
   "filters": {
     "title": "Filteri",

@@ -68,6 +68,7 @@ interface PropertyContextType {
   cities: City[];
   loadCities: () => Promise<City[]>;
   citiesLoading: boolean;
+  fetchPropertyById: (id: string) => Promise<Property | null>; // Добавлен метод для загрузки объявления по ID
 }
 
 const PropertyContext = createContext<PropertyContextType | undefined>(undefined);
@@ -408,6 +409,41 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     }
     return [];
   }, [cities]);
+  
+  // Загрузка объявления по ID для открытия по ссылке
+  const fetchPropertyById = useCallback(async (id: string): Promise<Property | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('properties')
+        .select(`
+          *,
+          user:user_id (*),
+          city:city_id (*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Ошибка при загрузке объявления по ID:', error);
+        return null;
+      }
+
+      if (!data) {
+        return null;
+      }
+      
+      // Преобразуем данные в формат Property
+      const formattedProperty = {
+        ...data,
+        images: data.images || []
+      } as Property;
+
+      return formattedProperty;
+    } catch (error) {
+      console.error('Ошибка при загрузке объявления:', error);
+      return null;
+    }
+  }, []);
 
   return (
     <PropertyContext.Provider 
@@ -421,12 +457,13 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         setFilteredProperties,
         refreshProperties,
         loadMoreProperties: debouncedLoadMoreProperties,
-        invalidateCache, // Добавляем новый метод
+        invalidateCache,
         hasMoreProperties: hasMore.all,
         totalProperties: totalCount.all,
         cities,
         loadCities,
-        citiesLoading
+        citiesLoading,
+        fetchPropertyById
       }}
     >
       {children}
