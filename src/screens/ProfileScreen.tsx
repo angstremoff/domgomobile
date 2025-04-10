@@ -68,7 +68,10 @@ const ProfileScreen = ({ navigation }: any) => {
 
   const updateProfile = async () => {
     try {
+      // Показываем только локальный индикатор загрузки, не блокируя весь UI
       setLoading(true);
+      
+      // Обновляем данные в Supabase
       const { error } = await supabase
         .from('users')
         .update({
@@ -79,6 +82,26 @@ const ProfileScreen = ({ navigation }: any) => {
         .eq('id', user?.id);
 
       if (error) throw error;
+      
+      // После успешного обновления, принудительно перезагружаем данные профиля
+      // с опцией обновления кеша (избегаем кеширования)
+      const { data, error: fetchError } = await supabase
+        .from('users')
+        .select('name, phone, avatar_url')
+        .eq('id', user?.id)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      if (data) {
+        // Обновляем состояние профиля новыми данными
+        setProfile({
+          name: data.name || '',
+          phone: data.phone || '',
+          avatar_url: data.avatar_url
+        });
+      }
+      
       setEditMode(false);
       showSuccessAlert(t('common.profileUpdated'));
     } catch (error) {
@@ -140,7 +163,8 @@ const ProfileScreen = ({ navigation }: any) => {
         </View>
       </View>
 
-      {loading && (
+      {/* Глобальный индикатор загрузки отображается только при первой загрузке профиля */}
+      {loading && !profile.name && (
         <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -149,7 +173,7 @@ const ProfileScreen = ({ navigation }: any) => {
       {!loading && (
         <View style={styles.content}>
           {editMode ? (
-            <View style={styles.editForm}>
+            <View style={[styles.editForm, { backgroundColor: theme.card }]}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('profile.editProfile')}</Text>
               
               <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('profile.name')}</Text>
@@ -159,6 +183,7 @@ const ProfileScreen = ({ navigation }: any) => {
                 onChangeText={(text) => setProfile({ ...profile, name: text })}
                 placeholder={t('profile.name')}
                 placeholderTextColor={theme.secondary}
+                selectTextOnFocus
               />
               
               <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('profile.phone')}</Text>
@@ -169,20 +194,28 @@ const ProfileScreen = ({ navigation }: any) => {
                 placeholder={t('profile.phone')}
                 placeholderTextColor={theme.secondary}
                 keyboardType="phone-pad"
+                selectTextOnFocus
               />
               
               <View style={styles.buttonsRow}>
                 <TouchableOpacity 
-                  style={[styles.button, styles.cancelButton, { borderColor: theme.border }]} 
+                  style={[styles.button, styles.cancelButton, 
+                    { borderColor: theme.border, backgroundColor: darkMode ? '#2A3441' : '#F3F4F6' }]} 
                   onPress={() => setEditMode(false)}
+                  disabled={loading}
                 >
                   <Text style={[styles.buttonText, { color: theme.text }]}>{t('common.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.button, styles.saveButton, { backgroundColor: theme.primary }]} 
                   onPress={updateProfile}
+                  disabled={loading}
                 >
-                  <Text style={styles.saveButtonText}>{t('common.save')}</Text>
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>{t('common.save')}</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -312,7 +345,6 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   section: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
@@ -384,30 +416,23 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   editForm: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 16,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   fieldLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    fontWeight: '500',
     marginBottom: 4,
   },
   input: {
-    backgroundColor: '#F9FAFB',
+    height: 48,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
     fontSize: 16,
     marginBottom: 16,
+    paddingVertical: 10,
   },
   buttonsRow: {
     flexDirection: 'row',
@@ -415,25 +440,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   button: {
+    flex: 1,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
+    minHeight: 48,
   },
   cancelButton: {
-    backgroundColor: '#F3F4F6',
-    marginRight: 8,
+    borderWidth: 1,
   },
   saveButton: {
-    backgroundColor: '#1A4CA1',
     marginLeft: 8,
   },
   buttonText: {
     fontSize: 16,
-    color: '#374151',
     fontWeight: '500',
   },
   saveButtonText: {
@@ -446,12 +468,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#F5F7FA',
   },
   authMessage: {
     fontSize: 16,
     textAlign: 'center',
-    color: '#374151',
     marginBottom: 20,
   },
   loginButton: {
