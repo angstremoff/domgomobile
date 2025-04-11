@@ -68,38 +68,60 @@ const ProfileScreen = ({ navigation }: any) => {
 
   const updateProfile = async () => {
     try {
-      // Показываем только локальный индикатор загрузки, не блокируя весь UI
+      // Показываем индикатор загрузки только на кнопке
       setLoading(true);
       
-      // Обновляем данные в Supabase
-      const { error } = await supabase
+      console.log('Updating profile with data:', {
+        id: user?.id,
+        name: profile.name,
+        phone: profile.phone
+      });
+      
+      // Обновляем данные в Supabase - используем прямой запрос RPC для обхода ограничений роутинга
+      const { data, error } = await supabase
         .from('users')
         .update({
           name: profile.name,
           phone: profile.phone,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user?.id);
-
-      if (error) throw error;
-      
-      // После успешного обновления, принудительно перезагружаем данные профиля
-      // с опцией обновления кеша (избегаем кеширования)
-      const { data, error: fetchError } = await supabase
-        .from('users')
-        .select('name, phone, avatar_url')
         .eq('id', user?.id)
-        .single();
-        
-      if (fetchError) throw fetchError;
+        .select(); // добавляем select() для получения обновленных данных
       
-      if (data) {
+      console.log('Supabase update response:', { data, error });
+
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
         // Обновляем состояние профиля новыми данными
+        const updatedProfile = data[0];
         setProfile({
-          name: data.name || '',
-          phone: data.phone || '',
-          avatar_url: data.avatar_url
+          name: updatedProfile.name || '',
+          phone: updatedProfile.phone || '',
+          avatar_url: updatedProfile.avatar_url
         });
+        console.log('Profile updated successfully:', updatedProfile);
+      } else {
+        // Дополнительный запрос, если первый не вернул данных
+        const { data: fetchedData, error: fetchError } = await supabase
+          .from('users')
+          .select('name, phone, avatar_url')
+          .eq('id', user?.id)
+          .single();
+          
+        if (fetchError) {
+          console.error('Error fetching updated profile:', fetchError);
+        } else if (fetchedData) {
+          setProfile({
+            name: fetchedData.name || '',
+            phone: fetchedData.phone || '',
+            avatar_url: fetchedData.avatar_url
+          });
+          console.log('Profile fetched after update:', fetchedData);
+        }
       }
       
       setEditMode(false);
