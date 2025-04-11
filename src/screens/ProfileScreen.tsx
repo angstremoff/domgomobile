@@ -68,7 +68,18 @@ const ProfileScreen = ({ navigation }: any) => {
 
   const updateProfile = async () => {
     try {
-      // Показываем индикатор загрузки только на кнопке
+      // Проверяем, что имена и телефон не пустые
+      if (!profile.name || profile.name.trim() === '') {
+        showErrorAlert(t('profile.errors.nameRequired'));
+        return;
+      }
+      
+      if (!profile.phone || profile.phone.trim() === '') {
+        showErrorAlert(t('profile.errors.phoneRequired'));
+        return;
+      }
+
+      // Показываем индикатор загрузки
       setLoading(true);
       
       console.log('Updating profile with data:', {
@@ -77,26 +88,39 @@ const ProfileScreen = ({ navigation }: any) => {
         phone: profile.phone
       });
       
-      // Обновляем данные в Supabase - используем прямой запрос RPC для обхода ограничений роутинга
+      // Шаг 1: Обновляем данные в таблице users используя upsert вместо update
       const { data, error } = await supabase
         .from('users')
-        .update({
+        .upsert({
+          id: user?.id,
           name: profile.name,
           phone: profile.phone,
-          updated_at: new Date().toISOString()
+          email: user?.email
         })
-        .eq('id', user?.id)
-        .select(); // добавляем select() для получения обновленных данных
+        .select(); // Получаем обновленные данные
       
-      console.log('Supabase update response:', { data, error });
+      console.log('Supabase upsert response:', { data, error });
 
       if (error) {
         console.error('Error details:', error);
         throw error;
       }
       
+      // Шаг 2: Обновляем метаданные пользователя в Auth (важно для синхронизации)
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          name: profile.name,
+          phone: profile.phone
+        }
+      });
+      
+      if (authError) {
+        console.error('Error updating auth metadata:', authError);
+        throw authError;
+      }
+
+      // Обновляем локальное состояние профиля
       if (data && data.length > 0) {
-        // Обновляем состояние профиля новыми данными
         const updatedProfile = data[0];
         setProfile({
           name: updatedProfile.name || '',
@@ -104,25 +128,10 @@ const ProfileScreen = ({ navigation }: any) => {
           avatar_url: updatedProfile.avatar_url
         });
         console.log('Profile updated successfully:', updatedProfile);
-      } else {
-        // Дополнительный запрос, если первый не вернул данных
-        const { data: fetchedData, error: fetchError } = await supabase
-          .from('users')
-          .select('name, phone, avatar_url')
-          .eq('id', user?.id)
-          .single();
-          
-        if (fetchError) {
-          console.error('Error fetching updated profile:', fetchError);
-        } else if (fetchedData) {
-          setProfile({
-            name: fetchedData.name || '',
-            phone: fetchedData.phone || '',
-            avatar_url: fetchedData.avatar_url
-          });
-          console.log('Profile fetched after update:', fetchedData);
-        }
       }
+
+      // Сбрасываем кеш профиля, принудительно запрашивая новые данные
+      await fetchProfile();
       
       setEditMode(false);
       showSuccessAlert(t('common.profileUpdated'));

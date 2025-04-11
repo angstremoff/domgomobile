@@ -299,7 +299,12 @@
     "propertySoldMarked": "Oglas je označen kao prodat",
     "propertyRentedMarked": "Oglas je označen kao iznajmljen",
     "propertyActiveMarked": "Oglas je označen kao aktivan",
-    "errorMarkingProperty": "Greška pri promeni statusa oglasa"
+    "errorMarkingProperty": "Greška pri promeni statusa oglasa",
+    "errors": {
+      "nameRequired": "Ime je obavezno polje",
+      "phoneRequired": "Telefon je obavezno polje",
+      "saveFailed": "Greška pri čuvanju podataka"
+    }
   },
   "tabs": {
     "home": "Početna",
