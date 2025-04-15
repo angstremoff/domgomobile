@@ -74,19 +74,34 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     if (!property) return;
     
     try {
-      // Создаем динамическую ссылку на объявление, которая откроет приложение, если оно установлено
-      // или перенаправит на веб-сайт для скачивания приложения
-      const propertyLink = `https://domgo.rs/property/${property.id}`;
+      // URL нашего обработчика deep links
+      // Он проверит наличие приложения и предложит установить его, если не установлено
+      const deeplinkHandlerUrl = `https://domgo-deep-links.windsurf.build?id=${property.id}`;
       
-      // Формируем текст для шаринга с динамической ссылкой
-      const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\nПодробнее в приложении DomGo: ${propertyLink}`;
+      // Формируем текст для шаринга
+      const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\nПодробнее в приложении DomGo: ${deeplinkHandlerUrl}`;
+      
+      // Добавляем цены и другие детали
+      const extraInfo = [];
+      if (property.area) extraInfo.push(`${property.area} м²`);
+      if (property.rooms) extraInfo.push(`${property.rooms} комн.`);
+      
+      // Полное сообщение для шаринга
+      const fullShareText = extraInfo.length > 0 
+        ? `${shareText}\n${extraInfo.join(' • ')}` 
+        : shareText;
       
       // Вызываем системный диалог шаринга
       await Share.share({
-        message: shareText,
-        // На iOS можно также указать заголовок
-        ...(Platform.OS === 'ios' ? { title: 'Поделиться объявлением' } : {})
+        message: fullShareText,
+        // На iOS можно также указать заголовок и URL
+        ...(Platform.OS === 'ios' ? { 
+          title: 'Поделиться объявлением',
+          url: deeplinkHandlerUrl 
+        } : {})
       });
+      
+      console.log('Поделились объявлением:', property.id);
     } catch (error) {
       console.error('Ошибка при шаринге:', error);
     }

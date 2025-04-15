@@ -51,29 +51,48 @@ export default function App() {
       // Обработка ссылок на объявления
       // Варианты ссылок:
       // 1. https://domgo.info/property/123 (веб-ссылка)
-      // 2. domgomobile://property/123 (нативная ссылка)
-      let propertyId = null;
+      // 2. domgomobile://property/123 (нативная ссылка) 
+      // 3. https://angstremoff.github.io/domgomobile/deeplink-handler.html?id=123 (обработчик ссылок)
       
       // Проверяем разные форматы ссылок на объявления
-      if (url.includes('domgo.info/property/') || url.includes('domgomobile://property/')) {
-        try {
-          // Пытаемся извлечь ID объявления из URL
-          const urlObj = new URL(url);
+      try {
+        let propertyId = null;
+        const urlObj = new URL(url);
+        
+        // Проверка формата domgomobile://property/123
+        if (url.startsWith('domgomobile://property/')) {
+          // Схема custom URL
+          const pathParts = urlObj.pathname.split('/');
+          propertyId = pathParts[pathParts.length - 1];
+          console.log('Получена deep link на объявление:', propertyId);
+        } 
+        // Проверка формата https://domgo.rs/property/123
+        else if (url.includes('domgo.rs/property/')) {
           const pathParts = urlObj.pathname.split('/');
           const idIndex = pathParts.indexOf('property') + 1;
           
           if (idIndex > 0 && idIndex < pathParts.length) {
             propertyId = pathParts[idIndex];
-            console.log('Найден ID объявления в URL:', propertyId);
-            
-            // Тут можно добавить навигацию к конкретному объявлению
-            // (будет реализовано через глобальное событие)
-            globalThis.propertyDeepLinkId = propertyId;
-            console.log('Установлен глобальный ID для открытия объявления:', propertyId);
+            console.log('Получена веб-ссылка на объявление:', propertyId);
           }
-        } catch (error) {
-          console.error('Ошибка при обработке URL объявления:', error);
         }
+        // Проверка формата ссылок через обработчик Netlify
+        else if (url.includes('domgo-deep-links.windsurf.build') || 
+                 url.includes('angstremoff.github.io/domgomobile/deeplink-handler.html')) {
+          propertyId = urlObj.searchParams.get('id');
+          console.log('Получена ссылка из обработчика deep links:', propertyId);
+        }
+        
+        // Если удалось получить ID объявления, сохраняем его для открытия
+        if (propertyId) {
+          // Сохраняем ID в глобальном объекте
+          globalThis.propertyDeepLinkId = propertyId;
+          
+          // Отправляем событие для всех компонентов, которые могут его обработать
+          console.log('Открываем объявление по ID:', propertyId);
+        }
+      } catch (error) {
+        console.error('Ошибка при обработке URL объявления:', error);
       }
     };
     
