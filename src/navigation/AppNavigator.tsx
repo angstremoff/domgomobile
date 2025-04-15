@@ -289,7 +289,38 @@ const AppNavigator = () => {
   React.useEffect(() => {
     // Проверяем, есть ли ID объявления для открытия (установленный обработчиком глубоких ссылок)
     const checkDeepLink = async () => {
-      if (globalThis.propertyDeepLinkId) {
+      // Проверяем наличие отложенной навигации (установленной в App.tsx)
+      // @ts-ignore - Игнорируем ошибку для глобальных переменных
+      if (globalThis.pendingPropertyNavigation) {
+        // @ts-ignore - Игнорируем ошибку для глобальных переменных
+        const propertyId = globalThis.pendingPropertyNavigation;
+        console.log('Обнаружена отложенная навигация к объявлению, ID:', propertyId);
+        
+        try {
+          // Загружаем данные объявления по ID
+          const propertyData = await fetchPropertyById(propertyId);
+          if (propertyData) {
+            // Выполняем навигацию к экрану деталей объявления
+            setTimeout(() => {
+              if (navigationRef.current) {
+                // @ts-ignore - Игнорируем ошибку для метода navigate
+                navigationRef.current.navigate('PropertyDetails', { id: propertyId, property: propertyData });
+                console.log('Выполнена отложенная навигация к экрану деталей объявления');
+                // Очищаем переменные после использования
+                // @ts-ignore - Игнорируем ошибку для глобальных переменных
+                globalThis.pendingPropertyNavigation = null;
+              }
+            }, 500);
+          }
+        } catch (error) {
+          console.error('Ошибка при загрузке объявления по ID:', error);
+          globalThis.pendingPropertyNavigation = null;
+        }
+      }
+      
+      // Проверяем старый механизм propertyDeepLinkId
+      // @ts-ignore - Игнорируем ошибку для глобальных переменных
+      else if (globalThis.propertyDeepLinkId) {
         console.log('Открываем объявление из ссылки, ID:', globalThis.propertyDeepLinkId);
         
         // Загружаем данные объявления по ID
@@ -298,11 +329,11 @@ const AppNavigator = () => {
           if (propertyData) {
             // Таймер нужен, чтобы дать навигатору время на инициализацию
             setTimeout(() => {
-              // @ts-ignore - TS не знает о navigationRef, но он будет доступен
               if (navigationRef.current) {
-                // @ts-ignore
-                navigationRef.current.navigate('PropertyDetails', { property: propertyData });
+                // @ts-ignore - Игнорируем ошибку для метода navigate
+                navigationRef.current.navigate('PropertyDetails', { id: globalThis.propertyDeepLinkId, property: propertyData });
                 // Очищаем глобальный ID после использования
+                // @ts-ignore - Игнорируем ошибку для глобальных переменных
                 globalThis.propertyDeepLinkId = null;
               }
             }, 500);
@@ -318,7 +349,11 @@ const AppNavigator = () => {
   }, [fetchPropertyById]);
   
   // Создаем реф для доступа к навигационному контейнеру извне
+  // Делаем его глобально доступным для использования в App.tsx
   const navigationRef = React.useRef(null);
+  // Устанавливаем глобальный доступ к navigationRef
+  // @ts-ignore - Игнорируем ошибку для глобальных переменных
+  globalThis.navigationRef = navigationRef;
 
   return (
     <NavigationContainer

@@ -90,6 +90,12 @@ export default function App() {
           
           // Отправляем событие для всех компонентов, которые могут его обработать
           console.log('Открываем объявление по ID:', propertyId);
+          
+          // Добавляем интерфейс для TypeScript
+          // Устанавливаем отложенную навигацию и позволяем AppNavigator обработать ее
+          console.log('Устанавливаем отложенную навигацию для ID:', propertyId);
+          // @ts-ignore - Игнорируем ошибки TypeScript для глобальных переменных
+          globalThis.pendingPropertyNavigation = propertyId;
         }
       } catch (error) {
         console.error('Ошибка при обработке URL объявления:', error);
