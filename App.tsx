@@ -63,18 +63,20 @@ export default function App() {
         if (url.startsWith('domgomobile://')) {
           // Проверка формата domgomobile://property и его вариаций
           if (url.startsWith('domgomobile://property')) {
-            // Сначала проверяем формат domgomobile://property?id=XXX
-            const queryParams = urlObj.searchParams;
-            const queryId = queryParams.get('id');
-            if (queryId) {
-              propertyId = queryId;
-              console.log('Получена прямая ссылка на объявление (query):', propertyId);
-            }
-            // Если id не нашли в query, проверяем формат domgomobile://property/XXX (для обратной совместимости)
-            else if (url.startsWith('domgomobile://property/')) {
+            // СНАЧАЛА проверяем формат с путём - domgomobile://property/XXX
+            if (url.startsWith('domgomobile://property/')) {
               const pathParts = urlObj.pathname.split('/');
               propertyId = pathParts[pathParts.length - 1];
               console.log('Получена прямая ссылка на объявление (path):', propertyId);
+            }
+            // Если не нашли в пути, проверяем формат domgomobile://property?id=XXX
+            else {
+              const queryParams = urlObj.searchParams;
+              const queryId = queryParams.get('id');
+              if (queryId) {
+                propertyId = queryId;
+                console.log('Получена прямая ссылка на объявление (query):', propertyId);
+              }
             }
           }
         }
@@ -114,8 +116,15 @@ export default function App() {
           if (globalThis.navigationRef && globalThis.navigationRef.current) {
             console.log('Прямая навигация к экрану деталей объявления, ID:', propertyId);
             try {
+              // Очень важно: PropertyDetails ожидает параметр propertyId
               // @ts-ignore - Игнорируем ошибки TypeScript
-              globalThis.navigationRef.current.navigate('PropertyDetails', { propertyId: propertyId });
+              globalThis.navigationRef.current.reset({
+                index: 0,
+                routes: [
+                  { name: 'Home' },
+                  { name: 'PropertyDetails', params: { propertyId } }
+                ],
+              });
             } catch (error) {
               console.error('Ошибка при прямой навигации:', error);
             }
