@@ -88,9 +88,9 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     if (!property) return;
     
     try {
-      // URL нашего обработчика deep links
+      // URL нашего обработчика deep links на GitHub Pages
       // Он проверит наличие приложения и предложит установить его, если не установлено
-      const deeplinkHandlerUrl = `https://domgo-deep-links.windsurf.build?id=${property.id}`;
+      const deeplinkHandlerUrl = `https://angstremoff.github.io/domgomobile/property.html?id=${property.id}`;
       
       // Формируем текст для шаринга
       const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\nПодробнее в приложении DomGo: ${deeplinkHandlerUrl}`;

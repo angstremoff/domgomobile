@@ -88,11 +88,11 @@ export default function App() {
             console.log('Получена веб-ссылка на объявление:', propertyId);
           }
         }
-        // Проверка формата ссылок через обработчик Netlify
-        else if (url.includes('domgo-deep-links.windsurf.build') || 
-                 url.includes('angstremoff.github.io/domgomobile/deeplink-handler.html')) {
+        // Проверка формата ссылок через обработчик GitHub Pages
+        else if (url.includes('angstremoff.github.io/domgomobile') || 
+                 url.includes('domgo-deep-links.windsurf.build')) {
           propertyId = urlObj.searchParams.get('id');
-          console.log('Получена ссылка из обработчика deep links:', propertyId);
+          console.log('Получена ссылка из обработчика deep links (GitHub Pages):', propertyId);
         }
         
         // Если удалось получить ID объявления, сохраняем его для открытия
