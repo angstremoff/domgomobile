@@ -390,6 +390,28 @@ const AddPropertyScreen = ({ navigation }: any) => {
     });
   };
 
+  // Функция для перемещения фотографий вверх по списку
+  const moveImageUp = (index: number) => {
+    if (index === 0) return; // Нельзя переместить вверх первое фото
+    setImages(prevImages => {
+      const newImages = [...prevImages];
+      // Меняем местами текущее и предыдущее фото
+      [newImages[index], newImages[index - 1]] = [newImages[index - 1], newImages[index]];
+      return newImages;
+    });
+  };
+
+  // Функция для перемещения фотографий вниз по списку
+  const moveImageDown = (index: number) => {
+    if (index === images.length - 1) return; // Нельзя переместить вниз последнее фото
+    setImages(prevImages => {
+      const newImages = [...prevImages];
+      // Меняем местами текущее и следующее фото
+      [newImages[index], newImages[index + 1]] = [newImages[index + 1], newImages[index]];
+      return newImages;
+    });
+  };
+
   // Валидация ввода только цифр
   const validateNumericInput = (value: string) => {
     return value === '' || /^\d+$/.test(value);
@@ -825,16 +847,49 @@ const AddPropertyScreen = ({ navigation }: any) => {
             <View style={styles.imagesContainer}>
               {images.map((image, index) => (
                 <View key={index} style={[styles.imageWrapper, { borderColor: theme.border }]}>
+                  <View style={styles.imageNumberBadge}>
+                    <Text style={styles.imageNumberText}>{index + 1}</Text>
+                  </View>
+                  
                   <Image 
                     source={{ uri: image }} 
                     style={styles.propertyImage} 
                   />
+                  
+                  {/* Кнопка удаления */}
                   <TouchableOpacity 
                     style={styles.removeImageButton}
                     onPress={() => removeImage(index)}
                   >
                     <Ionicons name="close-circle" size={24} color={theme.notification} />
                   </TouchableOpacity>
+                  
+                  {/* Кнопки перемещения */}
+                  <View style={styles.imageArrowButtons}>
+                    {/* Кнопка вверх */}
+                    <TouchableOpacity 
+                      style={[styles.arrowButton, 
+                        index === 0 ? styles.arrowButtonDisabled : {}, 
+                        { backgroundColor: theme.primary }
+                      ]}
+                      onPress={() => moveImageUp(index)}
+                      disabled={index === 0}
+                    >
+                      <Ionicons name="arrow-up" size={16} color="white" />
+                    </TouchableOpacity>
+                    
+                    {/* Кнопка вниз */}
+                    <TouchableOpacity 
+                      style={[styles.arrowButton, 
+                        index === images.length - 1 ? styles.arrowButtonDisabled : {}, 
+                        { backgroundColor: theme.primary }
+                      ]}
+                      onPress={() => moveImageDown(index)}
+                      disabled={index === images.length - 1}
+                    >
+                      <Ionicons name="arrow-down" size={16} color="white" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
             </View>
@@ -949,15 +1004,53 @@ const styles = StyleSheet.create({
   propertyImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 8,
     resizeMode: 'cover',
   },
   removeImageButton: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    top: -10,
+    right: -10,
+    backgroundColor: 'transparent',
+    padding: 0,
+    zIndex: 1,
+  },
+  imageArrowButtons: {
+    position: 'absolute',
+    left: -5,
+    top: '50%',
+    transform: [{ translateY: -25 }],
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 50,
+    zIndex: 1,
+  },
+  arrowButton: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
-    padding: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 2,
+  },
+  arrowButtonDisabled: {
+    opacity: 0.5,
+  },
+  imageNumberBadge: {
+    position: 'absolute',
+    left: 5,
+    bottom: 5,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    zIndex: 1,
+  },
+  imageNumberText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   submitButton: {
     backgroundColor: '#1E3A8A',

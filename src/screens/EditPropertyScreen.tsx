@@ -200,6 +200,28 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
   const removeImage = (index: number) => {
     setImages(prev => prev.filter((_, i) => i !== index));
   };
+  
+  // Функция для перемещения фотографий вверх по списку
+  const moveImageUp = (index: number) => {
+    if (index === 0) return; // Нельзя переместить вверх первое фото
+    setImages(prevImages => {
+      const newImages = [...prevImages];
+      // Меняем местами текущее и предыдущее фото
+      [newImages[index], newImages[index - 1]] = [newImages[index - 1], newImages[index]];
+      return newImages;
+    });
+  };
+
+  // Функция для перемещения фотографий вниз по списку
+  const moveImageDown = (index: number) => {
+    if (index === images.length - 1) return; // Нельзя переместить вниз последнее фото
+    setImages(prevImages => {
+      const newImages = [...prevImages];
+      // Меняем местами текущее и следующее фото
+      [newImages[index], newImages[index + 1]] = [newImages[index + 1], newImages[index]];
+      return newImages;
+    });
+  };
 
   const handleSave = async () => {
     try {
@@ -417,17 +439,50 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
             <View style={styles.imagesContainer}>
               {images.map((imageUrl, index) => (
                 <View key={index} style={styles.imageWrapper}>
+                  <View style={styles.imageNumberBadge}>
+                    <Text style={styles.imageNumberText}>{index + 1}</Text>
+                  </View>
+                  
                   <Image
                     source={{ uri: imageUrl }}
                     style={styles.propertyImage}
                     resizeMode="cover"
                   />
+                  
+                  {/* Кнопка удаления */}
                   <TouchableOpacity
                     style={styles.removeImageButton}
                     onPress={() => removeImage(index)}
                   >
                     <Ionicons name="close-circle" size={24} color="#EF4444" />
                   </TouchableOpacity>
+                  
+                  {/* Кнопки перемещения */}
+                  <View style={styles.imageArrowButtons}>
+                    {/* Кнопка вверх */}
+                    <TouchableOpacity 
+                      style={[styles.arrowButton, 
+                        index === 0 ? styles.arrowButtonDisabled : {}, 
+                        { backgroundColor: darkMode ? "#3B82F6" : "#1E3A8A" }
+                      ]}
+                      onPress={() => moveImageUp(index)}
+                      disabled={index === 0}
+                    >
+                      <Ionicons name="arrow-up" size={16} color="white" />
+                    </TouchableOpacity>
+                    
+                    {/* Кнопка вниз */}
+                    <TouchableOpacity 
+                      style={[styles.arrowButton, 
+                        index === images.length - 1 ? styles.arrowButtonDisabled : {}, 
+                        { backgroundColor: darkMode ? "#3B82F6" : "#1E3A8A" }
+                      ]}
+                      onPress={() => moveImageDown(index)}
+                      disabled={index === images.length - 1}
+                    >
+                      <Ionicons name="arrow-down" size={16} color="white" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
             </View>
@@ -579,16 +634,56 @@ const styles = StyleSheet.create({
     position: 'relative'
   },
   propertyImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 4
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    marginRight: 10,
+    marginBottom: 10,
   },
   removeImageButton: {
     position: 'absolute',
     top: -10,
     right: -10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12
+    backgroundColor: 'transparent',
+    padding: 0,
+    zIndex: 1,
+  },
+  imageArrowButtons: {
+    position: 'absolute',
+    left: -5,
+    top: '50%',
+    transform: [{ translateY: -25 }],
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 50,
+    zIndex: 1,
+  },
+  arrowButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 2,
+  },
+  arrowButtonDisabled: {
+    opacity: 0.5,
+  },
+  imageNumberBadge: {
+    position: 'absolute',
+    left: 5,
+    bottom: 5,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    zIndex: 1,
+  },
+  imageNumberText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   buttonContainer: {
     flexDirection: 'row',

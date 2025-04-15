@@ -95,22 +95,64 @@ export default function App() {
   
   // Функция для проверки и установки обновлений
   React.useEffect(() => {
+    // Создаем проверку обновлений в самом начале работы приложения
     async function checkForUpdates() {
       try {
+        // В режиме разработки обновления не работают
+        if (__DEV__) {
+          console.log('Обновления отключены в режиме разработки');
+          return;
+        }
+
+        console.log('Проверка обновлений...');
+        
+        // Проверяем наличие обновлений
         const update = await Updates.checkForUpdateAsync();
+        
         if (update.isAvailable) {
           console.log('Доступно обновление, загружаем...');
-          await Updates.fetchUpdateAsync();
-          await Updates.reloadAsync();
+          
+          try {
+            // Загружаем обновление
+            await Updates.fetchUpdateAsync();
+            
+            // Перезапускаем приложение с новыми файлами
+            console.log('Обновление загружено, перезапускаем приложение');
+            await Updates.reloadAsync();
+          } catch (error) {
+            console.error('Ошибка при загрузке обновления:', error);
+            
+            // Повторная попытка через 5 секунд
+            setTimeout(async () => {
+              try {
+                console.log('Повторная попытка загрузки обновления...');
+                await Updates.fetchUpdateAsync();
+                await Updates.reloadAsync();
+              } catch (retryError) {
+                console.error('Повторная загрузка не удалась:', retryError);
+              }
+            }, 5000);
+          }
         } else {
           console.log('Обновлений не найдено, используем текущую версию');
         }
       } catch (e) {
-        console.log('Ошибка при проверке обновлений:', e);
+        console.error('Ошибка при проверке обновлений:', e);
       }
     }
     
+    // Запускаем проверку обновлений при запуске приложения
     checkForUpdates();
+    
+    // Проверяем обновления каждый час, если приложение в фоне
+    const intervalId = setInterval(() => {
+      checkForUpdates();
+    }, 60 * 60 * 1000); // Проверяем каждый час
+    
+    // Очищаем интервал при уничтожении компонента
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []);
 
   // Обработчик глобальных ошибок в приложении
