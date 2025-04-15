@@ -92,8 +92,15 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
       // Он проверит наличие приложения и предложит установить его, если не установлено
       const deeplinkHandlerUrl = `https://angstremoff.github.io/domgomobile/property.html?id=${property.id}`;
       
-      // Формируем текст для шаринга
-      const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\nПодробнее в приложении DomGo: ${deeplinkHandlerUrl}`;
+      // Формируем текст для шаринга в зависимости от выбранного языка
+      let moreDetailsText = t('property.moreDetailsInApp', 'Подробнее в приложении DomGo');
+      
+      // По умолчанию, для обратной совместимости
+      if (!moreDetailsText || moreDetailsText === 'property.moreDetailsInApp') {
+        moreDetailsText = 'Подробнее в приложении DomGo';
+      }
+      
+      const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\n${moreDetailsText}: ${deeplinkHandlerUrl}`;
       
       // Добавляем цены и другие детали
       const extraInfo = [];

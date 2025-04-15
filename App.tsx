@@ -90,9 +90,10 @@ export default function App() {
             console.log('Получена веб-ссылка на объявление:', propertyId);
           }
         }
-        // Проверка формата ссылок через обработчик Netlify
+        // Проверка формата ссылок через обработчик Netlify или GitHub Pages
         else if (url.includes('domgo-deep-links.windsurf.build') || 
-                 url.includes('angstremoff.github.io/domgomobile/deeplink-handler.html')) {
+                 url.includes('angstremoff.github.io/domgomobile/deeplink-handler.html') ||
+                 url.includes('angstremoff.github.io/domgomobile/property.html')) {
           propertyId = urlObj.searchParams.get('id');
           console.log('Получена ссылка из обработчика deep links:', propertyId);
         }
