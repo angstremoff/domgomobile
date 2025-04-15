@@ -514,7 +514,7 @@ const HomeScreen = ({ navigation }: any) => {
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'all' && [styles.activeFilter, { backgroundColor: theme.primary }]
           ]}
-          onPress={() => {
+          onPress={async () => {
             setPropertyType('all');
             setPropertyCategory('all');
             // Сбрасываем активные фильтры при переключении на вкладку "Все"
@@ -527,6 +527,11 @@ const HomeScreen = ({ navigation }: any) => {
             });
             setFiltersAppliedSale(false);
             setFiltersAppliedRent(false);
+            
+            // Загружаем все объявления
+            await refreshProperties();
+            // Показываем все объявления
+            setFilteredProperties(properties);
           }}
         >
           <Text style={[
@@ -544,12 +549,22 @@ const HomeScreen = ({ navigation }: any) => {
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'sale' && [styles.activeFilter, { backgroundColor: theme.primary }]
           ]}
-          onPress={() => {
+          onPress={async () => {
             setPropertyType('sale');
             setPropertyCategory('all');
             // Загружаем фильтры для вкладки "Продажа"
             setActiveFilters(saleFilters);
             setFiltersAppliedSale(true);
+            
+            // Получаем свойства по типу "sale" - это обновит activePropertyTypeRef
+            try {
+              const result = await getPropertiesByType('sale');
+              if (result && result.data) {
+                setFilteredProperties(result.data);
+              }
+            } catch (error) {
+              console.error('Ошибка при загрузке объявлений для продажи:', error);
+            }
           }}
         >
           <Text style={[
@@ -567,12 +582,22 @@ const HomeScreen = ({ navigation }: any) => {
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'rent' && [styles.activeFilter, { backgroundColor: theme.primary }]
           ]}
-          onPress={() => {
+          onPress={async () => {
             setPropertyType('rent');
             setPropertyCategory('all');
             // Загружаем фильтры для вкладки "Аренда"
             setActiveFilters(rentFilters);
             setFiltersAppliedRent(true);
+            
+            // Получаем свойства по типу "rent" - это обновит activePropertyTypeRef
+            try {
+              const result = await getPropertiesByType('rent');
+              if (result && result.data) {
+                setFilteredProperties(result.data);
+              }
+            } catch (error) {
+              console.error('Ошибка при загрузке объявлений для аренды:', error);
+            }
           }}
         >
           <Text style={[
@@ -820,7 +845,22 @@ const HomeScreen = ({ navigation }: any) => {
           showsVerticalScrollIndicator={false}
           numColumns={compactView ? 2 : 1} // Используем 2 колонки в компактном режиме
           key={compactView ? 'compact' : 'full'} // Ключ для пересоздания списка при смене режима
-          onRefresh={refreshProperties}
+          onRefresh={async () => {
+            // Если выбран определенный тип сделки, загружаем объявления именно этого типа
+            if (propertyType === 'sale' || propertyType === 'rent') {
+              try {
+                const result = await getPropertiesByType(propertyType);
+                if (result && result.data) {
+                  // Не нужно вызывать setFilteredProperties, так как это сделает getPropertiesByType
+                }
+              } catch (error) {
+                console.error(`Ошибка при обновлении объявлений типа ${propertyType}:`, error);
+              }
+            } else {
+              // Если выбраны все объявления, используем стандартное обновление
+              await refreshProperties();
+            }
+          }}
           refreshing={loading}
           onEndReached={() => {
             if (!loadingMore && hasMoreProperties) {

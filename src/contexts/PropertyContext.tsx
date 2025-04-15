@@ -167,6 +167,10 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   };
 
   // Обновление списка объявлений (для пользовательского pull-to-refresh)
+  // Сохраняем последний активный тип сделки
+  const activePropertyTypeRef = React.useRef<'all' | 'sale' | 'rent'>('all');
+
+  // Обновлённая функция refreshProperties с учётом активного типа
   const refreshProperties = async () => {
     // Пропускаем обновление, если уже идет запрос
     if (requestInProgress.current.all) {
@@ -181,8 +185,21 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       const result = await propertyService.getProperties(1, pageSize);
       if (result.data && result.data.length > 0) {
         console.log(`Данные успешно загружены из Supabase: ${result.data.length} из ${result.totalCount}`);
+        
+        // Сохраняем все объявления
         setProperties(result.data);
-        setFilteredProperties(result.data);
+        
+        // Применяем фильтрацию в зависимости от последнего выбранного типа
+        const activeType = activePropertyTypeRef.current;
+        if (activeType !== 'all') {
+          console.log(`Применяем фильтр по типу сделки: ${activeType}`);
+          const filtered = result.data.filter(prop => prop.type === activeType);
+          setFilteredProperties(filtered);
+        } else {
+          // Если тип 'all', показываем все объявления
+          setFilteredProperties(result.data);
+        }
+        
         setHasMore({ ...hasMore, all: result.hasMore });
         setTotalCount({ ...totalCount, all: result.totalCount });
         setCurrentPage({ ...currentPage, all: 1 });
@@ -225,6 +242,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   
   // Получение объявлений по типу (продажа/аренда) с кэшированием
   const getPropertiesByType = async (type: 'sale' | 'rent', page = 1, pageSize = 10) => {
+    // Сохраняем текущий тип сделки для использования в refreshProperties
+    activePropertyTypeRef.current = type;
     // Проверяем существование ключа в typeCache
     if (!typeCache.current[type]) {
       console.log(`Инициализация кэша для типа ${type}`);
