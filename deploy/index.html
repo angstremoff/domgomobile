@@ -106,7 +106,7 @@
 </head>
 <body>
     <div class="container">
-        <img src="https://domgo.rs/logo192.png" alt="DomGo Logo" class="logo">
+        <img src="https://domgo.rs/logo.svg" alt="DomGo Logo" class="logo">
         
         <div id="opening">
             <h1>Открываем объявление...</h1>
@@ -137,7 +137,8 @@
         
         // Формируем ссылки
         const appScheme = `domgomobile://property/${propertyId}`;
-        const webUrl = `https://domgo.rs/property/${propertyId}`;
+        // Исправляем ссылку на сайт для открытия в модальном окне
+        const webUrl = `https://domgo.rs/?propertyId=${propertyId}`;
         
         // Устанавливаем ссылку на веб-версию
         document.getElementById('web-link').href = webUrl;
@@ -153,13 +154,17 @@
                 const data = await response.json();
                 
                 // Ищем APK-файл в списке ассетов
-                const apkAsset = data.assets.find(asset => asset.name.endsWith('.apk'));
+                // Вместо поиска актуального имени файла, просто формируем прямую ссылку на DomGo.apk
+                return 'https://github.com/angstremoff/domgomobile/releases/latest/download/DomGo.apk';
                 
-                if (apkAsset) {
-                    return apkAsset.browser_download_url;
-                } else {
-                    throw new Error('APK файл не найден в релизе');
-                }
+                // Эта часть кода не будет использоваться, так как мы указываем прямую ссылку
+                // const apkAsset = data.assets.find(asset => asset.name.endsWith('.apk'));
+                // 
+                // if (apkAsset) {
+                //    return apkAsset.browser_download_url;
+                // } else {
+                //    throw new Error('APK файл не найден в релизе');
+                // }
             } catch (error) {
                 console.error('Ошибка при получении релиза:', error);
                 document.getElementById('error-message').style.display = 'block';
