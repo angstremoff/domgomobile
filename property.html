@@ -106,10 +106,10 @@
 </head>
 <body>
     <div class="container">
-        <img src="https://domgo.rs/logo-full.svg" alt="DomGo Logo" class="logo">
+        <img src="./assets/icon.png" alt="DomGo Logo" class="logo" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/angstremoff/domgomobile/main/assets/icon.png';">
         
         <div id="opening">
-            <h1>Открываем объявление...</h1>
+            <h2>Открываем объявление...</h2>
             <p>Пытаемся открыть объявление в приложении DomGo</p>
             <div class="loading">
                 <div class="spinner"></div>
@@ -138,8 +138,8 @@
         // Формируем ссылки
         // Исправляем формат ссылки для совместимости с кодом приложения
         const appScheme = `domgomobile://property?id=${propertyId}`;
-        // Исправляем ссылку на сайт для открытия в модальном окне
-        const webUrl = `https://domgo.rs/?propertyId=${propertyId}`;
+        // Правильный формат ссылки на сайт
+        const webUrl = `https://domgo.rs/property/${propertyId}`;
         
         // Устанавливаем ссылку на веб-версию
         document.getElementById('web-link').href = webUrl;
@@ -164,12 +164,15 @@
             }
         }
         
-        // Пытаемся открыть приложение
-        setTimeout(() => {
-            window.location.href = appScheme;
-        }, 500);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Устанавливаем таймаут для определения, установлено ли приложение
+            setTimeout(function() {
+                // Пытаемся открыть приложение
+                window.location.href = appScheme;
+            }, 500);
+        });
         
-        // Проверяем, было ли открыто приложение через 2 секунды
+        // Проверяем, было ли открыто приложение через 3 секунды
         setTimeout(async () => {
             const isStillHere = document.hasFocus();
             
@@ -182,7 +185,7 @@
                 const downloadUrl = await getLatestRelease();
                 document.getElementById('download-link').href = downloadUrl;
             }
-        }, 2500);
+        }, 3000);
     </script>
 </body>
 </html>
