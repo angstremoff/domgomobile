@@ -19,7 +19,7 @@ jobs:
           cache: 'npm'
           
       - name: Установка зависимостей
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         
       - name: Настройка Java для Android
         uses: actions/setup-java@v3
@@ -30,21 +30,22 @@ jobs:
       - name: Настройка Android SDK
         uses: android-actions/setup-android@v2
       
-      - name: Сборка Android APK
+      - name: Сборка Android APK (debug-версия)
         run: |
           cd android
-          ./gradlew assembleRelease
+          chmod +x gradlew
+          ./gradlew assembleDebug
       
       - name: Перемещение готового APK
         run: |
           mkdir -p artifacts
-          cp android/app/build/outputs/apk/release/app-release.apk artifacts/DomGo-${{ github.ref_name }}.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk artifacts/DomGo-${{ github.ref_name }}-debug.apk
           
       - name: Создание релиза
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/DomGo-${{ github.ref_name }}.apk
+          files: artifacts/DomGo-${{ github.ref_name }}-debug.apk
           name: DomGo ${{ github.ref_name }}
           draft: false
           prerelease: false
