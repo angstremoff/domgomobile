@@ -1,0 +1,52 @@
+name: Сборка Android приложения
+
+on:
+  push:
+    tags:
+      - 'v*'  # Запуск на все теги, начинающиеся с v
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Скачиваем код
+        uses: actions/checkout@v3
+      
+      - name: Настройка Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: Установка зависимостей
+        run: npm ci
+        
+      - name: Настройка Java для Android
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+      
+      - name: Настройка Android SDK
+        uses: android-actions/setup-android@v2
+      
+      - name: Сборка Android APK
+        run: |
+          cd android
+          ./gradlew assembleRelease
+      
+      - name: Перемещение готового APK
+        run: |
+          mkdir -p artifacts
+          cp android/app/build/outputs/apk/release/app-release.apk artifacts/DomGo-${{ github.ref_name }}.apk
+          
+      - name: Создание релиза
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/DomGo-${{ github.ref_name }}.apk
+          name: DomGo ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
