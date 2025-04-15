@@ -92,7 +92,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 13
-        versionName "0.7.2"
+        versionName "0.7.3"
     }
     
     // Исправление конфликта ресурсов Material Design

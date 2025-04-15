@@ -13,10 +13,12 @@ import { showErrorAlert } from '../utils/alertUtils';
 
 const { width } = Dimensions.get('window');
 
-// Простые типы без сложной структуры
+// Тип для параметров навигации
 type RouteParams = {
   params: {
     propertyId: string;
+    property?: Property; // Добавляем опциональный параметр property для прямой навигации
+    id?: string; // Дополнительный параметр id для совместимости
   };
 };
 
@@ -40,9 +42,18 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
 
   // Проверяем, есть ли объявление в контексте, если нет - загружаем с сервера
   useEffect(() => {
+    // Если при переходе были переданы готовые данные объявления
+    if (route.params?.property) {
+      console.log('Используем готовые данные объявления из параметров');
+      setProperty(route.params.property);
+      return;
+    }
+    
+    // Если данных нет, загружаем по ID
     const fetchProperty = async () => {
       try {
         setLoading(true);
+        console.log('Загружаем данные объявления по ID:', propertyId);
         const data = await propertyService.getPropertyById(propertyId);
         if (data) {
           setProperty(data);
@@ -55,8 +66,11 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
       }
     };
 
-    fetchProperty();
-  }, [propertyId]);
+    // Если есть ID, загружаем данные
+    if (propertyId) {
+      fetchProperty();
+    }
+  }, [propertyId, route.params?.property]);
 
   // Обработка событий изображений и избранного происходит через обработчики событий в JSX
 

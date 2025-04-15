@@ -11,6 +11,13 @@ import HeaderControls from '../components/HeaderControls';
 import Colors from '../constants/colors';
 import { RootStackParamList } from '../types/navigation';
 
+// Расширяем тип globalThis для наших глобальных переменных
+declare global {
+  var propertyDeepLinkId: string | null;
+  var pendingPropertyNavigation: string | null;
+  var navigationRef: React.RefObject<any> | null;
+}
+
 // Импорт экранов
 import HomeScreen from '../screens/HomeScreen';
 import PropertyDetailsScreen from '../screens/PropertyDetailsScreen';
@@ -304,6 +311,7 @@ const AppNavigator = () => {
             setTimeout(() => {
               if (navigationRef.current) {
                 // @ts-ignore - Игнорируем ошибку для метода navigate
+                // Навигация с передачей id и предзагруженных данных объявления 
                 navigationRef.current.navigate('PropertyDetails', { id: propertyId, property: propertyData });
                 console.log('Выполнена отложенная навигация к экрану деталей объявления');
                 // Очищаем переменные после использования
@@ -331,6 +339,7 @@ const AppNavigator = () => {
             setTimeout(() => {
               if (navigationRef.current) {
                 // @ts-ignore - Игнорируем ошибку для метода navigate
+                // Навигация с передачей id и предзагруженных данных объявления
                 navigationRef.current.navigate('PropertyDetails', { id: globalThis.propertyDeepLinkId, property: propertyData });
                 // Очищаем глобальный ID после использования
                 // @ts-ignore - Игнорируем ошибку для глобальных переменных

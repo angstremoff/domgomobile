@@ -59,13 +59,25 @@ export default function App() {
         let propertyId = null;
         const urlObj = new URL(url);
         
-        // Проверка формата domgomobile://property/123
-        if (url.startsWith('domgomobile://property/')) {
-          // Схема custom URL
-          const pathParts = urlObj.pathname.split('/');
-          propertyId = pathParts[pathParts.length - 1];
-          console.log('Получена deep link на объявление:', propertyId);
-        } 
+        // Проверка разных форматов ссылок
+        if (url.startsWith('domgomobile://')) {
+          // Проверка формата domgomobile://property и его вариаций
+          if (url.startsWith('domgomobile://property')) {
+            // Сначала проверяем формат domgomobile://property?id=XXX
+            const queryParams = urlObj.searchParams;
+            const queryId = queryParams.get('id');
+            if (queryId) {
+              propertyId = queryId;
+              console.log('Получена прямая ссылка на объявление (query):', propertyId);
+            }
+            // Если id не нашли в query, проверяем формат domgomobile://property/XXX (для обратной совместимости)
+            else if (url.startsWith('domgomobile://property/')) {
+              const pathParts = urlObj.pathname.split('/');
+              propertyId = pathParts[pathParts.length - 1];
+              console.log('Получена прямая ссылка на объявление (path):', propertyId);
+            }
+          }
+        }
         // Проверка формата https://domgo.rs/property/123
         else if (url.includes('domgo.rs/property/')) {
           const pathParts = urlObj.pathname.split('/');
@@ -96,6 +108,18 @@ export default function App() {
           console.log('Устанавливаем отложенную навигацию для ID:', propertyId);
           // @ts-ignore - Игнорируем ошибки TypeScript для глобальных переменных
           globalThis.pendingPropertyNavigation = propertyId;
+          
+          // Прямая навигация, если приложение уже запущено
+          // @ts-ignore - Игнорируем ошибки TypeScript
+          if (globalThis.navigationRef && globalThis.navigationRef.current) {
+            console.log('Прямая навигация к экрану деталей объявления, ID:', propertyId);
+            try {
+              // @ts-ignore - Игнорируем ошибки TypeScript
+              globalThis.navigationRef.current.navigate('PropertyDetails', { propertyId: propertyId });
+            } catch (error) {
+              console.error('Ошибка при прямой навигации:', error);
+            }
+          }
         }
       } catch (error) {
         console.error('Ошибка при обработке URL объявления:', error);

@@ -7,14 +7,14 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  darkMode: false,
+  darkMode: true, // По умолчанию темная тема
   toggleDarkMode: () => {},
 });
 
 export const useTheme = () => useContext(ThemeContext);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [darkMode, setDarkMode] = useState<boolean>(false);
+  const [darkMode, setDarkMode] = useState<boolean>(true); // По умолчанию темная тема
   
   useEffect(() => {
     // Загружаем предпочтение темы при первом запуске приложения
@@ -23,6 +23,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const savedTheme = await AsyncStorage.getItem('@theme_preference');
         if (savedTheme) {
           setDarkMode(savedTheme === 'dark');
+        } else {
+          // Если нет сохраненных настроек, сохраняем темную тему по умолчанию
+          await AsyncStorage.setItem('@theme_preference', 'dark');
         }
       } catch (error) {
         console.error('Ошибка при загрузке темы:', error);
