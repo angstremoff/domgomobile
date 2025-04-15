@@ -138,8 +138,8 @@
         // Формируем ссылки
         // Исправляем формат ссылки для совместимости с кодом приложения
         const appScheme = `domgomobile://property?id=${propertyId}`;
-        // Правильный формат ссылки на сайт
-        const webUrl = `https://domgo.rs/property/${propertyId}`;
+        // Исправляем ссылку на сайт для открытия в модальном окне
+        const webUrl = `https://domgo.rs/?propertyId=${propertyId}`;
         
         // Устанавливаем ссылку на веб-версию
         document.getElementById('web-link').href = webUrl;
