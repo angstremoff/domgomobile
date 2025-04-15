@@ -164,28 +164,19 @@
             }
         }
         
-        document.addEventListener('DOMContentLoaded', function() {
-            // Устанавливаем таймаут для определения, установлено ли приложение
-            setTimeout(function() {
-                // Пытаемся открыть приложение
-                window.location.href = appScheme;
-            }, 500);
-        });
+        // Пытаемся открыть приложение сразу при загрузке
+        window.location.href = appScheme;
         
-        // Проверяем, было ли открыто приложение через 3 секунды
+        // Показываем кнопки установки через короткий таймаут
         setTimeout(async () => {
-            const isStillHere = document.hasFocus();
+            // Приложение не открылось, показываем диалог установки
+            document.getElementById('opening').style.display = 'none';
+            document.getElementById('install-prompt').style.display = 'block';
             
-            if (isStillHere) {
-                // Приложение не открылось, показываем диалог установки
-                document.getElementById('opening').style.display = 'none';
-                document.getElementById('install-prompt').style.display = 'block';
-                
-                // Получаем ссылку на последний релиз
-                const downloadUrl = await getLatestRelease();
-                document.getElementById('download-link').href = downloadUrl;
-            }
-        }, 3000);
+            // Получаем ссылку на последний релиз
+            const downloadUrl = await getLatestRelease();
+            document.getElementById('download-link').href = downloadUrl;
+        }, 1500);
     </script>
 </body>
 </html>
