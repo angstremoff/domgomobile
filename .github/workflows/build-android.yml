@@ -47,9 +47,16 @@ jobs:
           ./gradlew assembleRelease --no-daemon
           ls -la app/build/outputs/apk/release/
           
-      # 7. Сохраняем APK в base64 для ручного скачивания
-      - name: Кодируем APK в base64
+      # 7. Сохраняем APK для скачивания
+      - name: Сохраняем информацию об APK
         run: |
           echo "APK успешно собран!"
           echo "Размер APK: $(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)"
           echo "MD5: $(md5sum android/app/build/outputs/apk/release/app-release.apk | cut -d' ' -f1)"
+          
+      # 8. Сохраняем APK как артефакт сборки
+      - name: Загрузка артефакта
+        uses: actions/upload-artifact@v2
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
