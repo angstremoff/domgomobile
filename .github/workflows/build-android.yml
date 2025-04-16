@@ -30,17 +30,26 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 5. Собираем Debug APK (без подписи)
-      - name: Сборка Debug APK
+      # 5. Создаем keystore для подписи APK
+      - name: Настройка подписи APK
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+          echo "MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> android/gradle.properties
+
+      # 6. Собираем APK
+      - name: Сборка APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
+          ls -la app/build/outputs/apk/release/
           
-      # 6. Информация о собранном APK
-      - name: Информация о APK
+      # 7. Сохраняем APK в base64 для ручного скачивания
+      - name: Кодируем APK в base64
         run: |
-          ls -la android/app/build/outputs/apk/debug/
-          echo "APK собран успешно!"
-          echo "Размер APK: $(du -h android/app/build/outputs/apk/debug/app-debug.apk | cut -f1)"
-          echo "MD5: $(md5sum android/app/build/outputs/apk/debug/app-debug.apk | cut -d' ' -f1)"
+          echo "APK успешно собран!"
+          echo "Размер APK: $(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)"
+          echo "MD5: $(md5sum android/app/build/outputs/apk/release/app-release.apk | cut -d' ' -f1)"
