@@ -136,10 +136,12 @@
         const propertyId = urlParams.get('id');
         
         // Формируем ссылки
-        // Исправляем формат ссылки для совместимости с кодом приложения
-        const appScheme = `domgomobile://property?id=${propertyId}`;
+        // ИСПРАВЛЕНО: используем формат с путем вместо query-параметра
+        const appScheme = `domgomobile://property/${propertyId}`;
         // Исправляем ссылку на сайт для открытия в модальном окне
         const webUrl = `https://domgo.rs/?propertyId=${propertyId}`;
+        
+        console.log("Используем ссылку на приложение:", appScheme);
         
         // Устанавливаем ссылку на веб-версию
         document.getElementById('web-link').href = webUrl;
@@ -155,8 +157,8 @@
                 const data = await response.json();
                 
                 // Ищем APK-файл в списке ассетов
-                // Вместо поиска актуального имени файла, просто формируем прямую ссылку на DomGo.apk
-                return 'https://github.com/angstremoff/domgomobile/releases/latest/download/DomGo.apk';
+                // Исправляем имя файла на строчное domgo.apk как в релизах
+                return 'https://github.com/angstremoff/domgomobile/releases/latest/download/domgo.apk';
             } catch (error) {
                 console.error('Ошибка при получении релиза:', error);
                 document.getElementById('error-message').style.display = 'block';
