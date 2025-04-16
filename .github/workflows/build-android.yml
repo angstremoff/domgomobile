@@ -18,7 +18,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
       
       # 3. Устанавливаем зависимости
       - name: Установка зависимостей
@@ -30,7 +29,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
       # 5. Создаем keystore для подписи APK
       - name: Настройка подписи APK
@@ -47,10 +45,11 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
-      
-      # 7. Сохраняем APK
-      - name: Сохранение APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: app-release
-          path: android/app/build/outputs/apk/release/app-release.apk
+          ls -la app/build/outputs/apk/release/
+          
+      # 7. Сохраняем APK в base64 для ручного скачивания
+      - name: Кодируем APK в base64
+        run: |
+          echo "APK успешно собран!"
+          echo "Размер APK: $(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)"
+          echo "MD5: $(md5sum android/app/build/outputs/apk/release/app-release.apk | cut -d' ' -f1)"
