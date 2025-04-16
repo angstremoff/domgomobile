@@ -14,8 +14,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
 import CustomModal from '../components/CustomModal';
-import Constants from 'expo-constants';
-import * as Updates from 'expo-updates';
+// Импортируем новый сервис обновлений
+import { checkForUpdates, getCurrentVersion, showUpdateDialog } from '../services/UpdateService';
 
 const SettingsScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -43,90 +43,48 @@ const SettingsScreen = ({ navigation }: any) => {
     setModalVisible(true);
   };
 
-  const checkForUpdates = async () => {
+  const checkForUpdatesFromGitHub = async () => {
     try {
       setIsCheckingUpdate(true);
       
-      // Проверка, запущено ли приложение в Expo Go
-      if (Constants.appOwnership === 'expo') {
-        showModal(
-          t('settings.update.error'), 
-          'Проверка обновлений не поддерживается в Expo Go. Используйте полную сборку приложения.'
-        );
-        setIsCheckingUpdate(false);
-        return;
-      }
-      
+      const currentVersion = getCurrentVersion();
       console.log('Начинаем проверку обновлений...');
-      console.log('Текущая версия:', Constants.expoConfig?.version);
-      console.log('Текущий runtimeVersion:', Constants.expoConfig?.runtimeVersion);
-      console.log('Установленное обновление:', Updates.updateId || 'Нет');
-      
-      // Очищаем кэш обновлений для тестирования
-      try {
-        // Это неофициальный API, но может помочь для тестирования
-        // @ts-ignore - игнорируем ошибку типизации для неофициального API
-        if (Updates._reset && typeof Updates._reset === 'function') {
-          console.log('Очищаем кэш обновлений...');
-          // @ts-ignore
-          await Updates._reset();
-        }
-      } catch (e) {
-        console.log('Не удалось очистить кэш:', e);
-      }
+      console.log('Текущая версия:', currentVersion);
       
       showModal(
-        t('settings.update.checking'), 
-        `Проверка обновлений...\nТекущая версия: ${Constants.expoConfig?.version}\nRuntime: ${Constants.expoConfig?.runtimeVersion || 'Не указан'}`
+        t('settings.update.checking') || 'Проверка обновлений', 
+        `Проверка обновлений...\nТекущая версия: ${currentVersion}`
       );
       
-      console.log('Вызываем Updates.checkForUpdateAsync()...');
-      const update = await Updates.checkForUpdateAsync();
-      console.log('Результат проверки:', update);
-      
-      if (update.isAvailable) {
-        showModal(
-          t('settings.update.available'), 
-          `Найдено обновление! Текущая версия: ${Constants.expoConfig?.version}\nRuntime: ${Constants.expoConfig?.runtimeVersion || 'Не указан'}`
-        );
-        
-        // Загрузка обновления
-        showModal(t('settings.update.downloading'), 'Загрузка обновления...');
-        console.log('Загружаем обновление...');
-        
-        try {
-          const downloadResult = await Updates.fetchUpdateAsync();
-          console.log('Результат загрузки:', downloadResult);
-          
-          // Обновление готово к установке
+      // Проверка обновлений через GitHub API
+      const result = await checkForUpdates(
+        true, // Принудительная проверка
+        (latestVersion) => {
+          // Callback для доступного обновления
+          showUpdateDialog(latestVersion, t);
+        },
+        () => {
+          // Callback для случая, когда обновлений нет
           showModal(
-            t('settings.update.ready'), 
-            `${t('settings.update.restart')}\nОбновление успешно загружено! Перезапускаем приложение...`
+            t('settings.update.upToDate') || 'Обновлений нет', 
+            t('settings.update.upToDateMessage') || 'У вас установлена последняя версия приложения.'
           );
-          
-          // Перезапуск приложения для применения обновления
-          console.log('Перезапускаем приложение...');
-          setTimeout(async () => {
-            await Updates.reloadAsync();
-          }, 2000); // Даем немного времени для отображения диалога
-        } catch (downloadError: any) {
-          console.error('Ошибка при загрузке обновления:', downloadError);
+        },
+        (error) => {
+          // Callback для обработки ошибок
           showModal(
-            t('settings.update.error'), 
-            `Ошибка при загрузке обновления: ${downloadError?.message || String(downloadError)}`
+            t('settings.update.error') || 'Ошибка', 
+            `Ошибка при проверке обновлений: ${error.message || error}`
           );
         }
-      } else {
-        showModal(
-          t('settings.update.notAvailable'), 
-          `Обновлений не найдено. Текущая версия: ${Constants.expoConfig?.version}\nRuntime: ${Constants.expoConfig?.runtimeVersion || 'Не указан'}`
-        );
-      }
+      );
+      
+      console.log('Результат проверки:', result);
     } catch (error: any) {
       console.error('Ошибка при проверке обновлений:', error);
       showModal(
-        t('settings.update.error'), 
-        `Ошибка при проверке обновлений:\n${error?.message || String(error)}`
+        t('settings.update.error') || 'Ошибка', 
+        `Ошибка при проверке обновлений: ${error?.message || String(error)}`
       );
     } finally {
       setIsCheckingUpdate(false);
@@ -177,7 +135,7 @@ const SettingsScreen = ({ navigation }: any) => {
             }]}
             onPress={handleLogout}
           >
-            <Text style={styles.logoutText}>{t('common.logout')}</Text>
+            <Text style={[styles.logoutText, { color: theme.text }]}>{t('common.logout')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -185,12 +143,11 @@ const SettingsScreen = ({ navigation }: any) => {
       <View style={[styles.section, { backgroundColor: theme.card }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('settings.about')}</Text>
         
-        <TouchableOpacity style={styles.settingItem} onPress={checkForUpdates}>
+        <TouchableOpacity style={styles.settingItem} onPress={checkForUpdatesFromGitHub}>
           <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.version')}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Text style={[styles.settingValue, { color: theme.secondary }]}>
-              {Constants.expoConfig?.version || '0.2.6'}
-              {Constants.expoConfig?.runtimeVersion ? ` (RT ${Constants.expoConfig.runtimeVersion})` : ''}
+              {getCurrentVersion()}
             </Text>
             {isCheckingUpdate && <ActivityIndicator size="small" color={theme.secondary} style={{ marginLeft: 8 }} />}
           </View>
