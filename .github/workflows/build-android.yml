@@ -13,58 +13,44 @@ jobs:
       - name: Скачиваем код
         uses: actions/checkout@v3
       
-      # 2. Устанавливаем правильную версию Node.js
+      # 2. Настраиваем Node.js
       - name: Настройка Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'
       
-      # 3. Устанавливаем депенденси
+      # 3. Устанавливаем зависимости
       - name: Установка зависимостей
         run: npm ci --legacy-peer-deps
 
-      # 4. Устанавливаем Java
+      # 4. Настраиваем Java
       - name: Настройка Java
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
           java-version: '17'
+          cache: 'gradle'
 
-      # 5. Декодируем ключ для подписи APK
-      - name: Создание keystore файла
+      # 5. Создаем keystore для подписи APK
+      - name: Настройка подписи APK
         run: |
-          mkdir -p android/app/keystore
-          echo "$KEYSTORE_BASE64" > keystore.base64
-          base64 -d keystore.base64 > android/app/keystore/release-key.keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+          echo "MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> android/gradle.properties
 
-          # Создаем файл gradle.properties с ключами
-          echo "MYAPP_UPLOAD_STORE_FILE=keystore/release-key.keystore" >> android/gradle.properties
-          echo "MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS" >> android/gradle.properties
-          echo "MYAPP_UPLOAD_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> android/gradle.properties
-          echo "MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD" >> android/gradle.properties
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-
-      # 7. Собираем APK
+      # 6. Собираем APK
       - name: Сборка APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
       
-      # 8. Переименовываем APK для релиза
-      - name: Переименование APK
-        run: |
-          mkdir -p artifacts
-          cp android/app/build/outputs/apk/release/app-release.apk artifacts/DomGo.apk
-      
-      # 9. Загружаем APK как артефакт
-      - name: Загрузка APK как артефакт
-        uses: actions/upload-artifact@v2
+      # 7. Сохраняем APK
+      - name: Сохранение APK
+        uses: actions/upload-artifact@v3
         with:
-          name: domgo-apk
-          path: artifacts/DomGo.apk
-          retention-days: 30
+          name: app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
