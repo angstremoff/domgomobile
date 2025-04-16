@@ -61,12 +61,10 @@ jobs:
           mkdir -p artifacts
           cp android/app/build/outputs/apk/release/app-release.apk artifacts/DomGo.apk
       
-      # 9. Создаем релиз
-      - name: Создание релиза
-        run: |
-          gh release create ${{ github.ref_name }} \
-            --title "DomGo ${{ github.ref_name }}" \
-            --notes "Версия ${{ github.ref_name }}" \
-            artifacts/DomGo.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 9. Загружаем APK как артефакт
+      - name: Загрузка APK как артефакт
+        uses: actions/upload-artifact@v2
+        with:
+          name: domgo-apk
+          path: artifacts/DomGo.apk
+          retention-days: 30
