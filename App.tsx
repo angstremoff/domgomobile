@@ -119,8 +119,9 @@ export default function App() {
             try {
               // Очень важно: PropertyDetails ожидает параметр propertyId
               // @ts-ignore - Игнорируем ошибки TypeScript
+              // Исправление: Устанавливаем PropertyDetails как второй экран, но активным (index: 1)
               globalThis.navigationRef.current.reset({
-                index: 0,
+                index: 1,  // Изменено с 0 на 1, чтобы сделать активным PropertyDetails
                 routes: [
                   { name: 'Home' },
                   { name: 'PropertyDetails', params: { propertyId } }
