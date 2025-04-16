@@ -34,15 +34,19 @@ jobs:
       - name: Создание keystore файла
         run: |
           mkdir -p android/app/keystore
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore/release-key.keystore
-          
-      # 6. Создаем файл с ключами
-      - name: Настройка gradle.properties
-        run: |
+          echo "$KEYSTORE_BASE64" > keystore.base64
+          base64 -d keystore.base64 > android/app/keystore/release-key.keystore
+
+          # Создаем файл gradle.properties с ключами
           echo "MYAPP_UPLOAD_STORE_FILE=keystore/release-key.keystore" >> android/gradle.properties
-          echo "MYAPP_UPLOAD_KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> android/gradle.properties
-          echo "MYAPP_UPLOAD_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> android/gradle.properties
-          echo "MYAPP_UPLOAD_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_ALIAS=$KEY_ALIAS" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_PASSWORD=$KEY_PASSWORD" >> android/gradle.properties
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       # 7. Собираем APK
       - name: Сборка APK
@@ -57,25 +61,12 @@ jobs:
           mkdir -p artifacts
           cp android/app/build/outputs/apk/release/app-release.apk artifacts/DomGo.apk
       
-      # 9. Загружаем APK как артефакт, чтобы он был доступен
-      - name: Загрузка APK как артефакта
-        uses: actions/upload-artifact@v3
-        with:
-          name: DomGo-APK
-          path: artifacts/DomGo.apk
-          retention-days: 14
-          
-      # 10. Создаем релиз
+      # 9. Создаем релиз
       - name: Создание релиза
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: "artifacts/DomGo.apk"
-          name: "DomGo ${{ github.ref_name }}"
-          body: |
-            Версия ${{ github.ref_name }}
-            Дата: ${{ github.event.repository.updated_at }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          draft: false
-          prerelease: false
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "DomGo ${{ github.ref_name }}" \
+            --notes "Версия ${{ github.ref_name }}" \
+            artifacts/DomGo.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
