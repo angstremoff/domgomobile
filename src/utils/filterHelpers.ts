@@ -43,10 +43,20 @@ export const applyPropertyFilters = (
   }
   
   // Фильтрация по городу
-  if (selectedCity) {
-    filtered = filtered.filter(prop => 
-      prop.city_id !== undefined && prop.city_id.toString() === selectedCity.id.toString()
-    );
+  if (selectedCity && selectedCity.id) {
+    filtered = filtered.filter(prop => {
+      try {
+        // Безопасная проверка city_id
+        if (prop.city_id === undefined || prop.city_id === null) {
+          return false;
+        }
+        // Безопасное преобразование в строку
+        return String(prop.city_id) === String(selectedCity.id);
+      } catch (error) {
+        console.error('Ошибка при фильтрации по городу:', error);
+        return false;
+      }
+    });
   }
   
   // Применение дополнительных фильтров

@@ -244,14 +244,24 @@ const HomeScreen = ({ navigation }: any) => {
       }
       
       // Фильтрация по городу
-      if (selectedCity) {
-        filtered = filtered.filter(prop => 
-          prop.city_id !== undefined && prop.city_id.toString() === selectedCity.id.toString()
-        );
+      if (selectedCity && selectedCity.id) {
+        filtered = filtered.filter(prop => {
+          try {
+            // Безопасная проверка city_id
+            if (prop.city_id === undefined || prop.city_id === null) {
+              return false;
+            }
+            // Безопасное преобразование в строку
+            return String(prop.city_id) === String(selectedCity.id);
+          } catch (error) {
+            console.error('Ошибка при фильтрации по городу:', error);
+            return false;
+          }
+        });
       }
       
       // Применение активных фильтров только если они были явно применены
-      if ((type === 'sale' && filtersAppliedSale) || (type === 'rent' && filtersAppliedRent)) {
+      if (activeFilters && Object.keys(activeFilters).length > 0) {
         filtered = applyActiveFilters(filtered, type);
       } else if (type === 'sale' || type === 'rent') {
         // Если фильтры не были применены, просто фильтруем по типу
@@ -395,10 +405,20 @@ const HomeScreen = ({ navigation }: any) => {
         filtered = filtered.filter(prop => prop.type === 'rent');
       }
       
-      if (selectedCity) {
-        filtered = filtered.filter(prop => 
-          prop.city_id !== undefined && prop.city_id.toString() === selectedCity.id.toString()
-        );
+      if (selectedCity && selectedCity.id) {
+        filtered = filtered.filter(prop => {
+          try {
+            // Безопасная проверка city_id
+            if (prop.city_id === undefined || prop.city_id === null) {
+              return false;
+            }
+            // Безопасное преобразование в строку
+            return String(prop.city_id) === String(selectedCity.id);
+          } catch (error) {
+            console.error('Ошибка при фильтрации по городу:', error);
+            return false;
+          }
+        });
       }
       
       setFilteredProperties(filtered);

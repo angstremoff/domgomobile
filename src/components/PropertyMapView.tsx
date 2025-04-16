@@ -87,12 +87,26 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
 
   // Фильтруем только свойства с координатами и принадлежащие выбранному городу
   const propertiesWithCoords = properties.filter(p => {
-    // Проверяем наличие координат
-    const coords = parseCoordinates(p);
-    if (!coords) return false;
-    
-    // Проверяем принадлежность к выбранному городу
-    return p.city_id !== undefined && p.city_id.toString() === selectedCity.id.toString();
+    try {
+      // Проверяем наличие координат
+      const coords = parseCoordinates(p);
+      if (!coords) return false;
+      
+      // Проверка на null/undefined для selectedCity и city_id
+      if (!selectedCity || !selectedCity.id || p.city_id === undefined || p.city_id === null) {
+        return false;
+      }
+      
+      // Безопасное преобразование в строку
+      const cityIdStr = String(p.city_id);
+      const selectedCityIdStr = String(selectedCity.id);
+      
+      // Проверяем принадлежность к выбранному городу
+      return cityIdStr === selectedCityIdStr;
+    } catch (error) {
+      console.error('Ошибка при фильтрации объекта:', error, p);
+      return false;
+    }
   });
 
   // Генерация HTML с картой MapLibre как в web версии
