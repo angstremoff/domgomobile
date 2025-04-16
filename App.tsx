@@ -57,7 +57,29 @@ export default function App() {
       // Проверяем разные форматы ссылок на объявления
       try {
         let propertyId = null;
-        const urlObj = new URL(url);
+        let urlObj;
+        
+        // Исправление: URL API не всегда корректно обрабатывает кастомные схемы
+        // Преобразуем domgomobile:// ссылки в понятный формат для разбора
+        try {
+          urlObj = new URL(url);
+        } catch (urlError) {
+          console.error('Ошибка при создании URL объекта:', urlError);
+          
+          // Если это кастомная схема, обрабатываем вручную
+          if (url.startsWith('domgomobile://')) {
+            // Преобразуем domgomobile:// в https:// для корректного разбора URL
+            let tempUrl = url.replace('domgomobile://', 'https://domgo-temp.com/');
+            try {
+              urlObj = new URL(tempUrl);
+            } catch (e) {
+              console.error('Не удалось парсить даже после преобразования:', e);
+              return; // Некорректный URL, прекращаем обработку
+            }
+          } else {
+            return; // Некорректный URL, прекращаем обработку
+          }
+        }
         
         // Проверка разных форматов ссылок
         if (url.startsWith('domgomobile://')) {
@@ -65,17 +87,53 @@ export default function App() {
           if (url.startsWith('domgomobile://property')) {
             // СНАЧАЛА проверяем формат с путём - domgomobile://property/XXX
             if (url.startsWith('domgomobile://property/')) {
-              const pathParts = urlObj.pathname.split('/');
-              propertyId = pathParts[pathParts.length - 1];
-              console.log('Получена прямая ссылка на объявление (path):', propertyId);
+              // Защита от пустых путей
+              if (urlObj && urlObj.pathname) {
+                const pathParts = urlObj.pathname.split('/');
+                const filteredParts = pathParts.filter(part => part.trim() !== '');
+                
+                if (filteredParts.length > 0) {
+                  propertyId = filteredParts[filteredParts.length - 1];
+                  console.log('Получена прямая ссылка на объявление (path):', propertyId);
+                } else {
+                  console.warn('Путь в URL пустой, ID не найден');
+                }
+              } else {
+                // Прямой парсинг URL, если объект URL не содержит pathname
+                const parts = url.split('domgomobile://property/');
+                if (parts.length > 1 && parts[1].trim() !== '') {
+                  propertyId = parts[1].trim();
+                  console.log('Получена прямая ссылка на объявление (ручной парсинг):', propertyId);
+                }
+              }
             }
             // Если не нашли в пути, проверяем формат domgomobile://property?id=XXX
             else {
-              const queryParams = urlObj.searchParams;
-              const queryId = queryParams.get('id');
-              if (queryId) {
-                propertyId = queryId;
-                console.log('Получена прямая ссылка на объявление (query):', propertyId);
+              if (urlObj && urlObj.searchParams) {
+                const queryParams = urlObj.searchParams;
+                const queryId = queryParams.get('id');
+                if (queryId) {
+                  propertyId = queryId;
+                  console.log('Получена прямая ссылка на объявление (query):', propertyId);
+                } else {
+                  // Прямой парсинг query параметров, если URL API не работает
+                  if (url.includes('?id=')) {
+                    const parts = url.split('?id=');
+                    if (parts.length > 1 && parts[1].trim() !== '') {
+                      propertyId = parts[1].trim();
+                      console.log('Получена прямая ссылка на объявление (ручной парсинг query):', propertyId);
+                    }
+                  }
+                }
+              } else {
+                // Прямой парсинг query параметров, если URL API не работает
+                if (url.includes('?id=')) {
+                  const parts = url.split('?id=');
+                  if (parts.length > 1 && parts[1].trim() !== '') {
+                    propertyId = parts[1].trim();
+                    console.log('Получена прямая ссылка на объявление (ручной парсинг query):', propertyId);
+                  }
+                }
               }
             }
           }
@@ -124,7 +182,7 @@ export default function App() {
                 index: 1,  // Изменено с 0 на 1, чтобы сделать активным PropertyDetails
                 routes: [
                   { name: 'Home' },
-                  { name: 'PropertyDetails', params: { propertyId } }
+                  { name: 'PropertyDetails', params: { id: propertyId } }
                 ],
               });
             } catch (error) {
