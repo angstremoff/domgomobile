@@ -57,15 +57,24 @@ jobs:
           mkdir -p artifacts
           cp android/app/build/outputs/apk/release/app-release.apk artifacts/DomGo.apk
       
-      # 9. Создаем релиз
-      - name: Создание релиза
-        uses: softprops/action-gh-release@v1
+      # 9. Загружаем APK как артефакт, чтобы он был доступен
+      - name: Загрузка APK как артефакта
+        uses: actions/upload-artifact@v3
         with:
-          files: artifacts/DomGo.apk
-          name: DomGo ${{ github.ref_name }}
+          name: DomGo-APK
+          path: artifacts/DomGo.apk
+          retention-days: 14
+          
+      # 10. Создаем релиз
+      - name: Создание релиза
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "artifacts/DomGo.apk"
+          name: "DomGo ${{ github.ref_name }}"
           body: |
             Версия ${{ github.ref_name }}
             Дата: ${{ github.event.repository.updated_at }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           draft: false
           prerelease: false
         env:
