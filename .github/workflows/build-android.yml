@@ -55,13 +55,13 @@ jobs:
       - name: Переименование APK
         run: |
           mkdir -p artifacts
-          cp android/app/build/outputs/apk/release/app-release.apk artifacts/DomGo-${{ github.ref_name }}.apk
+          cp android/app/build/outputs/apk/release/app-release.apk artifacts/DomGo.apk
       
       # 9. Создаем релиз
       - name: Создание релиза
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/DomGo-${{ github.ref_name }}.apk
+          files: artifacts/DomGo.apk
           name: DomGo ${{ github.ref_name }}
           body: |
             Версия ${{ github.ref_name }}
