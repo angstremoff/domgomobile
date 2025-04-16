@@ -47,46 +47,9 @@ jobs:
           ./gradlew assembleRelease --no-daemon
           ls -la app/build/outputs/apk/release/
           
-      # 7. Сохраняем APK для публикации
-      - name: Подготовка APK для публикации
+      # 7. Сохраняем APK в base64 для ручного скачивания
+      - name: Кодируем APK в base64
         run: |
-          mkdir -p release
-          cp android/app/build/outputs/apk/release/app-release.apk release/DomGo.apk
           echo "APK успешно собран!"
-          echo "Размер APK: $(du -h release/DomGo.apk | cut -f1)"
-          echo "MD5: $(md5sum release/DomGo.apk | cut -d' ' -f1)"
-
-      # 8. Публикуем релиз на GitHub
-      - name: Создание релиза
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            
-            // Получаем текущий тег/версию
-            const tagName = process.env.GITHUB_REF.replace('refs/tags/', '');
-            
-            // Создаем релиз
-            const release = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: tagName,
-              name: `DomGo ${tagName}`,
-              body: `Версия ${tagName}\nДата: ${new Date().toLocaleDateString()}`
-            });
-            
-            // Загружаем APK как ассет релиза
-            const apkData = fs.readFileSync('release/DomGo.apk');
-            
-            await github.rest.repos.uploadReleaseAsset({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: release.data.id,
-              name: 'DomGo.apk',
-              data: apkData
-            });
-            
-            console.log(`Релиз ${tagName} успешно создан и APK загружен!`);
-            console.log(`URL релиза: ${release.data.html_url}`);
-            console.log(`URL для скачивания APK: ${release.data.html_url}/assets/DomGo.apk`);
+          echo "Размер APK: $(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)"
+          echo "MD5: $(md5sum android/app/build/outputs/apk/release/app-release.apk | cut -d' ' -f1)"
