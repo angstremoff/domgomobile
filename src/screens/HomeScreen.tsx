@@ -243,16 +243,21 @@ const HomeScreen = ({ navigation }: any) => {
         );
       }
       
-      // Фильтрация по городу
-      if (selectedCity && selectedCity.id) {
+      // Фильтрация по городу - с максимальной защитой от ошибок
+      if (selectedCity && selectedCity?.id) {
+        // Заранее преобразуем id города в строку один раз
+        const cityIdStr = String(selectedCity.id);
+        
         filtered = filtered.filter(prop => {
+          // Проверяем все возможные случаи null/undefined
+          if (!prop || prop.city_id === undefined || prop.city_id === null) {
+            return false;
+          }
+          
           try {
-            // Безопасная проверка city_id
-            if (prop.city_id === undefined || prop.city_id === null) {
-              return false;
-            }
-            // Безопасное преобразование в строку
-            return String(prop.city_id) === String(selectedCity.id);
+            // Преобразуем id свойства в строку
+            const propCityIdStr = String(prop.city_id);
+            return propCityIdStr === cityIdStr;
           } catch (error) {
             console.error('Ошибка при фильтрации по городу:', error);
             return false;
@@ -405,15 +410,20 @@ const HomeScreen = ({ navigation }: any) => {
         filtered = filtered.filter(prop => prop.type === 'rent');
       }
       
-      if (selectedCity && selectedCity.id) {
+      if (selectedCity && selectedCity?.id) {
+        // Заранее преобразуем id города в строку один раз
+        const cityIdStr = String(selectedCity.id);
+        
         filtered = filtered.filter(prop => {
+          // Проверяем все возможные случаи null/undefined
+          if (!prop || prop.city_id === undefined || prop.city_id === null) {
+            return false;
+          }
+          
           try {
-            // Безопасная проверка city_id
-            if (prop.city_id === undefined || prop.city_id === null) {
-              return false;
-            }
-            // Безопасное преобразование в строку
-            return String(prop.city_id) === String(selectedCity.id);
+            // Преобразуем id свойства в строку
+            const propCityIdStr = String(prop.city_id);
+            return propCityIdStr === cityIdStr;
           } catch (error) {
             console.error('Ошибка при фильтрации по городу:', error);
             return false;

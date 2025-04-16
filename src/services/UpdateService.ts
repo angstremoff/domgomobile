@@ -3,8 +3,8 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Константы для сервиса обновлений
-const GITHUB_API_URL = 'https://api.github.com/repos/angstremoff/domgors/releases/latest';
-const GITHUB_RELEASE_URL = 'https://github.com/angstremoff/domgors/releases/latest';
+const GITHUB_API_URL = 'https://api.github.com/repos/angstremoff/domgomobile/releases/latest';
+const GITHUB_RELEASE_URL = 'https://github.com/angstremoff/domgomobile/releases/latest';
 const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
 const LAST_UPDATE_CHECK_KEY = 'last_update_check';
 
