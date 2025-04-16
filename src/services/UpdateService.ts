@@ -40,37 +40,99 @@ export const checkForUpdates = async (
   onNoUpdateAvailable?: () => void,
   onError?: (error: any) => void
 ): Promise<{ isUpdateAvailable: boolean; latestVersion: string }> => {
+  let controller: AbortController | null = null;
+  let timeoutId: NodeJS.Timeout | null = null;
+
   try {
+    console.log('Начинаем проверку обновлений...');
+    
     // Проверяем, не слишком ли часто проверяем обновления
     if (!force) {
-      const lastCheckStr = await AsyncStorage.getItem(LAST_UPDATE_CHECK_KEY);
-      if (lastCheckStr) {
-        const lastCheck = parseInt(lastCheckStr, 10);
-        const now = Date.now();
-        
-        if (now - lastCheck < UPDATE_CHECK_INTERVAL) {
-          console.log('Слишком рано для новой проверки обновлений');
-          onNoUpdateAvailable?.();
-          return { isUpdateAvailable: false, latestVersion: getCurrentVersion() };
+      try {
+        const lastCheckStr = await AsyncStorage.getItem(LAST_UPDATE_CHECK_KEY);
+        if (lastCheckStr) {
+          const lastCheck = parseInt(lastCheckStr, 10);
+          const now = Date.now();
+          
+          if (now - lastCheck < UPDATE_CHECK_INTERVAL) {
+            console.log('Слишком рано для новой проверки обновлений');
+            onNoUpdateAvailable?.();
+            return { isUpdateAvailable: false, latestVersion: getCurrentVersion() };
+          }
         }
+      } catch (storageError) {
+        console.warn('Ошибка при проверке AsyncStorage:', storageError);
+        // Продолжаем проверку даже если была ошибка с хранилищем
       }
     }
     
-    // Сохраняем время проверки
-    await AsyncStorage.setItem(LAST_UPDATE_CHECK_KEY, Date.now().toString());
+    // Устанавливаем таймаут для запроса (15 секунд)
+    controller = new AbortController();
+    const signal = controller.signal;
     
-    // Запрашиваем последнюю версию с GitHub
-    const response = await fetch(GITHUB_API_URL, {
+    timeoutId = setTimeout(() => {
+      if (controller) {
+        controller.abort();
+        console.log('Запрос на проверку обновлений прерван по таймауту');
+      }
+    }, 15000); // 15 секунд на запрос (увеличено с 5 до 15 секунд для слабых соединений)
+    
+    // Сохраняем время проверки
+    try {
+      await AsyncStorage.setItem(LAST_UPDATE_CHECK_KEY, Date.now().toString());
+    } catch (storageError) {
+      console.warn('Ошибка при сохранении времени проверки:', storageError);
+    }
+    
+    console.log('Отправляем запрос к GitHub API:', GITHUB_API_URL);
+    console.log('User-Agent:', `DomGoMobile/${getCurrentVersion()}`);
+    
+    // Функция запроса с повторными попытками
+    const fetchWithRetry = async (url: string, options: any, retries = 2, delay = 2000): Promise<Response> => {
+      try {
+        return await fetch(url, options);
+      } catch (err) {
+        if (retries <= 0) throw err;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        console.log(`Повторная попытка запроса (осталось ${retries})`);
+        return fetchWithRetry(url, options, retries - 1, delay);
+      }
+    }
+    
+    // Запрашиваем последнюю версию с GitHub с поддержкой повторных попыток
+    const response = await fetchWithRetry(GITHUB_API_URL, {
       headers: {
         'Accept': 'application/vnd.github.v3+json',
-      }
-    });
+        'User-Agent': `DomGoMobile/${getCurrentVersion()}` // Добавляем User-Agent для улучшения запросов
+      },
+      signal // Передаем сигнал для возможности прерывания запроса
+    }, 2, 2000); // 2 повторные попытки с задержкой 2 секунды
+    
+    // Очищаем таймер, так как запрос завершен
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
     
     if (!response.ok) {
+      console.error(`GitHub API вернул статус ${response.status}`);
       throw new Error(`GitHub API вернул статус ${response.status}`);
     }
     
-    const data = await response.json();
+    console.log('Получен ответ от GitHub API');
+    
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error('Ошибка при парсинге JSON:', jsonError);
+      throw new Error('Ошибка при парсинге ответа GitHub API');
+    }
+    
+    if (!data || !data.tag_name) {
+      console.error('Отсутствует поле tag_name в ответе GitHub API:', data);
+      throw new Error('Некорректный формат ответа GitHub API');
+    }
     
     // Получаем строку версии из тега (удаляем 'v' в начале, если есть)
     const latestVersion = data.tag_name.replace(/^v/, '');
@@ -81,6 +143,8 @@ export const checkForUpdates = async (
     // Проверяем, есть ли обновление
     const isUpdateAvailable = compareVersions(currentVersion, latestVersion);
     
+    console.log(`Доступно обновление: ${isUpdateAvailable ? 'Да' : 'Нет'}`);
+    
     if (isUpdateAvailable) {
       onUpdateAvailable?.(latestVersion);
     } else {
@@ -88,9 +152,40 @@ export const checkForUpdates = async (
     }
     
     return { isUpdateAvailable, latestVersion };
-  } catch (error) {
+  } catch (error: any) {
+    // Очищаем таймер, если он еще существует
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    
+    // Обработка ошибки прерывания
+    if (error.name === 'AbortError') {
+      console.error('Запрос на проверку обновлений был прерван');
+      const timeoutError = new Error('Время ожидания истекло. Проверьте подключение к интернету и попробуйте снова.');
+      onError?.(timeoutError);
+      return { isUpdateAvailable: false, latestVersion: getCurrentVersion() };
+    }
+
+    // Обработка ошибок сети
+    if (error.message && error.message.includes('Network request failed')) {
+      console.error('Ошибка сети при проверке обновлений');
+      const networkError = new Error('Не удалось подключиться к серверу. Проверьте подключение к интернету.');
+      onError?.(networkError);
+      return { isUpdateAvailable: false, latestVersion: getCurrentVersion() };
+    }
+    
+    // Улучшенный лог ошибки
     console.error('Ошибка при проверке обновлений:', error);
-    onError?.(error);
+    console.error('Тип ошибки:', error?.name);
+    console.error('Сообщение:', error?.message);
+    console.error('Stack:', error?.stack);
+    
+    // Преобразуем ошибку в понятное для пользователя сообщение
+    const userFriendlyError = new Error(
+      `Не удалось проверить обновления: ${error?.message || 'Неизвестная ошибка'}`
+    );
+    onError?.(userFriendlyError);
     return { isUpdateAvailable: false, latestVersion: getCurrentVersion() };
   }
 };
