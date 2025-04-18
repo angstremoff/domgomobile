@@ -135,7 +135,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         const propertyId = urlParams.get('id');
         
-        // Формируем ссылки
+        // Формируем ссылки для приложения
+        // Добавляем форвард-слэш после 'property', чтобы соответствовать конфигурации intent-filter
         const appScheme = `domgomobile://property/${propertyId}`;
         const webUrl = `https://domgo.info/property/${propertyId}`;
         

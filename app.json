@@ -31,7 +31,24 @@
         "googleMaps": {
           "apiKey": "AIzaSyC-7lcRdJ9zPKdyC7PPZW0iiomUS_wnR4E"
         }
-      }
+      },
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "domgomobile",
+              "host": "property",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

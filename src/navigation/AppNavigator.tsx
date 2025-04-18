@@ -312,7 +312,12 @@ const AppNavigator = () => {
               if (navigationRef.current) {
                 // @ts-ignore - Игнорируем ошибку для метода navigate
                 // Навигация с передачей id и предзагруженных данных объявления 
-                navigationRef.current.navigate('PropertyDetails', { id: propertyId, property: propertyData });
+                // Важно: передаем как propertyId, так и id
+                navigationRef.current.navigate('PropertyDetails', { 
+                  propertyId: propertyId, 
+                  id: propertyId, 
+                  property: propertyData 
+                });
                 console.log('Выполнена отложенная навигация к экрану деталей объявления');
                 // Очищаем переменные после использования
                 // @ts-ignore - Игнорируем ошибку для глобальных переменных
@@ -340,7 +345,12 @@ const AppNavigator = () => {
               if (navigationRef.current) {
                 // @ts-ignore - Игнорируем ошибку для метода navigate
                 // Навигация с передачей id и предзагруженных данных объявления
-                navigationRef.current.navigate('PropertyDetails', { id: globalThis.propertyDeepLinkId, property: propertyData });
+                // Важно: передаем как propertyId, так и id
+                navigationRef.current.navigate('PropertyDetails', { 
+                  propertyId: globalThis.propertyDeepLinkId, 
+                  id: globalThis.propertyDeepLinkId, 
+                  property: propertyData 
+                });
                 // Очищаем глобальный ID после использования
                 // @ts-ignore - Игнорируем ошибку для глобальных переменных
                 globalThis.propertyDeepLinkId = null;

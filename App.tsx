@@ -177,14 +177,12 @@ export default function App() {
             try {
               // Очень важно: PropertyDetails ожидает параметр propertyId
               // @ts-ignore - Игнорируем ошибки TypeScript
-              // Исправление: Устанавливаем PropertyDetails как второй экран, но активным (index: 1)
-              globalThis.navigationRef.current.reset({
-                index: 1,  // Изменено с 0 на 1, чтобы сделать активным PropertyDetails
-                routes: [
-                  { name: 'Home' },
-                  { name: 'PropertyDetails', params: { id: propertyId } }
-                ],
+              // Исправление: Используем navigate вместо reset
+              globalThis.navigationRef.current.navigate('PropertyDetails', { 
+                propertyId: propertyId, 
+                id: propertyId 
               });
+              console.log('Навигация к экрану PropertyDetails с ID:', propertyId);
             } catch (error) {
               console.error('Ошибка при прямой навигации:', error);
             }
