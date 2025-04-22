@@ -851,8 +851,11 @@ const HomeScreen = ({ navigation }: any) => {
           initialNumToRender={8}
           maxToRenderPerBatch={5}
           windowSize={11}
-          removeClippedSubviews={true}
-          updateCellsBatchingPeriod={100}
+          updateCellsBatchingPeriod={50}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0
+          }}
+          removeClippedSubviews={false}
           renderItem={({ item }: { item: Property }) => (
             compactView ? (
               <PropertyCardCompact
@@ -892,15 +895,16 @@ const HomeScreen = ({ navigation }: any) => {
             }
           }}
           refreshing={loading}
-          onEndReached={() => {
+          onEndReached={async () => {
             if (!loadingMore && hasMoreProperties) {
               setLoadingMore(true);
-              // Загрузка дополнительных объектов недвижимости
-              loadMoreProperties(propertyType);
-              // Сбросим состояние загрузки через небольшую задержку
-              setTimeout(() => {
+              try {
+                // Дожидаемся выполнения загрузки перед сбросом состояния
+                await loadMoreProperties(propertyType);
+              } finally {
+                // Сбрасываем флаг загрузки только после завершения загрузки
                 setLoadingMore(false);
-              }, 1000); 
+              }
             }
           }}
           onEndReachedThreshold={0.3}
