@@ -76,6 +76,9 @@
     "sell": "Prodaj",
     "rent": "Izdaj",
     "area": "Površina",
+    "sotkas": "ari",
+    "shareTitle": "Podeli oglas",
+    "moreDetailsInApp": "Više detalja u DomGo aplikaciji",
     "locationOnMap": "Lokacija na mapi",
     "selectLocationOnMap": "Izaberite lokaciju na mapi",
     "tapMapToSelectLocation": "Dodirnite mapu da izaberete lokaciju",
@@ -253,7 +256,7 @@
     },
     "contactInfo": {
       "title": "Kontakt informacije",
-      "message": "Telefon: +123456789\nEmail: info@domgo.rs"
+      "message": "Telegram: @Angstremoff\nEmail: angstremoff@ya.ru"
     },
     "logoutSuccess": {
       "title": "Odjava uspešna",
@@ -265,12 +268,16 @@
     },
     "update": {
       "checkForUpdates": "Proveri ažuriranja",
-      "checking": "Provera ažuriranja...",
-      "available": "Dostupno je ažuriranje",
-      "notAvailable": "Imate najnoviju verziju",
+      "checking": "Provera ažuriranja",
+      "upToDate": "Nema ažuriranja",
+      "upToDateMessage": "Imate najnoviju verziju aplikacije.",
+      "updateAvailable": "Dostupno je ažuriranje",
+      "updateMessage": "Dostupna je nova verzija aplikacije: {version}.",
+      "download": "Preuzmi",
+      "skip": "Preskoči",
+      "error": "Greška",
       "downloading": "Preuzimanje ažuriranja...",
       "ready": "Ažuriranje je spremno za instalaciju",
-      "error": "Greška prilikom ažuriranja",
       "restart": "Ponovo pokrenite za ažuriranje",
       "updateError": {
         "title": "Greška pri ažuriranju",

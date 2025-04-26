@@ -99,7 +99,7 @@ const OptimizedPropertyCard = ({ property, onPress, darkMode = false }: Property
         </Text>
 
         <View style={styles.details}>
-          {property.rooms !== undefined && (
+          {property.rooms !== undefined && property.property_type !== 'land' && (
             <View style={styles.detailItem}>
               <Ionicons name="bed-outline" size={16} color={theme.secondary} />
               <Text style={[styles.detailText, { color: theme.secondary }]}>{property.rooms} {t('property.rooms')}</Text>
@@ -108,7 +108,9 @@ const OptimizedPropertyCard = ({ property, onPress, darkMode = false }: Property
           {property.area !== undefined && (
             <View style={styles.detailItem}>
               <Ionicons name="square-outline" size={16} color={theme.secondary} />
-              <Text style={[styles.detailText, { color: theme.secondary }]}>{property.area} м²</Text>
+              <Text style={[styles.detailText, { color: theme.secondary }]}>
+                {property.property_type === 'land' ? `${property.area} ${t('property.sotkas')}` : `${property.area} м²`}
+              </Text>
             </View>
           )}
         </View>

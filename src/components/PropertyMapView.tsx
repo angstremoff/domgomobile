@@ -88,23 +88,32 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
   // Фильтруем только свойства с координатами и принадлежащие выбранному городу
   const propertiesWithCoords = properties.filter(p => {
     try {
+      // Нет города для фильтрации или нет координат у объекта - пропускаем
+      if (!p || !selectedCity) return false;
+      
       // Проверяем наличие координат
       const coords = parseCoordinates(p);
       if (!coords) return false;
       
-      // Проверка на null/undefined для selectedCity и city_id
-      if (!selectedCity || !selectedCity.id || p.city_id === undefined || p.city_id === null) {
+      // Если нет id города для сравнения - пропускаем
+      if (selectedCity.id === undefined || selectedCity.id === null) {
         return false;
       }
       
-      // Безопасное преобразование в строку
-      const cityIdStr = String(p.city_id);
-      const selectedCityIdStr = String(selectedCity.id);
+      // Если нет city_id у объекта - пропускаем
+      if (p.city_id === undefined || p.city_id === null) {
+        return false;
+      }
+      
+      // Безопасное преобразование в строку для сравнения
+      // Используем отдельные переменные, чтобы избежать ошибок преобразования
+      const propCityId = p.city_id.toString();
+      const selCityId = selectedCity.id.toString();
       
       // Проверяем принадлежность к выбранному городу
-      return cityIdStr === selectedCityIdStr;
+      return propCityId === selCityId;
     } catch (error) {
-      console.error('Ошибка при фильтрации объекта:', error, p);
+      console.error('Ошибка при фильтрации объекта:', error);
       return false;
     }
   });

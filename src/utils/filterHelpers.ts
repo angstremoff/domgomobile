@@ -26,32 +26,47 @@ export const applyPropertyFilters = (
     return [];
   }
 
-  let filtered = [...properties];
-  
-  // Фильтрация по типу сделки (продажа/аренда)
-  if (propertyType === 'sale') {
-    filtered = filtered.filter(prop => prop.type === 'sale');
-  } else if (propertyType === 'rent') {
-    filtered = filtered.filter(prop => prop.type === 'rent');
-  }
-  
-  // Фильтрация по категории недвижимости
-  if (propertyCategory !== 'all') {
-    filtered = filtered.filter(prop => 
-      prop.property_type === propertyCategory
+  // Базовая фильтрация по типу (продажа/аренда)
+  let filtered = properties.filter(prop =>
+    propertyType === 'all' ? true : (prop && prop.type === propertyType)
+  );
+
+  // Фильтрация по категории (квартира/дом/коммерческая/земля)
+  if (propertyCategory && propertyCategory !== 'all') {
+    filtered = filtered.filter(prop =>
+      prop && prop.property_type === propertyCategory
     );
   }
-  
-  // Фильтрация по городу
-  if (selectedCity && selectedCity.id) {
+
+  // Фильтрация по городу - с улучшенной защитой от ошибок
+  if (selectedCity && selectedCity?.id !== undefined && selectedCity?.id !== null) {
+    // Для избежания многократного преобразования, сохраняем ID города в строку один раз
+    let cityIdStr;
+    try {
+      cityIdStr = selectedCity.id.toString();
+    } catch (e) {
+      console.error('Ошибка при преобразовании ID города:', e);
+      return filtered; // Возвращаем список без фильтрации по городу в случае ошибки
+    }
+    
     filtered = filtered.filter(prop => {
       try {
-        // Безопасная проверка city_id
-        if (prop.city_id === undefined || prop.city_id === null) {
+        // Проверки на null/undefined
+        if (!prop || prop.city_id === undefined || prop.city_id === null) {
           return false;
         }
+
         // Безопасное преобразование в строку
-        return String(prop.city_id) === String(selectedCity.id);
+        let propCityIdStr;
+        try {
+          propCityIdStr = prop.city_id.toString();
+        } catch (e) {
+          console.error('Ошибка при преобразовании city_id объекта:', prop, e);
+          return false;
+        }
+
+        // Сравниваем строки
+        return propCityIdStr === cityIdStr;
       } catch (error) {
         console.error('Ошибка при фильтрации по городу:', error);
         return false;

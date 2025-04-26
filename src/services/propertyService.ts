@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Database } from '../lib/database.types';
 import { compressImage } from '../utils/imageCompression';
 import { Buffer } from 'buffer';
@@ -708,17 +709,57 @@ export const propertyService = {
   },
   
   async getCities() {
-    const { data, error } = await supabase
-      .from('cities')
-      .select('*')
-      .order('name');
+    // Время жизни кэша - 3 часа
+    const CITIES_CACHE_TTL = 3 * 60 * 60 * 1000;
+    const CITIES_CACHE_KEY = 'domgo_cities_cache';
+    const now = Date.now();
     
-    if (error) {
-      console.error('Ошибка при получении списка городов:', error);
-      throw error;
+    // Проверяем кэш
+    try {
+      const cachedData = await AsyncStorage.getItem(CITIES_CACHE_KEY);
+      if (cachedData) {
+        const { data, timestamp } = JSON.parse(cachedData);
+        if (now - timestamp < CITIES_CACHE_TTL) {
+          console.log('Возвращаем кэшированный список городов');
+          return data;
+        }
+      }
+      
+      // Если кэш отсутствует или устарел, загружаем данные и обновляем кэш
+      console.log('Загружаем актуальный список городов');
+      const { data, error } = await supabase
+        .from('cities')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Ошибка при получении списка городов:', error);
+        throw error;
+      }
+      
+      // Сохраняем в кэш
+      await AsyncStorage.setItem(CITIES_CACHE_KEY, JSON.stringify({
+        data,
+        timestamp: now
+      }));
+      
+      return data;
+    } catch (e) {
+      console.error('Ошибка при работе с кэшем городов:', e);
+      
+      // В случае ошибки пытаемся загрузить данные напрямую
+      const { data, error } = await supabase
+        .from('cities')
+        .select('*')
+        .order('name');
+      
+      if (error) {
+        console.error('Ошибка при получении списка городов:', error);
+        throw error;
+      }
+      
+      return data;
     }
-    
-    return data;
   },
   
   async uploadImage(uri: string, fileName: string) {

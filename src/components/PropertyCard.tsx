@@ -30,6 +30,15 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
   const streetName = property.location || '';
   const fullAddress = translatedCityName && streetName ? `${translatedCityName}, ${streetName}` : translatedCityName || streetName;
 
+  // Отладочный вывод для проверки статуса
+  console.log(`PropertyCard: id=${property.id}, title=${property.title}, status=${property.status}`);
+  
+  // Проверяем, существует ли статус и является ли он проданным или сданным
+  const isInactive = property.status === 'sold' || property.status === 'rented';
+  
+  // Для отображения в интерфейсе
+  const displayStatus = property.status;
+
   return (
     <TouchableOpacity 
       style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} 
@@ -39,9 +48,20 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
       <View style={styles.imageContainer}>
         <Image
           source={{ uri: property.images?.[0] || 'https://via.placeholder.com/300x200' }}
-          style={styles.image}
+          style={[
+            styles.image,
+            // Используем переменную isInactive для проверки статуса
+            isInactive && styles.imageInactive 
+          ]}
           resizeMode="cover"
         />
+        {isInactive && (
+          <View style={styles.statusOverlay}>
+            <Text style={styles.statusText}>
+              {displayStatus === 'sold' ? t('property.status.sold') : t('property.status.rented')}
+            </Text>
+          </View>
+        )}
         {property.type && (
           <View style={[
             styles.typeTag,
@@ -91,7 +111,7 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
         </Text>
 
         <View style={styles.details}>
-          {property.rooms !== undefined && (
+          {property.rooms !== undefined && property.property_type !== 'land' && (
             <View style={styles.detailItem}>
               <Ionicons name="bed-outline" size={16} color={theme.secondary} />
               <Text style={[styles.detailText, { color: theme.secondary }]}>{property.rooms} {t('property.rooms')}</Text>
@@ -100,7 +120,9 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
           {property.area !== undefined && (
             <View style={styles.detailItem}>
               <Ionicons name="square-outline" size={16} color={theme.secondary} />
-              <Text style={[styles.detailText, { color: theme.secondary }]}>{property.area} м²</Text>
+              <Text style={[styles.detailText, { color: theme.secondary }]}>
+                {property.property_type === 'land' ? `${property.area} ${t('property.sotkas')}` : `${property.area} м²`}
+              </Text>
             </View>
           )}
         </View>
@@ -110,6 +132,27 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
 });
 
 const styles = StyleSheet.create({
+  statusOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2, 
+  },
+  statusText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  imageInactive: { 
+    opacity: 0.6,
+  },
   card: {
     borderRadius: 12,
     overflow: 'hidden',

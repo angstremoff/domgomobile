@@ -72,8 +72,8 @@ const HeaderControls = ({ darkMode, toggleDarkMode, isHomeScreen = false, select
             <View style={[styles.cityButton, darkMode ? {} : { backgroundColor: '#1E3A8A', borderRadius: 0 }]}>
               <Ionicons name="location-outline" size={22} color={darkMode ? "#F1F5F9" : "#FFFFFF"} />
               <Text style={[styles.cityText, { color: darkMode ? "#F1F5F9" : "#FFFFFF", fontWeight: darkMode ? 'normal' : 'bold' }]}>
-                {selectedCity && selectedCity.name 
-                  ? getTranslatedCityName(selectedCity.name)
+                {selectedCity && selectedCity?.name 
+                  ? getTranslatedCityName(selectedCity?.name)
                   : t('common.allCities')}
               </Text>
             </View>

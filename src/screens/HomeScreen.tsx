@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, FlatList, StyleSheet, ActivityIndicator, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -36,6 +36,8 @@ const HomeScreen = ({ navigation }: any) => {
   const [compactView, setCompactView] = useState(false); // Состояние для переключения режима отображения
   const [filtersAppliedSale, setFiltersAppliedSale] = useState(false); // Флаг для отслеживания применения фильтров продажи
   const [filtersAppliedRent, setFiltersAppliedRent] = useState(false); // Флаг для отслеживания применения фильтров аренды
+  const flatListRef = useRef<FlatList<any>>(null); // Ссылка на FlatList для программного управления прокруткой
+  const scrollOffsetRef = useRef(0); // Для сохранения позиции прокрутки
 
   // Состояние для фильтров аренды
   const [rentFilters, setRentFilters] = useState<{
@@ -534,6 +536,69 @@ const HomeScreen = ({ navigation }: any) => {
   };
 
   const loading = propertiesLoading || favoritesLoading;
+  
+  // Для отслеживания изменений в списке объявлений и восстановления позиции прокрутки
+  const prevPropertiesCountRef = useRef(0);
+  const shouldRestoreScrollRef = useRef(false);
+  
+  useEffect(() => {
+    if (filteredProperties.length > 0) {
+      console.log('Обновление списка объявлений: ', {
+        'Предыдущий размер': prevPropertiesCountRef.current,
+        'Новый размер': filteredProperties.length,
+        'Текущая позиция прокрутки': scrollOffsetRef.current,
+        'Тип просматриваемых объявлений': propertyType,
+        'Восстановить позицию?': shouldRestoreScrollRef.current
+      });
+      
+      // Если размер увеличился (загрузили новые объявления) и позиция прокрутки не в начале,
+      // восстановим позицию прокрутки
+      if (filteredProperties.length > prevPropertiesCountRef.current && shouldRestoreScrollRef.current) {
+        shouldRestoreScrollRef.current = false;
+        
+        // Небольшая задержка для уверенности, что список обновился
+        setTimeout(() => {
+          if (flatListRef.current && scrollOffsetRef.current > 0) {
+            console.log('Восстанавливаем позицию прокрутки на:', scrollOffsetRef.current);
+            flatListRef.current.scrollToOffset({
+              offset: scrollOffsetRef.current,
+              animated: false
+            });
+          }
+        }, 100);
+      }
+      
+      prevPropertiesCountRef.current = filteredProperties.length;
+    }
+  }, [filteredProperties, propertyType]);
+
+  // Обработка загрузки дополнительных объявлений с сохранением позиции прокрутки
+  const handleLoadMore = async () => {
+    if (!loadingMore && hasMoreProperties) {
+      const currentOffset = scrollOffsetRef.current;
+      console.log('Начало загрузки дополнительных объявлений: ', {
+        'Тип': propertyType,
+        'Текущая позиция прокрутки': currentOffset,
+        'Количество объявлений': filteredProperties.length
+      });
+      
+      // Устанавливаем флаг, что нужно восстановить позицию прокрутки после загрузки
+      shouldRestoreScrollRef.current = true;
+      
+      setLoadingMore(true);
+      try {
+        // Дожидаемся выполнения загрузки перед сбросом состояния
+        await loadMoreProperties(propertyType);
+        console.log('Загрузка завершена: ', {
+          'Новая позиция прокрутки': scrollOffsetRef.current,
+          'Разница': scrollOffsetRef.current - currentOffset,
+          'Количество объявлений в filteredProperties': filteredProperties.length
+        });
+      } finally {
+        setLoadingMore(false);
+      }
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -846,16 +911,37 @@ const HomeScreen = ({ navigation }: any) => {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={filteredProperties}
+          onContentSizeChange={() => {
+            console.log('Изменился размер списка: ', {
+              'Количество объявлений в FlatList': filteredProperties.length,
+              'Текущая позиция прокрутки': scrollOffsetRef.current,
+            });
+            
+            // Восстанавливаем позицию прокрутки если размер списка изменился и флаг восстановления установлен
+            if (shouldRestoreScrollRef.current && scrollOffsetRef.current > 0) {
+              console.log('Восстанавливаем позицию при изменении размера:', scrollOffsetRef.current);
+              flatListRef.current?.scrollToOffset({
+                offset: scrollOffsetRef.current,
+                animated: false
+              });
+              shouldRestoreScrollRef.current = false;
+            }
+          }}
           keyExtractor={(item) => item.id}
           initialNumToRender={8}
           maxToRenderPerBatch={5}
           windowSize={11}
           updateCellsBatchingPeriod={50}
-          maintainVisibleContentPosition={{
-            minIndexForVisible: 0
+          onScroll={(e) => {
+            // Сохраняем позицию прокрутки
+            scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+            // Логируем позицию прокрутки каждые 500 пикселей
+            if (Math.floor(scrollOffsetRef.current) % 500 === 0) {
+              console.log('Текущая позиция прокрутки:', Math.floor(scrollOffsetRef.current));
+            }
           }}
-          removeClippedSubviews={false}
           renderItem={({ item }: { item: Property }) => (
             compactView ? (
               <PropertyCardCompact
@@ -895,18 +981,7 @@ const HomeScreen = ({ navigation }: any) => {
             }
           }}
           refreshing={loading}
-          onEndReached={async () => {
-            if (!loadingMore && hasMoreProperties) {
-              setLoadingMore(true);
-              try {
-                // Дожидаемся выполнения загрузки перед сбросом состояния
-                await loadMoreProperties(propertyType);
-              } finally {
-                // Сбрасываем флаг загрузки только после завершения загрузки
-                setLoadingMore(false);
-              }
-            }
-          }}
+          onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={
             loadingMore ? (

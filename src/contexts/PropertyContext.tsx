@@ -344,16 +344,39 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       }
       
       if (result.data && result.data.length > 0) {
+        // Критически важно: используем функциональный апдейт состояния для всех случаев
         if (type === 'all') {
           // Добавляем новые объявления к существующим
-          setProperties([...properties, ...result.data]);
-          setFilteredProperties([...filteredProperties, ...result.data]);
+          setProperties(prev => [...prev, ...result.data]);
+          if (activePropertyTypeRef.current === 'all') {
+            setFilteredProperties(prev => [...prev, ...result.data]);
+          }
+        } else {
+          // Для типов 'sale' или 'rent' обновляем основной список properties
+          // и фильтрованный список, если этот тип сейчас выбран
+          // Обновляем общий список объявлений
+          setProperties(prev => {
+            // Фильтруем, чтобы избежать дубликатов
+            const existingIds = new Set(prev.map(p => p.id));
+            const newItems = result.data.filter(item => !existingIds.has(item.id));
+            return [...prev, ...newItems];
+          });
+          
+          // Обновляем только если активный тип совпадает с типом загруженных данных
+          if (activePropertyTypeRef.current === type) {
+            setFilteredProperties(prev => {
+              // Фильтруем, чтобы избежать дубликатов
+              const existingIds = new Set(prev.map(p => p.id));
+              const newItems = result.data.filter(item => !existingIds.has(item.id));
+              return [...prev, ...newItems];
+            });
+          }
         }
         
         // Обновляем состояние пагинации
-        setCurrentPage({ ...currentPage, [type]: currentPage[type] + 1 });
-        setHasMore({ ...hasMore, [type]: result.hasMore });
-        setTotalCount({ ...totalCount, [type]: result.totalCount });
+        setCurrentPage(prev => ({ ...prev, [type]: prev[type] + 1 }));
+        setHasMore(prev => ({ ...prev, [type]: result.hasMore }));
+        setTotalCount(prev => ({ ...prev, [type]: result.totalCount }));
         
         console.log(`Загружено дополнительно ${result.data.length} объявлений типа ${type}`);
       }

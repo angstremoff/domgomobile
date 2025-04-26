@@ -78,7 +78,7 @@ const PropertyCardCompact = memo(({ property, onPress, darkMode = false }: Prope
         </Text>
         
         <View style={styles.details}>
-          {property.rooms !== undefined && (
+          {property.rooms !== undefined && property.property_type !== 'land' && (
             <View style={styles.detailItem}>
               <Ionicons name="bed-outline" size={12} color={theme.secondary} />
               <Text style={[styles.detailText, { color: theme.secondary }]}>{property.rooms}</Text>
@@ -87,7 +87,9 @@ const PropertyCardCompact = memo(({ property, onPress, darkMode = false }: Prope
           {property.area !== undefined && (
             <View style={styles.detailItem}>
               <Ionicons name="square-outline" size={12} color={theme.secondary} />
-              <Text style={[styles.detailText, { color: theme.secondary }]}>{property.area}м²</Text>
+              <Text style={[styles.detailText, { color: theme.secondary }]}>
+                {property.property_type === 'land' ? `${property.area} ${t('property.sotkas')}` : `${property.area}м²`}
+              </Text>
             </View>
           )}
         </View>

@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Константы для сервиса обновлений
 const GITHUB_API_URL = 'https://api.github.com/repos/angstremoff/domgomobile/releases/latest';
-const GITHUB_RELEASE_URL = 'https://github.com/angstremoff/domgomobile/releases/latest';
+const GITHUB_RELEASE_URL = 'https://github.com/angstremoff/domgomobile/releases/latest/download/domgo.apk';
 const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 часа в миллисекундах
 const LAST_UPDATE_CHECK_KEY = 'last_update_check';
 
@@ -193,18 +193,21 @@ export const checkForUpdates = async (
 // Показать диалог обновления
 export const showUpdateDialog = (latestVersion: string, t: any) => {
   Alert.alert(
-    t('settings.update.available'),
-    t('settings.update.newVersionAvailable', { version: latestVersion }),
+    t('settings.update.updateAvailable') || 'Доступно обновление',
+    t('settings.update.updateMessage', { version: latestVersion }) || `Доступна новая версия приложения: ${latestVersion}`,
     [
       {
-        text: t('common.cancel'),
+        text: t('settings.update.skip') || 'Пропустить',
         style: 'cancel',
       },
       {
-        text: t('settings.update.downloadNow'),
+        text: t('settings.update.download') || 'Скачать',
         onPress: () => Linking.openURL(GITHUB_RELEASE_URL),
       },
     ],
     { cancelable: true }
   );
+  
+  // Логируем ссылку на загрузку
+  console.log('Ссылка на загрузку:', GITHUB_RELEASE_URL);
 };

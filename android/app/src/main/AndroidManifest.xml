@@ -15,6 +15,7 @@
     </intent>
   </queries>
   <application android:name=".MainApplication" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:allowBackup="true" android:theme="@style/AppTheme" android:supportsRtl="true">
+    <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyC-7lcRdJ9zPKdyC7PPZW0iiomUS_wnR4E"/>
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="true"/>
     <meta-data android:name="expo.modules.updates.EXPO_RUNTIME_VERSION" android:value="@string/expo_runtime_version"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
@@ -32,44 +33,13 @@
         <data android:scheme="com.anonymous.DomGoMobile"/>
         <data android:scheme="exp+domgomobile"/>
       </intent-filter>
-      
-      <!-- Фильтр для обработки ссылок подтверждения email из Supabase -->
-      <intent-filter>
+      <intent-filter android:autoVerify="true" data-generated="true">
         <action android:name="android.intent.action.VIEW"/>
-        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:scheme="domgomobile" android:host="property" android:pathPrefix="/"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="domgomobile"/>
-        <data android:host="auth"/>
-        <data android:path="/callback"/>
-      </intent-filter>
-      
-      <!-- Фильтр для обработки ссылок на объявления -->
-      <intent-filter android:autoVerify="true">
-        <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
-        <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="https"/>
-        <data android:scheme="http"/>
-        <data android:host="domgo.rs"/>
-        <data android:pathPattern="/property/*"/>
-      </intent-filter>
-      
-      <!-- Фильтр для обработки ссылок на объявления с использованием кастомной схемы -->
-      <intent-filter>
-        <action android:name="android.intent.action.VIEW"/>
-        <category android:name="android.intent.category.DEFAULT"/>
-        <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="domgomobile"/>
-        <data android:host="property"/>
-      </intent-filter>
-      
-      <!-- Фильтр для обработки ссылок без хоста (только схема) -->
-      <intent-filter>
-        <action android:name="android.intent.action.VIEW"/>
-        <category android:name="android.intent.category.DEFAULT"/>
-        <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="domgomobile" />
       </intent-filter>
     </activity>
+    <uses-library android:name="org.apache.http.legacy" android:required="false"/>
   </application>
 </manifest>

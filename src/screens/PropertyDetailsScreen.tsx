@@ -44,8 +44,10 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   useEffect(() => {
     // Если при переходе были переданы готовые данные объявления
     if (route.params?.property) {
-      console.log('Используем готовые данные объявления из параметров');
-      setProperty(route.params.property);
+      const prop = route.params.property;
+      console.log(`Используем готовые данные объявления из параметров. ID: ${prop.id}, статус: ${prop.status}`);
+      console.log('Полные данные объявления:', JSON.stringify(prop, null, 2));
+      setProperty(prop);
       return;
     }
     
@@ -95,29 +97,21 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
       // Формируем текст для шаринга в зависимости от выбранного языка
       let moreDetailsText = t('property.moreDetailsInApp', 'Подробнее в приложении DomGo');
       
-      // По умолчанию, для обратной совместимости
-      if (!moreDetailsText || moreDetailsText === 'property.moreDetailsInApp') {
-        moreDetailsText = 'Подробнее в приложении DomGo';
-      }
+      // Получаем переведенное название города, если есть
+      const cityName = property.city?.name || '';
+      // Перевод названия города
+      const translatedCityName = cityName ? t(`cities.${cityName}`, cityName) : '';
       
-      const shareText = `${property.title}\n${property.price}${property.currency || '€'}\n${property.location || ''}\n\n${moreDetailsText}: ${deeplinkHandlerUrl}`;
-      
-      // Добавляем цены и другие детали
-      const extraInfo = [];
-      if (property.area) extraInfo.push(`${property.area} м²`);
-      if (property.rooms) extraInfo.push(`${property.rooms} комн.`);
-      
-      // Полное сообщение для шаринга
-      const fullShareText = extraInfo.length > 0 
-        ? `${shareText}\n${extraInfo.join(' • ')}` 
-        : shareText;
+      // Формируем текст для шаринга (без площади и комнат)
+      // Добавляем переведенное название города вместо property.location
+      const messageText = `${property.title}\n${property.price}${property.currency || '€'}\n${translatedCityName}\n\n${moreDetailsText}: ${deeplinkHandlerUrl}`;
       
       // Вызываем системный диалог шаринга
       await Share.share({
-        message: fullShareText,
+        message: messageText,
         // На iOS можно также указать заголовок и URL
         ...(Platform.OS === 'ios' ? { 
-          title: 'Поделиться объявлением',
+          title: t('property.shareTitle', 'Поделиться объявлением'),
           url: deeplinkHandlerUrl 
         } : {})
       });
@@ -342,8 +336,17 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const cityName = property.city?.name || '';
   // Получаем переведенное название города
   const translatedCityName = cityName ? t(`cities.${cityName}`, cityName) : '';
-  const streetName = property.location || property.address || '';
+  const streetName = property.location || '';
   const fullAddress = translatedCityName && streetName ? `${translatedCityName}, ${streetName}` : translatedCityName || streetName;
+  
+  // Отладочный вывод для всего объекта
+  console.log('Детали объявления:', JSON.stringify({
+    id: property.id,
+    title: property.title,
+    status: property.status, 
+    type: property.type,
+    property_type: property.property_type
+  }, null, 2));
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -352,21 +355,42 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         <View style={styles.imageContainer}>
           <FlatList
             ref={flatListRef}
-            data={property.images || []}
+            data={property.images}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
+            keyExtractor={(item, index) => `${property.id}-image-${index}`}
             onScroll={handleScroll}
-            renderItem={({ item, index }) => (
-              <TouchableOpacity style={styles.imageItem} onPress={() => setIsViewerVisible(true)}>
-                <Image
-                  source={{ uri: item }}
-                  style={styles.propertyImage}
-                  resizeMode="cover"
-                />
-              </TouchableOpacity>
-            )}
-            keyExtractor={(_, index) => `image-${index}`}
+            scrollEventThrottle={16}
+            renderItem={({ item, index }) => {
+              // Отладочный вывод для проверки статуса
+              const isInactive = property?.status === 'sold' || property?.status === 'rented';
+              console.log(`Детали объявления: айди=${property.id}, статус=${property.status}, неактивно=${isInactive}`);
+            
+              return (
+                <TouchableOpacity 
+                  onPress={() => { setActiveImageIndex(index); setIsViewerVisible(true); }} 
+                  activeOpacity={0.9}
+                  style={{ width: width, height: 300 }} // Устанавливаем стиль здесь, чтобы оверлей мог наложиться
+                >
+                  <Image
+                    source={{ uri: item }}
+                    style={[
+                      styles.propertyImage, 
+                      isInactive && styles.imageInactive // Применяем стиль неактивности
+                    ]}
+                    resizeMode="cover"
+                  />
+                  {isInactive && (
+                    <View style={styles.statusOverlay}>
+                      <Text style={styles.statusText}>
+                        {property.status === 'sold' ? t('property.status.sold') : t('property.status.rented')}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
             getItemLayout={(_, index) => ({
               length: width,
               offset: width * index,
@@ -439,11 +463,13 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
             {property.area && (
               <View style={styles.statItem}>
                 <Ionicons name="cube-outline" size={18} color={theme.primary} />
-                <Text style={[styles.statValue, { color: theme.text }]}>{property.area} м²</Text>
+                <Text style={[styles.statValue, { color: theme.text }]}>
+                  {property.property_type === 'land' ? `${property.area} ${t('property.sotkas')}` : `${property.area} м²`}
+                </Text>
               </View>
             )}
             
-            {property.rooms && (
+            {property.rooms && property.property_type !== 'land' && (
               <View style={styles.statItem}>
                 <Ionicons name="bed-outline" size={18} color={theme.primary} />
                 <Text style={[styles.statValue, { color: theme.text }]}>{property.rooms} {t('property.rooms')}</Text>
@@ -574,6 +600,28 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
 
 // Стили
 const styles = StyleSheet.create({
+  // Стили для отображения статуса продано/сдано
+  statusOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  statusText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  imageInactive: { 
+    opacity: 0.6,
+  },
   container: {
     flex: 1,
   },
