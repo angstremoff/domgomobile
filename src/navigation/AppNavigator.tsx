@@ -30,6 +30,7 @@ import MapScreen from '../screens/MapScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import MyPropertiesScreen from '../screens/MyPropertiesScreen';
 import EditPropertyScreen from '../screens/EditPropertyScreen';
+import AgencyScreen from '../screens/AgencyScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootStackParamList>();
@@ -66,6 +67,24 @@ const MainStack = () => {
         name="MainTabs" 
         component={MainTabs} 
         options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="Agency" 
+        component={AgencyScreen} 
+        options={{ 
+          title: t('agency.title', 'Агентство'),
+          headerShown: true,
+          presentation: 'card',
+          animationTypeForReplace: 'push',
+          animation: 'slide_from_right',
+          headerRight: () => (
+            <HeaderControls 
+              darkMode={darkMode} 
+              toggleDarkMode={toggleDarkMode} 
+              isHomeScreen={false}
+            />
+          ),
+        }} 
       />
       <Stack.Screen 
         name="PropertyDetails" 

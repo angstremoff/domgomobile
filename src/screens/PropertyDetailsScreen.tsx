@@ -42,22 +42,21 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
 
   // Проверяем, есть ли объявление в контексте, если нет - загружаем с сервера
   useEffect(() => {
-    // Если при переходе были переданы готовые данные объявления
-    if (route.params?.property) {
-      const prop = route.params.property;
-      console.log(`Используем готовые данные объявления из параметров. ID: ${prop.id}, статус: ${prop.status}`);
-      console.log('Полные данные объявления:', JSON.stringify(prop, null, 2));
-      setProperty(prop);
-      return;
+    // Если при переходе были переданы данные объявления — отобразим их сразу
+    const paramProp = route.params?.property;
+    if (paramProp) {
+      console.log(`Используем данные объявления из параметров. ID: ${paramProp.id}, статус: ${paramProp.status}`);
+      setProperty(paramProp);
     }
-    
-    // Если данных нет, загружаем по ID
+
+    // Всегда готовим функцию загрузки актуальных данных по ID
     const fetchProperty = async () => {
       try {
         setLoading(true);
         console.log('Загружаем данные объявления по ID:', propertyId);
         const data = await propertyService.getPropertyById(propertyId);
         if (data) {
+          console.log('Актуальные данные объявления получены, есть agency?:', !!data?.agency?.id);
           setProperty(data);
         }
       } catch (error) {
@@ -68,8 +67,11 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
       }
     };
 
-    // Если есть ID, загружаем данные
-    if (propertyId) {
+    // Загружаем данные, если:
+    // 1) есть ID
+    // 2) либо нет объекта в параметрах,
+    // 3) либо у переданного объекта нет agency.id (нужно подтянуть свежие связи из БД)
+    if (propertyId && (!paramProp || !paramProp.agency?.id)) {
       fetchProperty();
     }
   }, [propertyId, route.params?.property]);
@@ -533,11 +535,23 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
             {/* Строка с именем контакта и кнопкой/номером */}
             <View style={styles.contactRow}>
               {/* Имя контакта - слева */}
-              {property.user?.name && (
-                <Text style={[styles.contactName, { color: theme.text }]}>
-                  {property.user?.name}
-                </Text>
-              )}
+              {property.user?.name && (() => {
+                const agencyId = property.agency?.id || property.agency_id;
+                if (agencyId) {
+                  return (
+                    <TouchableOpacity onPress={() => navigation.navigate('Agency', { agencyId })}>
+                      <Text style={[styles.contactName, { color: theme.text }]}> 
+                        {property.user?.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }
+                return (
+                  <Text style={[styles.contactName, { color: theme.text }]}> 
+                    {property.user?.name}
+                  </Text>
+                );
+              })()}
 
               {/* Кнопка показать номер или сам номер - справа */}
               {(property.user?.phone || property.contact?.phone) && (

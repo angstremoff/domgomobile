@@ -169,8 +169,9 @@ export const propertyService = {
           .from('properties')
           .select(`
             *,
-            user:users(name, phone),
-            city:cities(name)
+            user:users(name, phone, is_agency),
+            city:cities(name),
+            agency:agency_profiles(id, name, phone, logo_url, description)
           `, { count: 'exact' })
           .order('created_at', { ascending: false })
           .range(from, to);
@@ -253,8 +254,9 @@ export const propertyService = {
           .from('properties')
           .select(`
             *,
-            user:users(name, phone),
-            city:cities(name)
+            user:users(name, phone, is_agency),
+            city:cities(name),
+            agency:agency_profiles(id, name, phone, logo_url, description)
           `)
           .eq('id', id)
           .single();
@@ -324,8 +326,9 @@ export const propertyService = {
           .from('properties')
           .select(`
             *,
-            user:users(name, phone),
-            city:cities(name)
+            user:users(name, phone, is_agency),
+            city:cities(name),
+            agency:agency_profiles(id, name, phone, logo_url, description)
           `)
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
@@ -564,8 +567,9 @@ export const propertyService = {
         .from('properties')
         .select(`
           *,
-          user:users(name, phone),
-          city:cities(name)
+          user:users(name, phone, is_agency),
+          city:cities(name),
+          agency:agency_profiles(id, name, phone, logo_url, description)
         `, { count: 'exact' })
         .eq('type', type)
         .order('created_at', { ascending: false })
@@ -650,8 +654,9 @@ export const propertyService = {
         property_id,
         property:properties(
           *,
-          user:users(name, phone),
-          city:cities(name)
+          user:users(name, phone, is_agency),
+          city:cities(name),
+          agency:agency_profiles(id, name, phone, logo_url, description)
         )
       `)
       .eq('user_id', user.user.id);

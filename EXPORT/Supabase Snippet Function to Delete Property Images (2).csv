@@ -1,0 +1,23 @@
+schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
+public,cities,Anyone can view cities,PERMISSIVE,{public},SELECT,true,null
+public,favorites,Users can manage their own favorites,PERMISSIVE,{authenticated},ALL,(auth.uid() = user_id),(auth.uid() = user_id)
+public,favorites,Users can view their own favorites,PERMISSIVE,{authenticated},SELECT,(auth.uid() = user_id),null
+public,properties,Anyone can view properties,PERMISSIVE,"{anon,authenticated}",SELECT,true,null
+public,properties,Authenticated users can insert properties,PERMISSIVE,{authenticated},INSERT,null,(auth.uid() = user_id)
+public,properties,Users can delete their own properties,PERMISSIVE,{authenticated},DELETE,(auth.uid() = user_id),null
+public,properties,Users can update their own properties,PERMISSIVE,{authenticated},UPDATE,(auth.uid() = user_id),(auth.uid() = user_id)
+public,users,Allow users to insert their own user data,PERMISSIVE,{public},INSERT,null,(auth.uid() = id)
+public,users,Allow viewing user information for property listings,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM properties
+  WHERE (properties.user_id = users.id)))",null
+public,users,Users can insert during registration,PERMISSIVE,{public},INSERT,null,(auth.uid() = id)
+public,users,Users can insert their own data,PERMISSIVE,{public},INSERT,null,(auth.uid() = id)
+public,users,Users can read own data,PERMISSIVE,{public},SELECT,(auth.uid() = id),null
+public,users,Users can update own data,PERMISSIVE,{public},UPDATE,(auth.uid() = id),null
+public,users,Users can update own record,PERMISSIVE,{public},UPDATE,(auth.uid() = id),(auth.uid() = id)
+public,users,Users can view own record,PERMISSIVE,{public},SELECT,(auth.uid() = id),null
+public,users,Users can view their own data,PERMISSIVE,{public},SELECT,(auth.uid() = id),null
+storage,objects,Allow authenticated upload,PERMISSIVE,{authenticated},INSERT,null,(bucket_id = 'properties'::text)
+storage,objects,Allow owners to delete,PERMISSIVE,{authenticated},DELETE,((bucket_id = 'properties'::text) AND (auth.uid() = owner)),null
+storage,objects,Allow public read,PERMISSIVE,{public},SELECT,(bucket_id = 'properties'::text),null
+storage,objects,Allow public upload,PERMISSIVE,{public},INSERT,null,(bucket_id = 'properties'::text)

@@ -1,0 +1,46 @@
+schema,function_name,definition
+public,delete_property_files,"CREATE OR REPLACE FUNCTION public.delete_property_files()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+DECLARE
+  image_url TEXT;
+  file_path TEXT;
+BEGIN
+  -- Для каждого URL изображения в массиве
+  IF OLD.images IS NOT NULL THEN
+    FOREACH image_url IN ARRAY OLD.images
+    LOOP
+      -- Извлекаем имя файла из URL
+      file_path := regexp_replace(image_url, '^.*/([^/]+)$', '\1');
+      
+      -- Попытка удалить файл без вызова ошибки
+      BEGIN
+        -- Удаляем файл из хранилища
+        PERFORM storage.delete_object('property-images', file_path);
+        EXCEPTION WHEN OTHERS THEN
+          -- Записываем ошибку в лог, но продолжаем выполнение
+          RAISE NOTICE 'Ошибка при удалении %: %', file_path, SQLERRM;
+      END;
+    END LOOP;
+  END IF;
+  
+  -- Продолжаем удаление объявления
+  RETURN OLD;
+END;
+$function$
+"
+public,handle_new_user,"CREATE OR REPLACE FUNCTION public.handle_new_user()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+BEGIN
+    INSERT INTO public.users (id, email)
+    VALUES (new.id, new.email)
+    ON CONFLICT (id) DO NOTHING;
+    RETURN new;
+END;
+$function$
+"

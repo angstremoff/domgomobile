@@ -15,6 +15,7 @@ export type RootStackParamList = {
   Home: undefined;
   Favorites: undefined;
   Profile: undefined;
+  Agency: { agencyId: string };
 };
 
 // Типы для пропсов экранов
@@ -25,5 +26,10 @@ export type PropertyDetailsScreenProps = {
 
 export type EditPropertyScreenProps = {
   route: RouteProp<RootStackParamList, 'EditProperty'>;
+  navigation: NativeStackNavigationProp<RootStackParamList>;
+};
+
+export type AgencyScreenProps = {
+  route: RouteProp<RootStackParamList, 'Agency'>;
   navigation: NativeStackNavigationProp<RootStackParamList>;
 };

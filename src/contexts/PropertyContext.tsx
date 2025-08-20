@@ -29,11 +29,23 @@ export interface Property {
   user?: { 
     name: string | null;
     phone: string | null;
+    is_agency?: boolean | null;
   };
   contact?: {
     name?: string;
     phone?: string;
   };
+  agency_id?: string | null;
+  agency?: {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    logo_url?: string | null;
+    description?: string | null;
+    website?: string | null;
+    instagram?: string | null;
+    facebook?: string | null;
+  } | null;
   images?: string[];
   created_at?: string;
 }
@@ -459,8 +471,9 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         .from('properties')
         .select(`
           *,
-          user:user_id (*),
-          city:city_id (*)
+          user:users(name, phone, is_agency),
+          city:cities(name),
+          agency:agency_profiles(id, name, phone, logo_url, description, website, instagram, facebook)
         `)
         .eq('id', id)
         .single();

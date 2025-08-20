@@ -246,6 +246,10 @@
     "version": "Verzija",
     "help": "Pomoć",
     "contactUs": "Kontaktirajte nas",
+    "listingTerms": {
+      "title": "Uslovi objave",
+      "message": "• Svi oglasi na platformi objavljuju se besplatno.\n\n• Za agencije za nekretnine prilikom objave obavezno je navođenje registracionih podataka agencije.\n\n• Privatnim korisnicima je dozvoljeno do 2 aktivna oglasa istovremeno; za agencije — do 100 oglasa."
+    },
     "notificationNote": {
       "title": "Obaveštenja",
       "message": "Upravljanje obaveštenjima će biti dostupno u sledećim ažuriranjima."
@@ -417,5 +421,14 @@
     "petFriendly": "Dozvoljeni ljubimci",
     "fireplace": "Kamin",
     "furnished": "Namešteno"
+  }
+  ,
+  "agency": {
+    "title": "Agencija",
+    "call": "Pozovi",
+    "website": "Sajt",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "email": "Email"
   }
 }

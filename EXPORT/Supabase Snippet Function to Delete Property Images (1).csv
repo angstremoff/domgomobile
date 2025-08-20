@@ -1,0 +1,14 @@
+schemaname,tablename,indexname,indexdef
+public,cities,cities_name_idx,CREATE INDEX cities_name_idx ON public.cities USING btree (name)
+public,cities,cities_pkey,CREATE UNIQUE INDEX cities_pkey ON public.cities USING btree (id)
+public,favorites,favorites_pkey,CREATE UNIQUE INDEX favorites_pkey ON public.favorites USING btree (id)
+public,favorites,favorites_user_id_property_id_key,"CREATE UNIQUE INDEX favorites_user_id_property_id_key ON public.favorites USING btree (user_id, property_id)"
+public,properties,properties_city_id_idx,CREATE INDEX properties_city_id_idx ON public.properties USING btree (city_id)
+public,properties,properties_created_at_idx,CREATE INDEX properties_created_at_idx ON public.properties USING btree (created_at DESC)
+public,properties,properties_pkey,CREATE UNIQUE INDEX properties_pkey ON public.properties USING btree (id)
+public,properties,properties_price_idx,CREATE INDEX properties_price_idx ON public.properties USING btree (price)
+public,properties,properties_property_type_idx,CREATE INDEX properties_property_type_idx ON public.properties USING btree (property_type)
+public,properties,properties_rooms_idx,CREATE INDEX properties_rooms_idx ON public.properties USING btree (rooms)
+public,properties,properties_type_idx,CREATE INDEX properties_type_idx ON public.properties USING btree (type)
+public,users,users_email_key,CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)
+public,users,users_pkey,CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)

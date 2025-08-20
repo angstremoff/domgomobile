@@ -1,0 +1,31 @@
+table_name,column_name,data_type,is_nullable,column_default
+cities,id,bigint,NO,
+cities,name,text,NO,
+cities,created_at,timestamp with time zone,NO,"timezone('utc'::text, now())"
+cities,coordinates,jsonb,NO,"'{""lat"": 0, ""lng"": 0}'::jsonb"
+favorites,id,uuid,NO,gen_random_uuid()
+favorites,created_at,timestamp with time zone,NO,"timezone('utc'::text, now())"
+favorites,user_id,uuid,NO,
+favorites,property_id,uuid,NO,
+properties,id,uuid,NO,gen_random_uuid()
+properties,created_at,timestamp with time zone,NO,"timezone('utc'::text, now())"
+properties,title,text,NO,
+properties,description,text,NO,
+properties,type,text,NO,
+properties,property_type,text,NO,
+properties,price,numeric,NO,
+properties,area,numeric,NO,
+properties,rooms,integer,NO,
+properties,location,text,NO,
+properties,images,ARRAY,NO,'{}'::text[]
+properties,features,ARRAY,YES,'{}'::text[]
+properties,coordinates,jsonb,YES,
+properties,user_id,uuid,YES,
+properties,city_id,bigint,YES,
+properties,status,text,YES,'active'::text
+users,id,uuid,NO,gen_random_uuid()
+users,created_at,timestamp with time zone,NO,"timezone('utc'::text, now())"
+users,email,text,NO,
+users,name,text,YES,
+users,avatar_url,text,YES,
+users,phone,text,YES,

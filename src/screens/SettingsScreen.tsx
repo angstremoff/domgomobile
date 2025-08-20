@@ -140,7 +140,7 @@ const SettingsScreen = ({ navigation }: any) => {
         </View>
       )}
 
-      <View style={[styles.section, { backgroundColor: theme.card }]}>
+      <View style={[styles.section, { backgroundColor: theme.card }]}>        
         <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('settings.about')}</Text>
         
         <TouchableOpacity style={styles.settingItem} onPress={checkForUpdatesFromGitHub}>
@@ -160,6 +160,12 @@ const SettingsScreen = ({ navigation }: any) => {
         
         <TouchableOpacity style={styles.settingItem} onPress={() => showModal(t('settings.contactInfo.title'), t('settings.contactInfo.message'))}>
           <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.contactUs')}</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.secondary} />
+        </TouchableOpacity>
+
+        {/* Условия размещения объявлений */}
+        <TouchableOpacity style={styles.settingItem} onPress={() => showModal(t('settings.listingTerms.title'), t('settings.listingTerms.message'))}>
+          <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.listingTerms.title')}</Text>
           <Ionicons name="chevron-forward" size={20} color={theme.secondary} />
         </TouchableOpacity>
       </View>
