@@ -25,7 +25,7 @@ const HomeScreen = ({ navigation }: any) => {
     loading: propertiesLoading, 
     selectedCity,
     loadMoreProperties,
-    hasMoreProperties,
+    getHasMore,
     getPropertiesByType
   } = useProperties();
   const [propertyType, setPropertyType] = useState<'all' | 'sale' | 'rent'>('all');
@@ -38,6 +38,10 @@ const HomeScreen = ({ navigation }: any) => {
   const [filtersAppliedRent, setFiltersAppliedRent] = useState(false); // Флаг для отслеживания применения фильтров аренды
   const flatListRef = useRef<FlatList<any>>(null); // Ссылка на FlatList для программного управления прокруткой
   const scrollOffsetRef = useRef(0); // Для сохранения позиции прокрутки
+  const lastLoadMoreAtRef = useRef<number>(0); // Для троттлинга onEndReached
+  const LOAD_MORE_MIN_INTERVAL = 800; // мс
+  // RU: Троттлинг onEndReached во избежание частых вызовов, которые ведут к рывкам скролла.
+  // EN: Throttle onEndReached to avoid frequent triggers that cause scroll jumps.
 
   // Состояние для фильтров аренды
   const [rentFilters, setRentFilters] = useState<{
@@ -573,8 +577,15 @@ const HomeScreen = ({ navigation }: any) => {
   }, [filteredProperties, propertyType]);
 
   // Обработка загрузки дополнительных объявлений с сохранением позиции прокрутки
+  // RU: Восстанавливаем позицию скролла после догрузки; дожидаемся await loadMoreProperties для стабильности.
+  // EN: Restore scroll offset after pagination; await loadMoreProperties for stability.
   const handleLoadMore = async () => {
-    if (!loadingMore && hasMoreProperties) {
+    const now = Date.now();
+    // Троттлинг быстрых повторных вызовов
+    if (now - lastLoadMoreAtRef.current < LOAD_MORE_MIN_INTERVAL) {
+      return;
+    }
+    if (!loadingMore && getHasMore(propertyType)) {
       const currentOffset = scrollOffsetRef.current;
       console.log('Начало загрузки дополнительных объявлений: ', {
         'Тип': propertyType,
@@ -595,6 +606,7 @@ const HomeScreen = ({ navigation }: any) => {
           'Количество объявлений в filteredProperties': filteredProperties.length
         });
       } finally {
+        lastLoadMoreAtRef.current = Date.now();
         setLoadingMore(false);
       }
     }

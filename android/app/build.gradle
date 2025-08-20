@@ -91,8 +91,10 @@ android {
         applicationId 'com.anonymous.DomGoMobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "0.8.6"
+        // RU: Увеличиваем versionCode для нового релиза; важно для обновлений.
+        // EN: Bump versionCode for the new release; required for updates.
+        versionCode 2
+        versionName "0.8.7"
     }
     signingConfigs {
         debug {
@@ -101,15 +103,33 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            // RU: Для продакшн-подписи читаем значения из gradle.properties или ENV.
+            // EN: Read release keystore values from gradle.properties or ENV.
+            def storeFileProp = findProperty('RELEASE_STORE_FILE') ?: System.getenv('RELEASE_STORE_FILE')
+            def storePasswordProp = findProperty('RELEASE_STORE_PASSWORD') ?: System.getenv('RELEASE_STORE_PASSWORD')
+            def keyAliasProp = findProperty('RELEASE_KEY_ALIAS') ?: System.getenv('RELEASE_KEY_ALIAS')
+            def keyPasswordProp = findProperty('RELEASE_KEY_PASSWORD') ?: System.getenv('RELEASE_KEY_PASSWORD')
+            if (storeFileProp && storePasswordProp && keyAliasProp && keyPasswordProp) {
+                storeFile file(storeFileProp)
+                storePassword storePasswordProp
+                keyAlias keyAliasProp
+                keyPassword keyPasswordProp
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // RU: Если заданы продакшн-переменные подписи — используем release keystore, иначе fallback на debug.
+            // EN: Use release keystore when vars are set; fallback to debug otherwise.
+            if ((findProperty('RELEASE_STORE_FILE') ?: System.getenv('RELEASE_STORE_FILE'))) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

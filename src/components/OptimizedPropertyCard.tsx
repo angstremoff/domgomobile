@@ -5,7 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFavorites } from '../contexts/FavoritesContext';
 import type { Property } from '../contexts/PropertyContext';
 import Colors from '../constants/colors';
-import FastImage from 'react-native-fast-image';
+import { Image } from 'expo-image';
+// RU: Миграция на expo-image для устранения конфликта Glide (react-native-fast-image удалён).
+// EN: Migrated to expo-image to resolve Glide conflict (react-native-fast-image removed).
 
 interface PropertyCardProps {
   property: Property;
@@ -42,14 +44,11 @@ const OptimizedPropertyCard = ({ property, onPress, darkMode = false }: Property
       activeOpacity={0.9}
     >
       <View style={styles.imageContainer}>
-        <FastImage
-          source={{ 
-            uri: property.images?.[0] || 'https://via.placeholder.com/300x200',
-            priority: FastImage.priority.normal,
-            cache: FastImage.cacheControl.immutable
-          }}
+        <Image
+          source={{ uri: property.images?.[0] || 'https://via.placeholder.com/300x200' }}
           style={styles.image}
-          resizeMode={FastImage.resizeMode.cover}
+          contentFit="cover"
+          transition={300}
         />
         {property.type && (
           <View style={[

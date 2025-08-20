@@ -1,13 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Property } from '../contexts/PropertyContext';
 import { useProperties } from '../contexts/PropertyContext';
 import { WebView } from 'react-native-webview';
-import * as Location from 'expo-location';
-
-const { width, height } = Dimensions.get('window');
+ 
 
 interface MapScreenProps {
   navigation: any;

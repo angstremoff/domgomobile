@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { propertyService } from '../services/propertyService';
 import { Alert } from 'react-native';
-import { debounce } from '../utils/debounce';
 import { supabase } from '../lib/supabaseClient';
 
 // Тип для свойства
@@ -61,10 +60,10 @@ interface PropertyContextType {
   }>;
   setFilteredProperties: (properties: Property[]) => void;
   refreshProperties: () => Promise<void>;
-  loadMoreProperties: (type?: 'all' | 'sale' | 'rent') => void; // Изменен тип с Promise<void> на void из-за debounce
+  loadMoreProperties: (type?: 'all' | 'sale' | 'rent') => Promise<void>; // Асинхронная подгрузка без debounce
   invalidateCache: () => Promise<void>; // Добавлен новый метод для обновления кэша
-  hasMoreProperties: boolean;
-  totalProperties: number;
+  getHasMore: (type?: 'all' | 'sale' | 'rent') => boolean; // Селектор наличия следующей страницы
+  totalProperties: number; // total для активного типа
   cities: City[];
   loadCities: () => Promise<City[]>;
   citiesLoading: boolean;
@@ -108,6 +107,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     rent: 0
   });
   const pageSize = 10; // Размер страницы для пагинации
+  // RU: Пагинация: фиксированный размер страницы. Избегаем рывков скролла за счет аккуратного обновления списков без глобального setLoading при догрузке.
+  // EN: Pagination: fixed page size. Avoid scroll jumps by updating lists carefully and not toggling global loading during pagination.
 
   // Загрузка объявлений при первом рендере
   useEffect(() => {
@@ -170,7 +171,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   // Сохраняем последний активный тип сделки
   const activePropertyTypeRef = React.useRef<'all' | 'sale' | 'rent'>('all');
 
-  // Обновлённая функция refreshProperties с учётом активного типа
+  // RU: Обновлённая функция refreshProperties с учётом активного типа и безопасным состоянием.
+  // EN: Updated refreshProperties respects active type and keeps state safe.
   const refreshProperties = async () => {
     // Пропускаем обновление, если уже идет запрос
     if (requestInProgress.current.all) {
@@ -326,14 +328,14 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Загрузка дополнительных объявлений при прокрутке (пагинация)
+  // RU: Плавная догрузка (пагинация) без debounce. Защита от параллельных запросов через requestInProgress.
+  // EN: Smooth pagination without debounce. Uses requestInProgress to prevent parallel requests.
   const loadMoreProperties = async (type: 'all' | 'sale' | 'rent' = 'all') => {
-    // Не загружаем, если идет загрузка, нет больше данных, или уже выполняется запрос
-    if (loading || !hasMore[type] || requestInProgress.current[type as 'all' | 'sale' | 'rent']) return;
+    // Не загружаем, если нет больше данных, или уже выполняется запрос для этого типа
+    if (!hasMore[type] || requestInProgress.current[type as 'all' | 'sale' | 'rent']) return;
     
     try {
       requestInProgress.current[type as 'all' | 'sale' | 'rent'] = true;
-      setLoading(true);
       console.log(`Загрузка дополнительных объявлений типа ${type}, страница ${currentPage[type] + 1}`);
       
       let result;
@@ -344,7 +346,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       }
       
       if (result.data && result.data.length > 0) {
-        // Критически важно: используем функциональный апдейт состояния для всех случаев
+        // RU: Критично: используем функциональный setState, чтобы не потерять элементы при быстрых апдейтах.
+        // EN: Critical: use functional setState to avoid losing items during rapid updates.
         if (type === 'all') {
           // Добавляем новые объявления к существующим
           setProperties(prev => [...prev, ...result.data]);
@@ -352,8 +355,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
             setFilteredProperties(prev => [...prev, ...result.data]);
           }
         } else {
-          // Для типов 'sale' или 'rent' обновляем основной список properties
-          // и фильтрованный список, если этот тип сейчас выбран
+          // RU: Для 'sale'/'rent' обновляем основной и при необходимости фильтрованный список, избегая дублей.
+          // EN: For 'sale'/'rent' update main and active filtered lists, deduplicating items.
           // Обновляем общий список объявлений
           setProperties(prev => {
             // Фильтруем, чтобы избежать дубликатов
@@ -373,7 +376,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
           }
         }
         
-        // Обновляем состояние пагинации
+        // RU: Обновляем состояние пагинации (текущая страница, hasMore, totalCount)
+        // EN: Update pagination state (current page, hasMore, totalCount)
         setCurrentPage(prev => ({ ...prev, [type]: prev[type] + 1 }));
         setHasMore(prev => ({ ...prev, [type]: result.hasMore }));
         setTotalCount(prev => ({ ...prev, [type]: result.totalCount }));
@@ -385,15 +389,11 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       Alert.alert('Ошибка', 'Не удалось загрузить дополнительные объявления');
     } finally {
       requestInProgress.current[type as 'all' | 'sale' | 'rent'] = false;
-      setLoading(false);
     }
   };
 
-  // Создаем дебаунсированную версию loadMoreProperties
-  const debouncedLoadMoreProperties = useCallback(
-    debounce(loadMoreProperties, 300), // 300ms задержка
-    [currentPage, properties, filteredProperties, hasMore, totalCount]
-  );
+  // RU: Примечание: при необходимости ограничиваем частоту вызова на уровне UI (см. HomeScreen: троттлинг onEndReached)
+  // EN: Note: limit call frequency at UI level if needed (see HomeScreen: throttled onEndReached)
 
   // Функция для принудительного обновления кэша после добавления объявления
   const invalidateCache = useCallback(async () => {
@@ -498,10 +498,14 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         getPropertiesByType,
         setFilteredProperties,
         refreshProperties,
-        loadMoreProperties: debouncedLoadMoreProperties,
+        // RU: Возвращаем асинхронную версию без debounce для стабильной догрузки
+        // EN: Expose async version without debounce for stable pagination
+        loadMoreProperties,
         invalidateCache,
-        hasMoreProperties: hasMore.all,
-        totalProperties: totalCount.all,
+        // RU: Селектор наличия следующей страницы по типу (all/sale/rent)
+        // EN: Selector for whether more pages exist per type
+        getHasMore: (type: 'all' | 'sale' | 'rent' = activePropertyTypeRef.current) => hasMore[type],
+        totalProperties: totalCount[activePropertyTypeRef.current],
         cities,
         loadCities,
         citiesLoading,
