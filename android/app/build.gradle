@@ -94,7 +94,7 @@ android {
         // RU: Увеличиваем versionCode для нового релиза; важно для обновлений.
         // EN: Bump versionCode for the new release; required for updates.
         versionCode 2
-        versionName "0.8.8"
+        versionName "0.8.9"
     }
     signingConfigs {
         debug {
