@@ -10,6 +10,7 @@ fi
 NEW_VERSION=$1
 RELEASE_APK="android/app/build/outputs/apk/release/app-release.apk"
 DESTINATION_APK="releases/DomGo-${NEW_VERSION}.apk"
+STABLE_APK="releases/domgo.apk"
 
 # 1. Обновляем версию
 echo "📝 Обновляем версию до $NEW_VERSION..."
@@ -26,10 +27,14 @@ cd android && ./gradlew assembleRelease && cd ..
 if [ -f "$RELEASE_APK" ]; then
     echo "📦 Копируем APK в releases/DomGo-${NEW_VERSION}.apk"
     cp "$RELEASE_APK" "$DESTINATION_APK"
+    echo "📦 Копируем APK также в $STABLE_APK (стабильное имя без версии)"
+    cp "$RELEASE_APK" "$STABLE_APK"
     
     # 5. Выводим размер файла
     SIZE=$(du -h "$DESTINATION_APK" | cut -f1)
+    SIZE_STABLE=$(du -h "$STABLE_APK" | cut -f1)
     echo "✅ Готово! Размер APK: $SIZE"
+    echo "✅ Стабильный файл: $STABLE_APK ($SIZE_STABLE)"
     echo "📱 APK файл: $DESTINATION_APK"
     
     # 6. Отправляем изменения версии в репозиторий

@@ -245,13 +245,14 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     totalCount: number;
     hasMore: boolean;
     timestamp: number;
+    pageSize: number;
   };
   
   // Кэш для хранения последних результатов запросов по типу
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const typeCache = React.useRef<Record<'sale' | 'rent', TypeCacheResult>>({
-    sale: { data: [], totalCount: 0, hasMore: false, timestamp: 0 },
-    rent: { data: [], totalCount: 0, hasMore: false, timestamp: 0 }
+    sale: { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 },
+    rent: { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 }
   });
   
   // Получение объявлений по типу (продажа/аренда) с кэшированием
@@ -261,7 +262,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     // Проверяем существование ключа в typeCache
     if (!typeCache.current[type]) {
       console.log(`Инициализация кэша для типа ${type}`);
-      typeCache.current[type] = { data: [], totalCount: 0, hasMore: false, timestamp: 0 };
+      typeCache.current[type] = { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 };
     }
     
     // Обрабатываем случай, когда запрос уже выполняется
@@ -278,7 +279,9 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         cachedData && 
         cachedData.data && 
         cachedData.data.length > 0 && 
-        now - cachedData.timestamp < MIN_FETCH_INTERVAL) {
+        now - cachedData.timestamp < MIN_FETCH_INTERVAL &&
+        // Важно: если просим больший pageSize, чем в кэше, не используем кэш
+        pageSize <= (cachedData.pageSize || cachedData.data.length)) {
       console.log(`Возвращаем кэшированные данные для типа ${type}, обновлены ${Math.round((now - cachedData.timestamp)/1000)}с назад`);
       return cachedData;
     }
@@ -294,14 +297,15 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
           setCurrentPage({ ...currentPage, [type]: 1 });
           // Проверяем существование ключа в typeCache перед обновлением
           if (!typeCache.current[type]) {
-            typeCache.current[type] = { data: [], totalCount: 0, hasMore: false, timestamp: 0 };
+            typeCache.current[type] = { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 };
           }
           // Обновляем кэш для данного типа
           typeCache.current[type] = {
             data: result.data,
             totalCount: result.totalCount,
             hasMore: result.hasMore,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            pageSize
           };
         } else {
           setCurrentPage({ ...currentPage, [type]: page });
@@ -327,13 +331,13 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       // Проверяем существование и наличие данных в кэше
       const cachedData = typeCache.current[type];
       if (!cachedData) {
-        typeCache.current[type] = { data: [], totalCount: 0, hasMore: false, timestamp: 0 };
+        typeCache.current[type] = { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 };
       }
       
       // Возвращаем кэш или пустой результат, если кэша нет
       return (typeCache.current[type] && typeCache.current[type].data && typeCache.current[type].data.length > 0) 
         ? typeCache.current[type] 
-        : { data: [], totalCount: 0, hasMore: false, timestamp: 0 };
+        : { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 };
     } finally {
       requestInProgress.current[type] = false;
       setLoading(false);

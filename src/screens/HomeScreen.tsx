@@ -30,6 +30,8 @@ const HomeScreen = ({ navigation }: any) => {
   } = useProperties();
   const [propertyType, setPropertyType] = useState<'all' | 'sale' | 'rent'>('all');
   const [propertyCategory, setPropertyCategory] = useState<string>('all');
+  // Локальная база данных для вкладок sale/rent, чтобы не зависеть от глобального properties
+  const [typeItems, setTypeItems] = useState<Property[]>([]);
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
   const [loadingMore, setLoadingMore] = useState(false);
@@ -120,18 +122,22 @@ const HomeScreen = ({ navigation }: any) => {
   // Мемоизированная функция для фильтрации объектов недвижимости
   // использует вынесенную логику из filterHelpers.ts
   const applyFilters = useCallback(() => {
-    if (properties.length > 0) {
+    // Базовый источник: вкладка "Все" -> global properties; вкладки sale/rent -> локальные typeItems
+    const base = propertyType === 'all' ? properties : typeItems;
+    if (base.length > 0) {
       const filtered = applyPropertyFilters(
-        properties,
+        base,
         propertyType,
         propertyCategory,
         selectedCity,
         activeFilters
       );
-      
       setFilteredProperties(filtered);
+    } else if (propertyType !== 'all') {
+      // Если пока нет локальной базы для sale/rent, не перетираем список
+      return;
     }
-  }, [propertyType, propertyCategory, selectedCity, properties, activeFilters]);
+  }, [propertyType, propertyCategory, selectedCity, properties, typeItems, activeFilters]);
   
   // Используем debounce для applyFilters, чтобы не вызывать фильтрацию слишком часто
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
@@ -144,9 +150,13 @@ const HomeScreen = ({ navigation }: any) => {
     }
     
     // Устанавливаем новый таймер для фильтрации с задержкой
+    // ВАЖНО: автофильтрацию через debounce применяем только для вкладки "Все",
+    // чтобы не перетирать результаты во вкладках Продажа/Аренда
     debounceTimeout.current = setTimeout(() => {
-      applyFilters();
-    }, 300); // 300ms задержка перед применением фильтров
+      if (propertyType === 'all') {
+        applyFilters();
+      }
+    }, 300);
     
     // Очистка таймера при размонтировании компонента
     return () => {
@@ -154,17 +164,36 @@ const HomeScreen = ({ navigation }: any) => {
         clearTimeout(debounceTimeout.current);
       }
     };
-  }, [applyFilters]);
+  }, [applyFilters, propertyType]);
+
+  // МГНОВЕННАЯ реакция на смену города во вкладках Продажа/Аренда
+  // Во вкладке "Все" уже есть debounce-логика выше
+  useEffect(() => {
+    if (propertyType === 'sale' || propertyType === 'rent') {
+      const base = typeItems;
+      if (base.length === 0) return;
+      const filtered = applyPropertyFilters(
+        base,
+        propertyType,
+        propertyCategory,
+        selectedCity,
+        activeFilters
+      );
+      setFilteredProperties(filtered);
+    }
+  }, [selectedCity, propertyType, propertyCategory, activeFilters, typeItems]);
 
   useEffect(() => {
     if (propertyType === 'rent') {
       setActiveFilters(rentFilters);
       setTempFilters(rentFilters);
-      setFiltersAppliedRent(true);
+      // Не применять фильтры автоматически при выборе вкладки "Аренда"
+      setFiltersAppliedRent(false);
     } else if (propertyType === 'sale') {
       setActiveFilters(saleFilters);
       setTempFilters(saleFilters);
-      setFiltersAppliedSale(true);
+      // Не применять фильтры автоматически при выборе вкладки "Продажа"
+      setFiltersAppliedSale(false);
     } else {
       // Для вкладки "Все" используем пустые фильтры
       setActiveFilters({
@@ -230,8 +259,9 @@ const HomeScreen = ({ navigation }: any) => {
     setLoadingMore(true);
     
     try {
-      // Загружаем объявления выбранного типа (первая страница)
-      const { data } = await getPropertiesByType(type, 1, 10);
+      // Загружаем объявления выбранного типа (первая страница) с расширенным лимитом,
+      // чтобы пользователь видел больше результатов сразу
+      const { data } = await getPropertiesByType(type, 1, 30);
       
       // Проверяем, не устарел ли наш запрос (другой мог стартовать пока этот выполнялся)
       if (lastFilterRequest.current.type !== type || 
@@ -240,6 +270,8 @@ const HomeScreen = ({ navigation }: any) => {
         return;
       }
       
+      // Обновляем локальную базу для текущего типа
+      setTypeItems(data);
       let filtered = [...data];
       
       // Фильтрация по категории
@@ -367,7 +399,7 @@ const HomeScreen = ({ navigation }: any) => {
     });
   };
 
-  const handleClearFilters = () => {
+  const handleClearFilters = async () => {
     // Сбрасываем все фильтры
     if (propertyType === 'sale') {
       setSaleFilters({
@@ -406,38 +438,30 @@ const HomeScreen = ({ navigation }: any) => {
     // Сбрасываем категорию недвижимости
     setPropertyCategory('all');
     
-    // Применяем фильтрацию заново
-    if (properties.length > 0) {
-      let filtered = [...properties];
-      
-      if (propertyType === 'sale') {
-        filtered = filtered.filter(prop => prop.type === 'sale');
-      } else if (propertyType === 'rent') {
-        filtered = filtered.filter(prop => prop.type === 'rent');
+    // Применяем фильтрацию заново, получая актуальные данные из сервиса по текущему типу
+    try {
+      if (propertyType === 'sale' || propertyType === 'rent') {
+        const { data } = await getPropertiesByType(propertyType, 1, 30);
+        // Обновляем локальную базу текущего типа
+        setTypeItems(data);
+        // Применяем фильтр по городу при сбросе, если выбран город
+        let list = [...data];
+        if (selectedCity && selectedCity.id) {
+          const cityIdStr = String(selectedCity.id);
+          list = list.filter(p => {
+            if (!p || p.city_id === undefined || p.city_id === null) return false;
+            try { return String(p.city_id) === cityIdStr; } catch { return false; }
+          });
+        }
+        setFilteredProperties(list);
+      } else {
+        // Для вкладки "Все" оставляем текущую стратегию
+        if (properties.length > 0) {
+          setFilteredProperties(properties);
+        }
       }
-      
-      if (selectedCity && selectedCity?.id) {
-        // Заранее преобразуем id города в строку один раз
-        const cityIdStr = String(selectedCity.id);
-        
-        filtered = filtered.filter(prop => {
-          // Проверяем все возможные случаи null/undefined
-          if (!prop || prop.city_id === undefined || prop.city_id === null) {
-            return false;
-          }
-          
-          try {
-            // Преобразуем id свойства в строку
-            const propCityIdStr = String(prop.city_id);
-            return propCityIdStr === cityIdStr;
-          } catch (error) {
-            console.error('Ошибка при фильтрации по городу:', error);
-            return false;
-          }
-        });
-      }
-      
-      setFilteredProperties(filtered);
+    } catch (e) {
+      console.error('Ошибка при сбросе фильтров и обновлении данных:', e);
     }
   };
 
@@ -502,9 +526,17 @@ const HomeScreen = ({ navigation }: any) => {
       }
     }
     
-    // Применяем фильтрацию
-    if (properties.length > 0) {
-      const filtered = applyActiveFilters(properties, propertyType);
+    // Применяем фильтрацию c учётом выбранного города и баз данных вкладок
+    const base = propertyType === 'all' ? properties : typeItems;
+    if (base.length > 0) {
+      // Используем общий helper, который учитывает selectedCity
+      const filtered = applyPropertyFilters(
+        base,
+        propertyType,
+        propertyCategory,
+        selectedCity,
+        propertyType === 'sale' ? tempFilters : propertyType === 'rent' ? tempFilters : activeFilters
+      );
       setFilteredProperties(filtered);
     }
   };
@@ -598,13 +630,13 @@ const HomeScreen = ({ navigation }: any) => {
       
       setLoadingMore(true);
       try {
-        // Дожидаемся выполнения загрузки перед сбросом состояния
         await loadMoreProperties(propertyType);
         console.log('Загрузка завершена: ', {
           'Новая позиция прокрутки': scrollOffsetRef.current,
           'Разница': scrollOffsetRef.current - currentOffset,
           'Количество объявлений в filteredProperties': filteredProperties.length
         });
+        // Примечание: filteredProperties и properties обновляются контекстом; debounce не перетирает вкладки sale/rent
       } finally {
         lastLoadMoreAtRef.current = Date.now();
         setLoadingMore(false);
@@ -661,13 +693,25 @@ const HomeScreen = ({ navigation }: any) => {
             setPropertyCategory('all');
             // Загружаем фильтры для вкладки "Продажа"
             setActiveFilters(saleFilters);
-            setFiltersAppliedSale(true);
+            // Фильтры не считаются применёнными до явного действия пользователя
+            setFiltersAppliedSale(false);
             
             // Получаем свойства по типу "sale" - это обновит activePropertyTypeRef
             try {
-              const result = await getPropertiesByType('sale');
+              const result = await getPropertiesByType('sale', 1, 30);
               if (result && result.data) {
-                setFilteredProperties(result.data);
+                // Базовые данные по типу
+                setTypeItems(result.data);
+                // Применяем фильтр по городу, если выбран
+                let list = [...result.data];
+                if (selectedCity && selectedCity.id) {
+                  const cityIdStr = String(selectedCity.id);
+                  list = list.filter(p => {
+                    if (!p || p.city_id === undefined || p.city_id === null) return false;
+                    try { return String(p.city_id) === cityIdStr; } catch { return false; }
+                  });
+                }
+                setFilteredProperties(list);
               }
             } catch (error) {
               console.error('Ошибка при загрузке объявлений для продажи:', error);
@@ -694,13 +738,25 @@ const HomeScreen = ({ navigation }: any) => {
             setPropertyCategory('all');
             // Загружаем фильтры для вкладки "Аренда"
             setActiveFilters(rentFilters);
-            setFiltersAppliedRent(true);
+            // Фильтры не считаются применёнными до явного действия пользователя
+            setFiltersAppliedRent(false);
             
             // Получаем свойства по типу "rent" - это обновит activePropertyTypeRef
             try {
-              const result = await getPropertiesByType('rent');
+              const result = await getPropertiesByType('rent', 1, 30);
               if (result && result.data) {
-                setFilteredProperties(result.data);
+                // Базовые данные по типу
+                setTypeItems(result.data);
+                // Применяем фильтр по городу, если выбран
+                let list = [...result.data];
+                if (selectedCity && selectedCity.id) {
+                  const cityIdStr = String(selectedCity.id);
+                  list = list.filter(p => {
+                    if (!p || p.city_id === undefined || p.city_id === null) return false;
+                    try { return String(p.city_id) === cityIdStr; } catch { return false; }
+                  });
+                }
+                setFilteredProperties(list);
               }
             } catch (error) {
               console.error('Ошибка при загрузке объявлений для аренды:', error);

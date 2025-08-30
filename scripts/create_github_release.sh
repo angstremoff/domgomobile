@@ -4,6 +4,7 @@ set -euo pipefail
 #   GITHUB_TOKEN=... ./scripts/create_github_release.sh v0.8.7 "DomGo v0.8.7" ./domgo.apk
 # or
 #   ./scripts/create_github_release.sh v0.8.7 "DomGo v0.8.7" ./domgo.apk <TOKEN>
+# Optional: provide release notes via env NOTES.
 
 TAG=${1:?"tag required e.g. v0.8.7"}
 TITLE=${2:?"title required e.g. DomGo v0.8.7"}
@@ -17,11 +18,13 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-NOTES=$(cat <<'EOF'
-RU: 0.8.7 — стабильная пагинация (троттлинг onEndReached, защита от параллельных запросов, восстановление скролла), миграция на expo-image, подробные комментарии в коде.
-EN: 0.8.7 — stable pagination (throttled onEndReached, guarded requests, scroll restore), migration to expo-image, detailed code comments.
+if [ -z "${NOTES:-}" ]; then
+  NOTES=$(cat <<'EOF'
+RU: Обновление DomGo.
+EN: DomGo update.
 EOF
-)
+  )
+fi
 
 API="https://api.github.com/repos/$OWNER/$REPO/releases"
 CREATE_PAYLOAD=$(jq -n --arg tag "$TAG" --arg title "$TITLE" --arg body "$NOTES" '{tag_name:$tag, target_commitish:"main", name:$title, body:$body, draft:false, prerelease:false}')
