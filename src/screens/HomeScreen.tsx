@@ -125,19 +125,27 @@ const HomeScreen = ({ navigation }: any) => {
     // Базовый источник: вкладка "Все" -> global properties; вкладки sale/rent -> локальные typeItems
     const base = propertyType === 'all' ? properties : typeItems;
     if (base.length > 0) {
+      // Не применяем пользовательские фильтры на Продажа/Аренда, пока их явно не применили
+      const emptyFilters = { propertyTypes: [], price: [], rooms: [], areas: [], features: [] } as any;
+      const filtersForApply =
+        propertyType === 'rent' && !filtersAppliedRent
+          ? emptyFilters
+          : propertyType === 'sale' && !filtersAppliedSale
+          ? emptyFilters
+          : activeFilters;
       const filtered = applyPropertyFilters(
         base,
         propertyType,
         propertyCategory,
         selectedCity,
-        activeFilters
+        filtersForApply
       );
       setFilteredProperties(filtered);
     } else if (propertyType !== 'all') {
       // Если пока нет локальной базы для sale/rent, не перетираем список
       return;
     }
-  }, [propertyType, propertyCategory, selectedCity, properties, typeItems, activeFilters]);
+  }, [propertyType, propertyCategory, selectedCity, properties, typeItems, activeFilters, filtersAppliedRent, filtersAppliedSale]);
   
   // Используем debounce для applyFilters, чтобы не вызывать фильтрацию слишком часто
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
@@ -172,16 +180,24 @@ const HomeScreen = ({ navigation }: any) => {
     if (propertyType === 'sale' || propertyType === 'rent') {
       const base = typeItems;
       if (base.length === 0) return;
+      // Не применять фильтры до явного действия пользователя
+      const emptyFilters = { propertyTypes: [], price: [], rooms: [], areas: [], features: [] } as any;
+      const filtersForApply =
+        propertyType === 'rent' && !filtersAppliedRent
+          ? emptyFilters
+          : propertyType === 'sale' && !filtersAppliedSale
+          ? emptyFilters
+          : activeFilters;
       const filtered = applyPropertyFilters(
         base,
         propertyType,
         propertyCategory,
         selectedCity,
-        activeFilters
+        filtersForApply
       );
       setFilteredProperties(filtered);
     }
-  }, [selectedCity, propertyType, propertyCategory, activeFilters, typeItems]);
+  }, [selectedCity, propertyType, propertyCategory, activeFilters, typeItems, filtersAppliedRent, filtersAppliedSale]);
 
   useEffect(() => {
     if (propertyType === 'rent') {
