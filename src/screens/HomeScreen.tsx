@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, Text, ScrollView, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import PropertyCard from '../components/PropertyCard';
@@ -562,7 +562,6 @@ const HomeScreen = ({ navigation }: any) => {
     if (propertyCategory !== 'all') {
       return true;
     }
-    
     if (propertyType === 'rent') {
       // Проверяем, отличаются ли текущие фильтры от значений по умолчанию
       return (
@@ -660,8 +659,19 @@ const HomeScreen = ({ navigation }: any) => {
     }
   };
 
+  // Web-responsive helpers (без влияния на mobile)
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const isDesktop = isWeb && width >= 1024;
+  const isTabletWeb = isWeb && width >= 768 && width < 1024;
+  // брейкпоинты используются для вычисления колонок и ширин карточек
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[
+      styles.container,
+      { backgroundColor: theme.background },
+      isWeb ? { paddingHorizontal: 48 } : null,
+    ]}>
       <View style={styles.filterContainer}>
         <TouchableOpacity
           style={[
@@ -1027,27 +1037,74 @@ const HomeScreen = ({ navigation }: any) => {
             }
           }}
           renderItem={({ item }: { item: Property }) => (
-            compactView ? (
-              <PropertyCardCompact
-                property={item}
-                onPress={() => navigation.navigate('PropertyDetails', { propertyId: item.id })}
-                darkMode={darkMode}
-              />
-            ) : (
-              <PropertyCard 
-                property={item}
-                onPress={() => navigation.navigate('PropertyDetails', { propertyId: item.id })}
-                darkMode={darkMode}
-              />
-            )
+            <View
+              style={[
+                // Базовый центрирующий враппер
+                isWeb ? styles.webCardWrapper : null,
+                // Компактный режим: фиксированная ширина карточки для сетки 2/4/5
+                isWeb && compactView
+                  ? (isDesktop
+                      ? { width: 230 } // 5 колонок на desktop
+                      : isTabletWeb
+                        ? { width: 240 } // 4 колонки на tablet web
+                        : { width: '48%' }) // 2 колонки на mobile web
+                  : null,
+                // Native compact: растягиваем элемент на половину строки
+                !isWeb && compactView ? styles.nativeItemCompact : null,
+                // Полный режим: ширина под 1/2/3 колонки (как на старом сайте 3 в ряд на desktop)
+                isWeb && !compactView
+                  ? (isDesktop
+                      ? { width: 360 }
+                      : isTabletWeb
+                        ? { width: 380 }
+                        : { width: '100%' })
+                  : null,
+              ]}
+            >
+              {compactView ? (
+                <PropertyCardCompact
+                  property={item}
+                  onPress={() => navigation.navigate('PropertyDetails', { propertyId: item.id })}
+                  darkMode={darkMode}
+                />
+              ) : (
+                <PropertyCard
+                  property={item}
+                  onPress={() => navigation.navigate('PropertyDetails', { propertyId: item.id })}
+                  darkMode={darkMode}
+                />
+              )}
+            </View>
           )} // Мемоизируем функцию для повышения производительности 
           contentContainerStyle={[
             styles.listContent,
-            { paddingTop: 8 } // Одинаковый небольшой отступ для всех вкладок
+            { paddingTop: 8 }, // Одинаковый небольшой отступ для всех вкладок
+            isWeb ? styles.webListContainer : null,
+            isWeb ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' } : null,
           ]}
           showsVerticalScrollIndicator={false}
-          numColumns={compactView ? 2 : 1} // Используем 2 колонки в компактном режиме
-          key={compactView ? 'compact' : 'full'} // Ключ для пересоздания списка при смене режима
+          // Колонки по аналогии со старым сайтом
+          // compact: 5 (desktop) / 4 (tablet) / 2 (mobile web)
+          // full:    3 (desktop) / 2 (tablet) / 1 (mobile web)
+          numColumns={
+            isWeb
+              ? (compactView
+                  ? (isDesktop ? 5 : isTabletWeb ? 4 : 2)
+                  : (isDesktop ? 3 : isTabletWeb ? 2 : 1))
+              : (compactView ? 2 : 1)
+          }
+          columnWrapperStyle={
+            isWeb
+              ? (compactView ? styles.webColumnWrapperCompact : styles.webColumnWrapperFull)
+              : (compactView ? styles.nativeColumnWrapperCompact : undefined)
+          }
+          key={
+            isWeb
+              ? (compactView
+                  ? (isDesktop ? 'web-compact-5' : isTabletWeb ? 'web-compact-4' : 'web-compact-2')
+                  : (isDesktop ? 'web-full-3' : isTabletWeb ? 'web-full-2' : 'web-full-1'))
+              : (compactView ? 'native-compact-2' : 'native-full-1')
+          } // Ключ для пересоздания списка при смене режима/брейкпоинта
           onRefresh={async () => {
             // Если выбран определенный тип сделки, загружаем объявления именно этого типа
             if (propertyType === 'sale' || propertyType === 'rent') {
@@ -1214,6 +1271,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 16,
+  },
+  // Native (iOS/Android) compact grid helpers
+  nativeColumnWrapperCompact: {
+    paddingHorizontal: 8,
+    columnGap: 8,
+  },
+  nativeItemCompact: {
+    flex: 1,
+  },
+  // Web-only container to center and constrain content width
+  webListContainer: {
+    width: '100%',
+    maxWidth: 1280,
+    alignSelf: 'center',
+  },
+  // Wrapper for each card on web to prevent full-bleed stretching
+  webCardWrapper: {
+    width: 336,
+    alignSelf: 'auto',
+  },
+  webCardWrapperCompact: {
+    width: 300,
+    alignSelf: 'auto',
+  },
+  // Обертка строк для компактной сетки (больше колонок, меньше зазоры)
+  webColumnWrapperCompact: {
+    gap: 24,
+    paddingHorizontal: 16,
+    justifyContent: 'flex-start',
+  },
+  // Обертка строк для полного вида (меньше колонок, больше дыхания)
+  webColumnWrapperFull: {
+    gap: 40,
+    paddingHorizontal: 16,
+    justifyContent: 'flex-start',
   },
   loadingContainer: {
     flex: 1,

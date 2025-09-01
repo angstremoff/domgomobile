@@ -1,5 +1,5 @@
 import React, { memo, useCallback } from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Image, TouchableOpacity, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -25,15 +25,18 @@ const PropertyCardCompact = memo(({ property, onPress, darkMode = false }: Prope
 
   return (
     <TouchableOpacity 
-      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} 
+      style={[styles.card, Platform.OS === 'web' && styles.cardWeb, { backgroundColor: theme.card, borderColor: theme.border }]} 
       onPress={onPress} 
       activeOpacity={0.9}
     >
-      <View style={styles.imageContainer}>
+      <View style={[
+        styles.imageContainer,
+        Platform.OS === 'web' ? styles.imageContainerWeb : styles.imageContainerMobile,
+      ]}>
         <Image
           source={{ uri: property.images?.[0] || 'https://via.placeholder.com/300x200' }}
           style={styles.image}
-          resizeMode="cover"
+          resizeMode={'cover'}
         />
         {property.type && (
           <View style={[
@@ -71,7 +74,10 @@ const PropertyCardCompact = memo(({ property, onPress, darkMode = false }: Prope
         </TouchableOpacity>
       </View>
 
-      <View style={styles.infoContainer}>
+      <View style={[
+        styles.infoContainer,
+        Platform.OS === 'web' ? styles.infoContainerWeb : styles.infoContainerMobile,
+      ]}>
         <Text style={[styles.price, { color: theme.primary }]} numberOfLines={1}>
           {property.price.toLocaleString()}€
           {property.type === 'rent' ? `/${t('property.month')}` : ''}
@@ -104,16 +110,28 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 8,
     marginHorizontal: 4,
-    width: '48%', // Примерно половина ширины экрана с учетом отступов
+    width: '100%', // ширину колонки контролирует враппер (HomeScreen.nativeItemCompact)
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 1,
   },
+  cardWeb: {
+    width: '100%', // respect wrapper width from HomeScreen
+    marginBottom: 20,
+    marginHorizontal: 0,
+  },
   imageContainer: {
     position: 'relative',
+  },
+  imageContainerMobile: {
     height: 100,
+  },
+  imageContainerWeb: {
+    width: '100%',
+    height: undefined,
+    aspectRatio: 1,
   },
   image: {
     width: '100%',
@@ -171,6 +189,14 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     padding: 8,
+  },
+  infoContainerWeb: {
+    // Убираем фиксированную высоту на вебе, чтобы не оставалось пустого места
+    // Инфо-блок занимает только нужный контентом размер
+    paddingBottom: 8,
+  },
+  infoContainerMobile: {
+    minHeight: 56, // выравниваем высоту карточек в 2-колоночной сетке на native
   },
   price: {
     fontSize: 14,

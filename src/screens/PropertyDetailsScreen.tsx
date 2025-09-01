@@ -498,7 +498,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('property.location')}</Text>
               
               <TouchableOpacity 
-                style={[styles.mapToggleButton, { backgroundColor: theme.primary }]}
+                style={[styles.mapToggleButton, Platform.OS === 'web' && styles.buttonInlineWeb, { backgroundColor: theme.primary }]}
                 onPress={() => setShowMap(!showMap)}
               >
                 <Ionicons name="map-outline" size={18} color="#FFFFFF" />
@@ -557,15 +557,16 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               {(property.user?.phone || property.contact?.phone) && (
                 !showPhoneNumber ? (
                   <TouchableOpacity 
-                    style={[styles.phoneButton, { backgroundColor: theme.primary }]}
+                    style={[styles.phoneButton, Platform.OS === 'web' && styles.buttonInlineWeb, { backgroundColor: theme.primary }]}
                     onPress={() => setShowPhoneNumber(true)}
                   >
                     <Ionicons name="eye-outline" size={20} color="#FFFFFF" />
                     <Text style={styles.buttonText}>{t('property.showPhone')}</Text>
                   </TouchableOpacity>
                 ) : (
-                  <View style={[styles.phoneButton, { backgroundColor: theme.primary }]}>
-                    <View style={styles.phoneNumberBlock}>
+                  <View style={[styles.phoneButton, Platform.OS === 'web' && styles.buttonInlineWeb, { backgroundColor: theme.primary }]}> 
+                    <View style={styles.phoneNumberBlock}
+                    >
                       <TouchableOpacity 
                         style={styles.iconButton}
                         onPress={() => Linking.openURL(`tel:${property.user?.phone || property.contact?.phone}`)}
@@ -589,7 +590,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
 
             {/* Кнопка поделиться */}
             <TouchableOpacity 
-              style={[styles.shareButton, { backgroundColor: theme.primary }]}
+              style={[styles.shareButton, Platform.OS === 'web' && styles.buttonInlineWeb, { backgroundColor: theme.primary }]}
               onPress={handleShare}
             >
               <Ionicons name="share-social-outline" size={20} color="#FFFFFF" />
@@ -796,6 +797,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     marginTop: 8,
+  },
+  // Web-only helper: keep buttons content-sized instead of stretching full width
+  buttonInlineWeb: {
+    alignSelf: 'flex-start',
+    width: 'auto',
   },
   contactRow: {
     flexDirection: 'row',

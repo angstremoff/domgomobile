@@ -1,5 +1,5 @@
 import React, { memo, useCallback } from 'react';
-import { StyleSheet, View, Text, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, Image, TouchableOpacity, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -41,20 +41,29 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
 
   return (
     <TouchableOpacity 
-      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]} 
+      style={[styles.card, Platform.OS === 'web' && styles.cardWeb, { backgroundColor: theme.card, borderColor: theme.border }]} 
       onPress={onPress} 
       activeOpacity={0.9}
     >
-      <View style={styles.imageContainer}>
+      <View style={[
+        styles.imageContainer,
+        Platform.OS === 'web' ? styles.imageContainerWeb : styles.imageContainerMobile,
+      ]}>
         <Image
           source={{ uri: property.images?.[0] || 'https://via.placeholder.com/300x200' }}
           style={[
             styles.image,
+            Platform.OS === 'web' && styles.imageWeb,
             // Используем переменную isInactive для проверки статуса
             isInactive && styles.imageInactive 
           ]}
           resizeMode="cover"
         />
+        {Platform.OS === 'web' && (
+          <View style={styles.priceOverlayWeb}>
+            <Text style={styles.priceOverlayText}>{property.price.toLocaleString()}€{property.type === 'rent' ? ` / ${t('property.month')}` : ''}</Text>
+          </View>
+        )}
         {isInactive && (
           <View style={styles.statusOverlay}>
             <Text style={styles.statusText}>
@@ -86,27 +95,27 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
           </View>
         )}
         <TouchableOpacity 
-          style={styles.favoriteButton} 
+          style={[styles.favoriteButton, Platform.OS === 'web' && styles.favoriteButtonWeb]} 
           onPress={handleFavoritePress}
           activeOpacity={0.8}
         >
           <Ionicons 
             name={propertyIsFavorite ? "heart" : "heart-outline"} 
-            size={24} 
-            color={propertyIsFavorite ? "#E91E63" : "#FFFFFF"} 
+            size={22} 
+            color={Platform.OS === 'web' ? (propertyIsFavorite ? "#E91E63" : "#4B5563") : (propertyIsFavorite ? "#E91E63" : "#FFFFFF")} 
           />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.infoContainer}>
+      <View style={[styles.infoContainer, Platform.OS === 'web' && styles.infoContainerWeb]}>
         <Text style={[styles.price, { color: theme.primary }]}>
           {property.price.toLocaleString()}€
           {property.type === 'rent' ? `/ ${t('property.month')}` : ''}
         </Text>
-        <Text style={[styles.title, { color: theme.text }]} numberOfLines={1}>
+        <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
           {property.title}
         </Text>
-        <Text style={[styles.location, { color: theme.secondary }]}>
+        <Text style={[styles.location, { color: theme.secondary }]} numberOfLines={2}>
           <Ionicons name="location-outline" size={14} color={theme.secondary} /> {fullAddress}
         </Text>
 
@@ -163,18 +172,33 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  cardWeb: {
+    width: '100%',
+    marginBottom: 24,
+  },
   imageContainer: {
     position: 'relative',
-    height: 160,
+  },
+  imageContainerMobile: {
+    height: 160, // mobile default
+  },
+  imageContainerWeb: {
+    width: '100%',
+    height: undefined,
+    aspectRatio: 1,
   },
   image: {
     width: '100%',
     height: '100%',
   },
+  imageWeb: {
+    width: '100%',
+    height: '100%',
+  },
   typeTag: {
     position: 'absolute',
-    top: 10,
-    left: 10,
+    top: 8,
+    left: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -188,7 +212,7 @@ const styles = StyleSheet.create({
   propertyTypeTag: {
     position: 'absolute',
     top: 40,
-    left: 10,
+    left: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
@@ -214,20 +238,45 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 10,
     right: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  favoriteButtonWeb: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
   infoContainer: {
     padding: 12,
+  },
+  infoContainerWeb: {
+    // Автовысота на вебе, чтобы убрать лишний «подбородок»
+    paddingBottom: 8,
   },
   price: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
+  },
+  priceOverlayWeb: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 12,
+  },
+  priceOverlayText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowRadius: 6,
+    textShadowOffset: { width: 0, height: 1 },
   },
   title: {
     fontSize: 16,

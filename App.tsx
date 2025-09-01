@@ -1,9 +1,8 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as Updates from 'expo-updates';
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
-import * as Application from 'expo-application';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { propertyService } from './src/services/propertyService';
 import { AuthProvider } from './src/contexts/AuthContext';
@@ -20,15 +19,16 @@ import { supabase } from './src/lib/supabaseClient';
 import './src/translations';
 
 export default function App() {
-  // Одноразовая миграция/очистка кэша при смене версии (боремся с восстановлением данных Android)
+  // Одноразовая миграция/очистка кэша при смене версии (не применяем для Web)
   React.useEffect(() => {
+    if (Platform.OS === 'web') return; // web: не выполняем версионную миграцию/очистку
     const APP_VERSION_KEY = 'app_version';
     (async () => {
       try {
-        // Получаем версию надёжно для продакшена
+        // Получаем версию приложения без обращения к expo-application,
+        // чтобы Dev Client не падал при отсутствии нативного модуля
         const currentVersion =
-          Application.nativeApplicationVersion ||
-          Constants.expoConfig?.version ||
+          (Constants?.expoConfig as any)?.version ||
           // как крайний случай — runtimeVersion, чтобы хотя бы менялось при bump-е
           (Updates.runtimeVersion as string | undefined) ||
           '0';
@@ -251,8 +251,9 @@ export default function App() {
     };
   }, []);
   
-  // Функция для проверки и установки обновлений
+  // Функция для проверки и установки обновлений (не запускаем на Web)
   React.useEffect(() => {
+    if (Platform.OS === 'web') return; // web: проверка обновлений отключена
     // Создаем проверку обновлений в самом начале работы приложения
     async function checkForUpdates() {
       try {

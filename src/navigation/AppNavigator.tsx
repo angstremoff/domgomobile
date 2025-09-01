@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { Platform, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useProperties } from '../contexts/PropertyContext';
 import HeaderControls from '../components/HeaderControls';
+import WebHeaderBar from '../components/WebHeaderBar';
 import Colors from '../constants/colors';
 import { RootStackParamList } from '../types/navigation';
 
@@ -52,7 +54,23 @@ const MainStack = () => {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        headerRight: () => (
+        // На вебе рисуем собственную «широкую» шапку внутри headerTitle,
+        // и убираем headerRight чтобы не дублировать элементы
+        headerTitle: () => (
+          Platform.OS === 'web' ? (
+            <WebHeaderBar
+              darkMode={darkMode}
+              toggleDarkMode={toggleDarkMode}
+              title="DomGo.rs"
+              isHomeScreen={true}
+              selectedCity={selectedCity}
+              onCitySelect={setSelectedCity}
+            />
+          ) : (
+            <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>DomGo.rs</Text>
+          )
+        ),
+        headerRight: Platform.OS === 'web' ? undefined : () => (
           <HeaderControls 
             darkMode={darkMode} 
             toggleDarkMode={toggleDarkMode} 
@@ -77,12 +95,20 @@ const MainStack = () => {
           presentation: 'card',
           animationTypeForReplace: 'push',
           animation: 'slide_from_right',
-          headerRight: () => (
-            <HeaderControls 
-              darkMode={darkMode} 
-              toggleDarkMode={toggleDarkMode} 
-              isHomeScreen={false}
-            />
+          headerTitle: () => (
+            Platform.OS === 'web' ? (
+              <WebHeaderBar
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                title={t('agency.title', 'Агентство')}
+                isHomeScreen={false}
+              />
+            ) : (
+              <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>{t('agency.title', 'Агентство')}</Text>
+            )
+          ),
+          headerRight: Platform.OS === 'web' ? undefined : () => (
+            <HeaderControls darkMode={darkMode} toggleDarkMode={toggleDarkMode} isHomeScreen={false} />
           ),
         }} 
       />
@@ -95,12 +121,20 @@ const MainStack = () => {
           presentation: 'card', 
           animationTypeForReplace: 'push',
           animation: 'slide_from_right',
-          headerRight: () => (
-            <HeaderControls 
-              darkMode={darkMode} 
-              toggleDarkMode={toggleDarkMode} 
-              isHomeScreen={false}
-            />
+          headerTitle: () => (
+            Platform.OS === 'web' ? (
+              <WebHeaderBar
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                title={t('property.details')}
+                isHomeScreen={false}
+              />
+            ) : (
+              <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>{t('property.details')}</Text>
+            )
+          ),
+          headerRight: Platform.OS === 'web' ? undefined : () => (
+            <HeaderControls darkMode={darkMode} toggleDarkMode={toggleDarkMode} isHomeScreen={false} />
           ),
         }} 
       />
@@ -110,12 +144,20 @@ const MainStack = () => {
         options={{ 
           title: t('profile.myProperties'),
           headerShown: true,
-          headerRight: () => (
-            <HeaderControls 
-              darkMode={darkMode} 
-              toggleDarkMode={toggleDarkMode} 
-              isHomeScreen={false}
-            />
+          headerTitle: () => (
+            Platform.OS === 'web' ? (
+              <WebHeaderBar
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                title={t('profile.myProperties')}
+                isHomeScreen={false}
+              />
+            ) : (
+              <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>{t('profile.myProperties')}</Text>
+            )
+          ),
+          headerRight: Platform.OS === 'web' ? undefined : () => (
+            <HeaderControls darkMode={darkMode} toggleDarkMode={toggleDarkMode} isHomeScreen={false} />
           ),
         }} 
       />
@@ -125,12 +167,20 @@ const MainStack = () => {
         options={{ 
           title: t('property.editProperty'),
           headerShown: true,
-          headerRight: () => (
-            <HeaderControls 
-              darkMode={darkMode} 
-              toggleDarkMode={toggleDarkMode} 
-              isHomeScreen={false}
-            />
+          headerTitle: () => (
+            Platform.OS === 'web' ? (
+              <WebHeaderBar
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                title={t('property.editProperty')}
+                isHomeScreen={false}
+              />
+            ) : (
+              <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>{t('property.editProperty')}</Text>
+            )
+          ),
+          headerRight: Platform.OS === 'web' ? undefined : () => (
+            <HeaderControls darkMode={darkMode} toggleDarkMode={toggleDarkMode} isHomeScreen={false} />
           ),
         }} 
       />
@@ -181,6 +231,7 @@ const MainTabs = () => {
           paddingBottom: 15,
           paddingTop: 5,
           height: 60,
+          ...(Platform.OS === 'web' ? { paddingHorizontal: 64 } : {}),
         },
         headerStyle: {
           backgroundColor: theme.headerBackground,
@@ -200,7 +251,21 @@ const MainTabs = () => {
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="home" color={color} size={size} />
           ),
-          headerRight: () => (
+          headerTitle: () => (
+            Platform.OS === 'web' ? (
+              <WebHeaderBar
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                title="DomGo.rs"
+                isHomeScreen={true}
+                selectedCity={selectedCity}
+                onCitySelect={setSelectedCity}
+              />
+            ) : (
+              <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>DomGo.rs</Text>
+            )
+          ),
+          headerRight: Platform.OS === 'web' ? undefined : () => (
             <HeaderControls 
               darkMode={darkMode} 
               toggleDarkMode={toggleDarkMode} 
@@ -219,7 +284,21 @@ const MainTabs = () => {
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="heart" color={color} size={size} />
           ),
-          headerRight: () => (
+          headerTitle: () => (
+            Platform.OS === 'web' ? (
+              <WebHeaderBar
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                title={t('navigation.favorites')}
+                isHomeScreen={false}
+                selectedCity={selectedCity}
+                onCitySelect={setSelectedCity}
+              />
+            ) : (
+              <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>{t('navigation.favorites')}</Text>
+            )
+          ),
+          headerRight: Platform.OS === 'web' ? undefined : () => (
             <HeaderControls 
               darkMode={darkMode} 
               toggleDarkMode={toggleDarkMode} 
@@ -238,7 +317,21 @@ const MainTabs = () => {
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="add-circle" color={color} size={size} />
           ),
-          headerRight: () => (
+          headerTitle: () => (
+            Platform.OS === 'web' ? (
+              <WebHeaderBar
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                title={t('navigation.add')}
+                isHomeScreen={false}
+                selectedCity={selectedCity}
+                onCitySelect={setSelectedCity}
+              />
+            ) : (
+              <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>{t('navigation.add')}</Text>
+            )
+          ),
+          headerRight: Platform.OS === 'web' ? undefined : () => (
             <HeaderControls 
               darkMode={darkMode} 
               toggleDarkMode={toggleDarkMode} 
@@ -257,7 +350,21 @@ const MainTabs = () => {
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="person" color={color} size={size} />
           ),
-          headerRight: () => (
+          headerTitle: () => (
+            Platform.OS === 'web' ? (
+              <WebHeaderBar
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                title={t('navigation.profile')}
+                isHomeScreen={false}
+                selectedCity={selectedCity}
+                onCitySelect={setSelectedCity}
+              />
+            ) : (
+              <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>{t('navigation.profile')}</Text>
+            )
+          ),
+          headerRight: Platform.OS === 'web' ? undefined : () => (
             <HeaderControls 
               darkMode={darkMode} 
               toggleDarkMode={toggleDarkMode} 
@@ -276,7 +383,21 @@ const MainTabs = () => {
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="settings" color={color} size={size} />
           ),
-          headerRight: () => (
+          headerTitle: () => (
+            Platform.OS === 'web' ? (
+              <WebHeaderBar
+                darkMode={darkMode}
+                toggleDarkMode={toggleDarkMode}
+                title={t('navigation.settings')}
+                isHomeScreen={false}
+                selectedCity={selectedCity}
+                onCitySelect={setSelectedCity}
+              />
+            ) : (
+              <Text style={{ fontWeight: 'bold', color: theme.headerText, fontSize: 18 }}>{t('navigation.settings')}</Text>
+            )
+          ),
+          headerRight: Platform.OS === 'web' ? undefined : () => (
             <HeaderControls 
               darkMode={darkMode} 
               toggleDarkMode={toggleDarkMode} 
