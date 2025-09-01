@@ -2,6 +2,10 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as Updates from 'expo-updates';
 import { Linking } from 'react-native';
+import Constants from 'expo-constants';
+import * as Application from 'expo-application';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { propertyService } from './src/services/propertyService';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
@@ -16,6 +20,44 @@ import { supabase } from './src/lib/supabaseClient';
 import './src/translations';
 
 export default function App() {
+  // Одноразовая миграция/очистка кэша при смене версии (боремся с восстановлением данных Android)
+  React.useEffect(() => {
+    const APP_VERSION_KEY = 'app_version';
+    (async () => {
+      try {
+        // Получаем версию надёжно для продакшена
+        const currentVersion =
+          Application.nativeApplicationVersion ||
+          Constants.expoConfig?.version ||
+          // как крайний случай — runtimeVersion, чтобы хотя бы менялось при bump-е
+          (Updates.runtimeVersion as string | undefined) ||
+          '0';
+        const storedVersion = await AsyncStorage.getItem(APP_VERSION_KEY);
+        if (storedVersion !== currentVersion) {
+          console.log('Версия приложения изменилась, выполняем очистку локального кэша');
+          try {
+            // Полная очистка предотвращает влияние любых неизвестных ключей
+            await AsyncStorage.clear();
+          } catch (e) {
+            console.warn('Ошибка при очистке AsyncStorage:', e);
+          }
+          try {
+            // Чистим внутренний кэш сервисов на всякий случай
+            if (propertyService && typeof propertyService.clearCache === 'function') {
+              propertyService.clearCache();
+            }
+          } catch (e) {
+            console.warn('Ошибка при очистке in-memory кэша:', e);
+          }
+          await AsyncStorage.setItem(APP_VERSION_KEY, currentVersion);
+          console.log('Локальное хранилище и кэши очищены. Установлена версия:', currentVersion);
+        }
+      } catch (e) {
+        console.warn('Ошибка миграции версии приложения:', e);
+      }
+    })();
+  }, []);
+
   // Обработка глубоких ссылок (deep links) для подтверждения email
   React.useEffect(() => {
     // Обработчик для ссылок, по которым открывается приложение

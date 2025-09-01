@@ -195,43 +195,64 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     try {
       requestInProgress.current.all = true;
       setLoading(true);
-      
-      const result = await propertyService.getProperties(1, pageSize);
-      if (result.data && result.data.length > 0) {
-        console.log(`Данные успешно загружены из Supabase: ${result.data.length} из ${result.totalCount}`);
-        
-        // Сохраняем все объявления
-        setProperties(result.data);
-        
-        // Применяем фильтрацию в зависимости от последнего выбранного типа
-        const activeType = activePropertyTypeRef.current;
-        if (activeType !== 'all') {
-          console.log(`Применяем фильтр по типу сделки: ${activeType}`);
-          const filtered = result.data.filter(prop => prop.type === activeType);
-          setFilteredProperties(filtered);
-        } else {
-          // Если тип 'all', показываем все объявления
+
+      const activeType = activePropertyTypeRef.current;
+      if (activeType === 'all') {
+        // Загружаем общий список (all)
+        const result = await propertyService.getProperties(1, pageSize);
+        if (result.data && result.data.length > 0) {
+          console.log(`Данные успешно загружены из Supabase: ${result.data.length} из ${result.totalCount}`);
+          setProperties(result.data);
           setFilteredProperties(result.data);
+          setHasMore({ ...hasMore, all: result.hasMore });
+          setTotalCount({ ...totalCount, all: result.totalCount });
+          setCurrentPage({ ...currentPage, all: 1 });
+          lastFetchTime.current.all = Date.now();
+        } else {
+          console.log('Нет данных из Supabase');
+          setProperties([]);
+          setFilteredProperties([]);
+          setHasMore({ ...hasMore, all: false });
+          setTotalCount({ ...totalCount, all: 0 });
+          Alert.alert('Внимание', 'Нет доступных объявлений');
         }
-        
-        setHasMore({ ...hasMore, all: result.hasMore });
-        setTotalCount({ ...totalCount, all: result.totalCount });
-        setCurrentPage({ ...currentPage, all: 1 });
-        lastFetchTime.current.all = Date.now();
       } else {
-        console.log('Нет данных из Supabase');
-        setProperties([]);
-        setFilteredProperties([]);
-        setHasMore({ ...hasMore, all: false });
-        setTotalCount({ ...totalCount, all: 0 });
-        Alert.alert('Внимание', 'Нет доступных объявлений');
+        // Загружаем данные конкретного типа (sale/rent), чтобы не терять элементы при "all"-первой странице
+        console.log(`Обновляем данные для типа: ${activeType}`);
+        const result = await propertyService.getPropertiesByType(activeType, 1, pageSize);
+        if (result.data && result.data.length > 0) {
+          setFilteredProperties(result.data);
+          // Обновляем состояние пагинации и кэша для активного типа
+          setHasMore(prev => ({ ...prev, [activeType]: result.hasMore }));
+          setTotalCount(prev => ({ ...prev, [activeType]: result.totalCount }));
+          setCurrentPage(prev => ({ ...prev, [activeType]: 1 }));
+          lastFetchTime.current[activeType] = Date.now();
+          // Синхронизируем кэш типа
+          if (!typeCache.current[activeType]) {
+            // @ts-ignore
+            typeCache.current[activeType] = { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 };
+          }
+          typeCache.current[activeType] = {
+            data: result.data,
+            totalCount: result.totalCount,
+            hasMore: result.hasMore,
+            timestamp: Date.now(),
+            pageSize
+          } as any;
+        } else {
+          setFilteredProperties([]);
+          setHasMore(prev => ({ ...prev, [activeType]: false }));
+          setTotalCount(prev => ({ ...prev, [activeType]: 0 }));
+        }
       }
     } catch (error) {
       console.error('Ошибка при загрузке объявлений:', error);
-      setProperties([]);
+      if (activePropertyTypeRef.current === 'all') {
+        setProperties([]);
+      }
       setFilteredProperties([]);
-      setHasMore({ ...hasMore, all: false });
-      setTotalCount({ ...totalCount, all: 0 });
+      setHasMore(prev => ({ ...prev, [activePropertyTypeRef.current]: false }));
+      setTotalCount(prev => ({ ...prev, [activePropertyTypeRef.current]: 0 }));
       Alert.alert('Ошибка', 'Не удалось подключиться к серверу. Проверьте соединение.');
     } finally {
       requestInProgress.current.all = false;
