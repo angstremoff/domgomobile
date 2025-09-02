@@ -1094,8 +1094,13 @@ const HomeScreen = ({ navigation }: any) => {
               : (compactView ? 2 : 1)
           }
           columnWrapperStyle={
+            // ВАЖНО: на вебе columnWrapperStyle поддерживается только при numColumns > 1
             isWeb
-              ? (compactView ? styles.webColumnWrapperCompact : styles.webColumnWrapperFull)
+              ? ((compactView
+                    ? (isDesktop ? 5 : isTabletWeb ? 4 : 2)
+                    : (isDesktop ? 3 : isTabletWeb ? 2 : 1)) > 1
+                  ? (compactView ? styles.webColumnWrapperCompact : styles.webColumnWrapperFull)
+                  : undefined)
               : (compactView ? styles.nativeColumnWrapperCompact : undefined)
           }
           key={
