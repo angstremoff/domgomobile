@@ -1080,7 +1080,14 @@ const HomeScreen = ({ navigation }: any) => {
             styles.listContent,
             { paddingTop: 8 }, // Одинаковый небольшой отступ для всех вкладок
             isWeb ? styles.webListContainer : null,
-            isWeb ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' } : null,
+            // Адаптивные горизонтальные отступы для веба
+            isWeb
+              ? (isDesktop
+                  ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' }
+                  : isTabletWeb
+                    ? { paddingHorizontal: 48, maxWidth: 1280, alignSelf: 'center' }
+                    : { paddingHorizontal: 12, maxWidth: 1280, alignSelf: 'center' })
+              : null,
           ]}
           showsVerticalScrollIndicator={false}
           // Колонки по аналогии со старым сайтом
@@ -1099,7 +1106,11 @@ const HomeScreen = ({ navigation }: any) => {
               ? ((compactView
                     ? (isDesktop ? 5 : isTabletWeb ? 4 : 2)
                     : (isDesktop ? 3 : isTabletWeb ? 2 : 1)) > 1
-                  ? (compactView ? styles.webColumnWrapperCompact : styles.webColumnWrapperFull)
+                  ? (compactView
+                      ? (isDesktop || isTabletWeb
+                          ? styles.webColumnWrapperCompact
+                          : { paddingHorizontal: 12, justifyContent: 'space-between' })
+                      : styles.webColumnWrapperFull)
                   : undefined)
               : (compactView ? styles.nativeColumnWrapperCompact : undefined)
           }
@@ -1302,8 +1313,8 @@ const styles = StyleSheet.create({
   },
   // Обертка строк для компактной сетки (больше колонок, меньше зазоры)
   webColumnWrapperCompact: {
-    gap: 24,
-    paddingHorizontal: 16,
+    gap: 16,
+    paddingHorizontal: 12,
     justifyContent: 'flex-start',
   },
   // Обертка строк для полного вида (меньше колонок, больше дыхания)
