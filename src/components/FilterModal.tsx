@@ -38,23 +38,36 @@ const FilterModal: React.FC<FilterModalProps> = ({
   const isDarkMode = darkMode || contextDarkMode;
   const theme = isDarkMode ? Colors.dark : Colors.light;
 
+  // Границы цены по типу сделки
+  const getPriceBounds = () => propertyType === 'rent'
+    ? { min: 100, max: 3000 }
+    : { min: 10000, max: 500000 };
+
+  const normalizeRange = (range: number[] | undefined, min: number, max: number): [number, number] => {
+    const src = (Array.isArray(range) && range.length === 2) ? range as number[] : [min, max];
+    const a = Math.max(min, Math.min(max, src[0] ?? min));
+    const b = Math.max(min, Math.min(max, src[1] ?? max));
+    return a <= b ? [a, b] : [b, a];
+  };
+
   const [localFilters, setLocalFilters] = useState({
     propertyType: filters.propertyTypes || [],
     rooms: filters.rooms || [],
-    price: filters.price || [100, 3000],
+    price: normalizeRange(filters.price, getPriceBounds().min, getPriceBounds().max),
     area: filters.areas || [10, 500],
     features: filters.features || [],
   });
 
   useEffect(() => {
+    const { min, max } = getPriceBounds();
     setLocalFilters({
       propertyType: filters.propertyTypes || [],
       rooms: filters.rooms || [],
-      price: filters.price || [100, 3000],
+      price: normalizeRange(filters.price, min, max),
       area: filters.areas || [10, 500],
       features: filters.features || [],
     });
-  }, [filters, visible]);
+  }, [filters, visible, propertyType]);
 
   const updateFilters = (newFilters: any) => {
     setLocalFilters(newFilters);

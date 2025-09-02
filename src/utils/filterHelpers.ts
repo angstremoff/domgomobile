@@ -83,11 +83,15 @@ export const applyPropertyFilters = (
       );
     }
     
-    // Фильтр по количеству комнат
+    // Фильтр по количеству комнат (учёт варианта "5+")
     if (activeFilters.rooms.length > 0) {
-      filtered = filtered.filter(prop => 
-        prop.rooms !== undefined && activeFilters.rooms.includes(prop.rooms.toString())
-      );
+      filtered = filtered.filter(prop => {
+        const r = prop.rooms;
+        if (r === undefined || r === null) return false;
+        const exactMatch = activeFilters.rooms.some(v => /^(\d+)$/.test(v) && Number(v) === r);
+        const fivePlus = activeFilters.rooms.includes('5+') && r >= 5;
+        return exactMatch || fivePlus;
+      });
     }
     
     // Фильтр по площади

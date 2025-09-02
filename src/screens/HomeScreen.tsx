@@ -127,12 +127,19 @@ const HomeScreen = ({ navigation }: any) => {
     if (base.length > 0) {
       // Не применяем пользовательские фильтры на Продажа/Аренда, пока их явно не применили
       const emptyFilters = { propertyTypes: [], price: [], rooms: [], areas: [], features: [] } as any;
-      const filtersForApply =
-        propertyType === 'rent' && !filtersAppliedRent
-          ? emptyFilters
-          : propertyType === 'sale' && !filtersAppliedSale
-          ? emptyFilters
-          : activeFilters;
+      // Определяем, заданы ли какие-либо пользовательские фильтры (по факту непустых массивов)
+      const hasUserFilters =
+        (activeFilters.propertyTypes?.length ?? 0) > 0 ||
+        (activeFilters.rooms?.length ?? 0) > 0 ||
+        (activeFilters.features?.length ?? 0) > 0 ||
+        (activeFilters.areas?.length ?? 0) > 0 ||
+        ((activeFilters.price?.length ?? 0) > 0);
+      // ВАЖНО: используем активные фильтры, если есть пользовательские фильтры, выбрана категория,
+      // или фильтры были явно применены
+      const shouldUseActive =
+        hasUserFilters || (propertyCategory !== 'all') ||
+        (propertyType === 'rent' ? filtersAppliedRent : propertyType === 'sale' ? filtersAppliedSale : false);
+      const filtersForApply = shouldUseActive ? activeFilters : emptyFilters;
       const filtered = applyPropertyFilters(
         base,
         propertyType,
@@ -182,12 +189,18 @@ const HomeScreen = ({ navigation }: any) => {
       if (base.length === 0) return;
       // Не применять фильтры до явного действия пользователя
       const emptyFilters = { propertyTypes: [], price: [], rooms: [], areas: [], features: [] } as any;
-      const filtersForApply =
-        propertyType === 'rent' && !filtersAppliedRent
-          ? emptyFilters
-          : propertyType === 'sale' && !filtersAppliedSale
-          ? emptyFilters
-          : activeFilters;
+      const hasUserFilters =
+        (activeFilters.propertyTypes?.length ?? 0) > 0 ||
+        (activeFilters.rooms?.length ?? 0) > 0 ||
+        (activeFilters.features?.length ?? 0) > 0 ||
+        (activeFilters.areas?.length ?? 0) > 0 ||
+        ((activeFilters.price?.length ?? 0) > 0);
+      // ВАЖНО: используем активные фильтры, если есть пользовательские фильтры, выбрана категория,
+      // или фильтры были явно применены
+      const shouldUseActive =
+        hasUserFilters || (propertyCategory !== 'all') ||
+        (propertyType === 'rent' ? filtersAppliedRent : propertyType === 'sale' ? filtersAppliedSale : false);
+      const filtersForApply = shouldUseActive ? activeFilters : emptyFilters;
       const filtered = applyPropertyFilters(
         base,
         propertyType,
@@ -337,82 +350,28 @@ const HomeScreen = ({ navigation }: any) => {
 
   const applyActiveFilters = (properties: any[], type: 'all' | 'sale' | 'rent') => {
     // Получаем активные фильтры в зависимости от типа
-    const filters = type === 'rent' ? rentFilters : 
-                   type === 'sale' ? saleFilters : 
+    const filters = type === 'rent' ? rentFilters :
+                   type === 'sale' ? saleFilters :
                    activeFilters;
-    
+
     // Проверяем, были ли применены фильтры для данного типа
-    const filtersApplied = type === 'rent' ? filtersAppliedRent : 
-                           type === 'sale' ? filtersAppliedSale : 
+    const filtersApplied = type === 'rent' ? filtersAppliedRent :
+                           type === 'sale' ? filtersAppliedSale :
                            false;
-    
+
     // Если фильтры не были явно применены, возвращаем только фильтрацию по типу
     if (!filtersApplied && type !== 'all') {
       return properties.filter(prop => prop.type === type);
     }
-    
-    // Оптимизированная фильтрация с одним проходом по всем свойствам
-    return properties.filter(prop => {
-      // Фильтрация по типу, если не all
-      if (type !== 'all' && prop.type !== type) {
-        return false;
-      }
-      
-      // Фильтрация по типу недвижимости
-      if (filters.propertyTypes.length > 0 && 
-          !filters.propertyTypes.includes(prop.property_type || '')) {
-        return false;
-      }
-      
-      // Фильтрация по цене
-      const price = prop.price || 0;
-      if (price < filters.price[0] || price > filters.price[1]) {
-        return false;
-      }
-      
-      // Фильтрация по количеству комнат
-      if (filters.rooms.length > 0) {
-        if (!prop.rooms) return false;
-        const roomsStr = String(prop.rooms);
-        if (!filters.rooms.includes(roomsStr)) {
-          return false;
-        }
-      }
-      
-      // Фильтрация по площади
-      if (filters.areas.length > 0) {
-        if (!prop.area) return false;
-        
-        // Проверяем, попадает ли площадь в один из выбранных диапазонов
-        let matchesAreaFilter = false;
-        for (const areaRange of filters.areas) {
-          const [min, max] = areaRange.split('-').map(Number);
-          if (prop.area >= min && prop.area <= max) {
-            matchesAreaFilter = true;
-            break;
-          }
-        }
-        
-        if (!matchesAreaFilter) {
-          return false;
-        }
-      }
-      
-      // Фильтрация по особенностям
-      if (filters.features.length > 0) {
-        if (!prop.features || prop.features.length === 0) return false;
-        
-        // Проверяем, содержит ли объявление все выбранные особенности
-        for (const feature of filters.features) {
-          if (!prop.features.includes(feature)) {
-            return false;
-          }
-        }
-      }
-      
-      // Объект прошел все фильтры
-      return true;
-    });
+
+    // Делегируем единому helper-у, чтобы логика совпадала везде (включая "5+" для комнат)
+    return applyPropertyFilters(
+      properties,
+      type,
+      propertyCategory,
+      selectedCity,
+      filters
+    );
   };
 
   const handleClearFilters = async () => {
@@ -508,40 +467,36 @@ const HomeScreen = ({ navigation }: any) => {
     }
     setFilterModalVisible(true);
   };
-  
+
   const handleCloseFilterModal = () => {
     setFilterModalVisible(false);
   };
-  
+
   const handleApplyFilters = () => {
     // Закрываем модальное окно
     setFilterModalVisible(false);
-    
+
+    // Вычисляем категорию немедленно, чтобы избежать гонки состояния
+    const categoryToApply =
+      tempFilters.propertyTypes && tempFilters.propertyTypes.length === 1
+        ? tempFilters.propertyTypes[0]
+        : 'all';
+
     // Обновляем активные фильтры в зависимости от выбранной вкладки
     if (propertyType === 'sale') {
       setSaleFilters(tempFilters);
       setActiveFilters(tempFilters);
       setFiltersAppliedSale(true);
-      
       // Синхронизация с быстрыми фильтрами
-      if (tempFilters.propertyTypes.length === 1) {
-        setPropertyCategory(tempFilters.propertyTypes[0]);
-      } else {
-        setPropertyCategory('all');
-      }
+      setPropertyCategory(categoryToApply);
     } else if (propertyType === 'rent') {
       setRentFilters(tempFilters);
       setActiveFilters(tempFilters);
       setFiltersAppliedRent(true);
-      
       // Синхронизация с быстрыми фильтрами
-      if (tempFilters.propertyTypes.length === 1) {
-        setPropertyCategory(tempFilters.propertyTypes[0]);
-      } else {
-        setPropertyCategory('all');
-      }
+      setPropertyCategory(categoryToApply);
     }
-    
+
     // Применяем фильтрацию c учётом выбранного города и баз данных вкладок
     const base = propertyType === 'all' ? properties : typeItems;
     if (base.length > 0) {
@@ -549,7 +504,7 @@ const HomeScreen = ({ navigation }: any) => {
       const filtered = applyPropertyFilters(
         base,
         propertyType,
-        propertyCategory,
+        categoryToApply,
         selectedCity,
         propertyType === 'sale' ? tempFilters : propertyType === 'rent' ? tempFilters : activeFilters
       );

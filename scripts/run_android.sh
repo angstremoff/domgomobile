@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # Config
-AVD_NAME="Pixel_API_30"
+# Allow override via env var: AVD_NAME="<Your_AVD_Name>"
+AVD_NAME="${AVD_NAME:-Pixel_API_30}"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Resolve Android SDK path
