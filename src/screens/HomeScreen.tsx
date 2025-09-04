@@ -625,9 +625,32 @@ const HomeScreen = ({ navigation }: any) => {
     <View style={[
       styles.container,
       { backgroundColor: theme.background },
-      isWeb ? { paddingHorizontal: 48 } : null,
+      // На desktop web не добавляем общий паддинг, т.к. обёртки секций управляют отступами (96px)
+      isWeb
+        ? (isDesktop
+            ? { paddingHorizontal: 0 }
+            : isTabletWeb
+              ? { paddingHorizontal: 24 }
+              : { paddingHorizontal: 12 })
+        : null,
     ]}>
-      <View style={styles.filterContainer}>
+      <View
+        style={[
+          styles.filterContainer,
+          // Веб-обёртка для выравнивания по левому краю и ограничения ширины
+          isWeb
+            ? (isDesktop
+                ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 96, marginHorizontal: 0 }
+                : isTabletWeb
+                  ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 48, marginHorizontal: 0 }
+                  : { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 12, marginHorizontal: 0 })
+            : null,
+          // Desktop web: суммарно 96 (внешний) + 16 (внутренний) = 112, чтобы вкладки совпали с карточками
+          isWeb && isDesktop ? { paddingHorizontal: 112 } : null,
+          // На вебе убираем внешние отступы контейнера вкладок
+          isWeb ? { marginHorizontal: 0 } : null,
+        ]}
+      >
         <TouchableOpacity
           style={[
             styles.filterButton, 
@@ -784,26 +807,49 @@ const HomeScreen = ({ navigation }: any) => {
       </View>
       
       {propertyType !== 'all' && (
-        <View style={[styles.categorySection, { backgroundColor: theme.background }]}>
+        <View
+          style={[
+            styles.categorySection,
+            { backgroundColor: theme.background },
+            // Обёртка для веба, чтобы совпадали отступы с шапкой/списком
+            isWeb
+              ? (isDesktop
+                  ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 96 }
+                  : isTabletWeb
+                    ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 48 }
+                    : { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 12 })
+              : null,
+          ]}
+        >
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false} 
             style={[styles.categoryFilterContainer, { zIndex: 10 }]}
-            contentContainerStyle={styles.categoryFilterContent}
+            contentContainerStyle={[
+              styles.categoryFilterContent,
+              // Desktop web: добавляем 16px внутреннего паддинга, чтобы совпал левый край с карточками списка
+              isWeb ? (isDesktop ? { paddingHorizontal: 16 } : { paddingHorizontal: 0 }) : null,
+            ]}
           >
             {(propertyType === 'rent') && (
               <TouchableOpacity
                 style={[
                   styles.propertyTypeCard, 
                   { backgroundColor: theme.card, borderColor: theme.border },
+                  // Desktop web: увеличенные карточки для читаемости и кликабельности
+                  isWeb && isDesktop ? { width: 112, height: 84, padding: 10, marginRight: 12, cursor: 'pointer' } : null,
                   (propertyType === 'rent' && propertyCategory === 'apartment') && styles.activeCard
                 ]}
                 onPress={() => handleCombinedFilter('rent', 'apartment')}
               >
                 <View style={styles.iconContainer}>
-                  <Ionicons name="business-outline" size={18} color={theme.primary} />
+                  <Ionicons name="business-outline" size={isWeb && isDesktop ? 20 : 18} color={theme.primary} />
                 </View>
-                <Text style={[styles.propertyTypeText, { color: theme.text }]}>
+                <Text style={[
+                  styles.propertyTypeText,
+                  { color: theme.text },
+                  isWeb && isDesktop ? { fontSize: 12, fontWeight: '600' } : null,
+                ]}>
                   {t('property.rentApartment')}
                 </Text>
               </TouchableOpacity>
@@ -814,14 +860,19 @@ const HomeScreen = ({ navigation }: any) => {
                 style={[
                   styles.propertyTypeCard, 
                   { backgroundColor: theme.card, borderColor: theme.border },
+                  isWeb && isDesktop ? { width: 112, height: 84, padding: 10, marginRight: 12, cursor: 'pointer' } : null,
                   (propertyType === 'rent' && propertyCategory === 'house') && styles.activeCard
                 ]}
                 onPress={() => handleCombinedFilter('rent', 'house')}
               >
                 <View style={styles.iconContainer}>
-                  <Ionicons name="home-outline" size={18} color={theme.primary} />
+                  <Ionicons name="home-outline" size={isWeb && isDesktop ? 20 : 18} color={theme.primary} />
                 </View>
-                <Text style={[styles.propertyTypeText, { color: theme.text }]}>
+                <Text style={[
+                  styles.propertyTypeText,
+                  { color: theme.text },
+                  isWeb && isDesktop ? { fontSize: 12, fontWeight: '600' } : null,
+                ]}>
                   {t('property.rentHouse')}
                 </Text>
               </TouchableOpacity>
@@ -832,14 +883,19 @@ const HomeScreen = ({ navigation }: any) => {
                 style={[
                   styles.propertyTypeCard, 
                   { backgroundColor: theme.card, borderColor: theme.border },
+                  isWeb && isDesktop ? { width: 112, height: 84, padding: 10, marginRight: 12, cursor: 'pointer' } : null,
                   (propertyType === 'rent' && propertyCategory === 'commercial') && styles.activeCard
                 ]}
                 onPress={() => handleCombinedFilter('rent', 'commercial')}
               >
                 <View style={styles.iconContainer}>
-                  <MaterialIcons name="storefront" size={18} color={theme.primary} />
+                  <MaterialIcons name="storefront" size={isWeb && isDesktop ? 20 : 18} color={theme.primary} />
                 </View>
-                <Text style={[styles.propertyTypeText, { color: theme.text }]}>
+                <Text style={[
+                  styles.propertyTypeText,
+                  { color: theme.text },
+                  isWeb && isDesktop ? { fontSize: 12, fontWeight: '600' } : null,
+                ]}>
                   {t('property.rentCommercial')}
                 </Text>
               </TouchableOpacity>
@@ -850,14 +906,19 @@ const HomeScreen = ({ navigation }: any) => {
                 style={[
                   styles.propertyTypeCard, 
                   { backgroundColor: theme.card, borderColor: theme.border },
+                  isWeb && isDesktop ? { width: 112, height: 84, padding: 10, marginRight: 12, cursor: 'pointer' } : null,
                   (propertyType === 'sale' && propertyCategory === 'apartment') && styles.activeCard
                 ]}
                 onPress={() => handleCombinedFilter('sale', 'apartment')}
               >
                 <View style={styles.iconContainer}>
-                  <Ionicons name="business-outline" size={18} color={theme.primary} />
+                  <Ionicons name="business-outline" size={isWeb && isDesktop ? 20 : 18} color={theme.primary} />
                 </View>
-                <Text style={[styles.propertyTypeText, { color: theme.text }]}>
+                <Text style={[
+                  styles.propertyTypeText,
+                  { color: theme.text },
+                  isWeb && isDesktop ? { fontSize: 12, fontWeight: '600' } : null,
+                ]}>
                   {t('property.saleApartment')}
                 </Text>
               </TouchableOpacity>
@@ -868,14 +929,19 @@ const HomeScreen = ({ navigation }: any) => {
                 style={[
                   styles.propertyTypeCard, 
                   { backgroundColor: theme.card, borderColor: theme.border },
+                  isWeb && isDesktop ? { width: 112, height: 84, padding: 10, marginRight: 12, cursor: 'pointer' } : null,
                   (propertyType === 'sale' && propertyCategory === 'house') && styles.activeCard
                 ]}
                 onPress={() => handleCombinedFilter('sale', 'house')}
               >
                 <View style={styles.iconContainer}>
-                  <Ionicons name="home-outline" size={18} color={theme.primary} />
+                  <Ionicons name="home-outline" size={isWeb && isDesktop ? 20 : 18} color={theme.primary} />
                 </View>
-                <Text style={[styles.propertyTypeText, { color: theme.text }]}>
+                <Text style={[
+                  styles.propertyTypeText,
+                  { color: theme.text },
+                  isWeb && isDesktop ? { fontSize: 12, fontWeight: '600' } : null,
+                ]}>
                   {t('property.saleHouse')}
                 </Text>
               </TouchableOpacity>
@@ -886,14 +952,19 @@ const HomeScreen = ({ navigation }: any) => {
                 style={[
                   styles.propertyTypeCard, 
                   { backgroundColor: theme.card, borderColor: theme.border },
+                  isWeb && isDesktop ? { width: 112, height: 84, padding: 10, marginRight: 12, cursor: 'pointer' } : null,
                   (propertyType === 'sale' && propertyCategory === 'commercial') && styles.activeCard
                 ]}
                 onPress={() => handleCombinedFilter('sale', 'commercial')}
               >
                 <View style={styles.iconContainer}>
-                  <MaterialIcons name="storefront" size={18} color={theme.primary} />
+                  <MaterialIcons name="storefront" size={isWeb && isDesktop ? 20 : 18} color={theme.primary} />
                 </View>
-                <Text style={[styles.propertyTypeText, { color: theme.text }]}>
+                <Text style={[
+                  styles.propertyTypeText,
+                  { color: theme.text },
+                  isWeb && isDesktop ? { fontSize: 12, fontWeight: '600' } : null,
+                ]}>
                   {t('property.saleCommercial')}
                 </Text>
               </TouchableOpacity>
@@ -904,14 +975,19 @@ const HomeScreen = ({ navigation }: any) => {
                 style={[
                   styles.propertyTypeCard, 
                   { backgroundColor: theme.card, borderColor: theme.border },
+                  isWeb && isDesktop ? { width: 112, height: 84, padding: 10, marginRight: 12, cursor: 'pointer' } : null,
                   (propertyType === 'sale' && propertyCategory === 'land') && styles.activeCard
                 ]}
                 onPress={() => handleCombinedFilter('sale', 'land')}
               >
                 <View style={styles.iconContainer}>
-                  <FontAwesome5 name="mountain" size={16} color={theme.primary} />
+                  <FontAwesome5 name="mountain" size={isWeb && isDesktop ? 20 : 16} color={theme.primary} />
                 </View>
-                <Text style={[styles.propertyTypeText, { color: theme.text }]}>
+                <Text style={[
+                  styles.propertyTypeText,
+                  { color: theme.text },
+                  isWeb && isDesktop ? { fontSize: 12, fontWeight: '600' } : null,
+                ]}>
                   {t('filters.land')}
                 </Text>
               </TouchableOpacity>
@@ -919,36 +995,67 @@ const HomeScreen = ({ navigation }: any) => {
           </ScrollView>
         </View>
       )}
-      
       {propertyType !== 'all' && (
-        <TouchableOpacity 
-          style={[styles.filterButtonStandalone, { backgroundColor: theme.card, borderColor: theme.border }]}
-          onPress={handleOpenFilterModal}
+        <View
+          style={[
+            // Обёртка только для веба, чтобы кнопка фильтра была в общей сетке и слева
+            isWeb
+              ? (isDesktop
+                  ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 96 }
+                  : isTabletWeb
+                    ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 48 }
+                    : { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 12 })
+              : null,
+          ]}
         >
-          <View style={styles.filterButtonContent}>
-            <Ionicons name="options-outline" size={18} color={theme.primary} style={styles.filterIcon} />
-            <Text style={[styles.filterButtonText, { color: theme.text }]}>{t('filters.title')}</Text>
-          </View>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterButtonStandalone,
+              { backgroundColor: theme.card, borderColor: theme.border },
+              // Desktop web: совпадение внутреннего отступа с карточками списка (16px)
+              isWeb && isDesktop ? { alignSelf: 'flex-start', cursor: 'pointer', paddingVertical: 8, height: 40, width: '100%', paddingLeft: 16, paddingRight: 16, marginLeft: 16 } : null,
+              // На вебе убираем горизонтальные внешние отступы, чтобы кнопка выровнялась по левому краю контейнера
+              isWeb ? { marginHorizontal: 0 } : null,
+            ]}
+            onPress={handleOpenFilterModal}
+          >
+            <View style={styles.filterButtonContent}>
+              <Ionicons
+                name="filter-outline"
+                size={isWeb && isDesktop ? 20 : 18}
+                color={theme.primary}
+                style={styles.filterIcon}
+              />
+              <Text style={[
+                styles.filterButtonText,
+                { color: theme.text },
+                // На desktop web уменьшаем шрифт до 14px для一致ия с вкладками
+                isWeb && isDesktop ? { fontSize: 14, fontWeight: '500' } : null,
+              ]}>
+                {t('filters.title')}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <FilterModal
+            visible={filterModalVisible}
+            filters={tempFilters}
+            onFiltersChange={handleTempFiltersChange}
+            onClose={handleCloseFilterModal}
+            onApply={handleApplyFilters}
+            propertyType={propertyType === 'sale' ? 'sale' : 'rent'}
+            darkMode={darkMode}
+          />
+        </View>
       )}
       
-      {/* Модальное окно фильтров */}
-      <FilterModal
-        visible={filterModalVisible}
-        propertyType={propertyType === 'all' ? 'sale' : propertyType}
-        filters={tempFilters}
-        onFiltersChange={handleTempFiltersChange}
-        onClose={handleCloseFilterModal}
-        onApply={handleApplyFilters}
-        darkMode={darkMode}
-      />
-      
-      
-      <PropertyMapView 
-        properties={filteredProperties}
-        selectedCity={selectedCity}
-        onPropertySelect={(property) => navigation.navigate('PropertyDetails', { propertyId: property.id })}
-      />
+      {!(isWeb && isDesktop) && (
+        <PropertyMapView 
+          properties={filteredProperties}
+          selectedCity={selectedCity}
+          onPropertySelect={(property) => navigation.navigate('PropertyDetails', { propertyId: property.id })}
+        />
+      )}
 
       {loading ? (
         <View style={styles.loadingContainer}>

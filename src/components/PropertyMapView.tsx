@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -36,23 +36,50 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
   const [expanded, setExpanded] = useState(false);
+  // Web-responsive helpers
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const isDesktop = isWeb && width >= 1024;
+  const isTabletWeb = isWeb && width >= 768 && width < 1024;
+  const mapHeaderIconSize = isWeb && isDesktop ? 16 : 18;
 
   if (!selectedCity) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: theme.card, borderColor: theme.border },
+          // Обёртка для веба: центрируем контейнер, внутренний контент выровнен слева за счёт padding
+          isWeb
+            ? (isDesktop
+                ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 96, marginHorizontal: 0 }
+                : isTabletWeb
+                  ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 48, marginHorizontal: 0 }
+                  : { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 12, marginHorizontal: 0 })
+            : null,
+        ]}
+      >
         <TouchableOpacity 
-          style={styles.header} 
+          style={[
+            styles.header,
+            // Desktop web: совпадение внутреннего отступа с колонками списка (16px) и высота 40px
+            isWeb ? (isDesktop ? { paddingLeft: 16, paddingRight: 16, paddingVertical: 0, height: 40 } : { paddingLeft: 12, paddingRight: 12 }) : null,
+          ]} 
           onPress={() => setExpanded(!expanded)}
         >
           <View style={styles.titleContainer}>
-            <Ionicons name="map-outline" size={18} color={theme.primary} style={styles.mapIcon} />
-            <Text style={[styles.title, { color: theme.text }]}>
+            <Ionicons name="map-outline" size={mapHeaderIconSize} color={theme.primary} style={styles.mapIcon} />
+            <Text style={[
+              styles.title,
+              { color: theme.text },
+              isWeb && isDesktop ? { fontSize: 14 } : null,
+            ]}>
               {t('property.mapView')}
             </Text>
           </View>
           <MaterialIcons 
             name={expanded ? "expand-less" : "expand-more"} 
-            size={24} 
+            size={isWeb && isDesktop ? 20 : 24} 
             color={theme.text} 
           />
         </TouchableOpacity>
@@ -252,17 +279,41 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.card, borderColor: theme.border }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: theme.card, borderColor: theme.border },
+        // Обёртка для веба: центрируем контейнер, внутренний контент выровнен слева за счёт padding
+        isWeb
+          ? (isDesktop
+              ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 96, marginHorizontal: 0 }
+              : isTabletWeb
+                ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 48, marginHorizontal: 0 }
+                : { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 12, marginHorizontal: 0 })
+          : null,
+      ]}
+    >
       <TouchableOpacity 
-        style={styles.header} 
+        style={[
+          styles.header,
+          // Desktop web: совпадение внутреннего отступа с колонками списка (16px) и высота 40px
+          isWeb ? (isDesktop ? { paddingLeft: 16, paddingRight: 16, paddingVertical: 0, height: 40 } : { paddingLeft: 12, paddingRight: 12 }) : null,
+        ]} 
         onPress={() => setExpanded(!expanded)}
       >
-        <Text style={[styles.title, { color: theme.text }]}>
-          {t('property.mapView')}
-        </Text>
+        <View style={styles.titleContainer}>
+          <Ionicons name="map-outline" size={mapHeaderIconSize} color={theme.primary} style={styles.mapIcon} />
+          <Text style={[
+            styles.title,
+            { color: theme.text },
+            isWeb && isDesktop ? { fontSize: 14 } : null,
+          ]}>
+            {t('property.mapView')}
+          </Text>
+        </View>
         <MaterialIcons 
           name={expanded ? "expand-less" : "expand-more"} 
-          size={24} 
+          size={isWeb && isDesktop ? 20 : 24} 
           color={theme.text} 
         />
       </TouchableOpacity>

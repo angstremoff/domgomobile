@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import * as React from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -44,6 +45,9 @@ const RangeSlider = ({
   const isDraggingMin = useRef(false);
   const isDraggingMax = useRef(false);
   const lastEmitRef = useRef(0);
+  // Текущие абсолютные позиции под пальцем (в пикселях), чтобы не терять их при re-render
+  const currentMinAbsRef = useRef(0);
+  const currentMaxAbsRef = useRef(0);
   const emitThrottled = (vals: number[]) => {
     const now = Date.now();
     if (now - lastEmitRef.current > 50) {
@@ -52,8 +56,9 @@ const RangeSlider = ({
     }
   };
   
-  // Обновляем значения при изменении initialValue
+  // Обновляем значения при изменении initialValue (полностью блокируем во время жеста)
   useEffect(() => {
+    if (isDraggingMin.current || isDraggingMax.current) return;
     const init = initialValue.length === 2 ? initialValue : [minValue, maxValue];
     const clampedMin = Math.max(minValue, Math.min(maxValue, init[0]));
     const clampedMax = Math.max(minValue, Math.min(maxValue, init[1]));
@@ -63,7 +68,7 @@ const RangeSlider = ({
     setValue(normalized);
   }, [initialValue, minValue, maxValue]);
 
-  // Обновляем позиции ползунков при изменении значений
+  // Обновляем позиции ползунков при изменении значений (ПОЛНАЯ блокировка во время жеста)
   useEffect(() => {
     if (sliderWidth > 0 && !isDraggingMin.current && !isDraggingMax.current) {
       const minPosition = ((value[0] - minValue) / (maxValue - minValue)) * sliderWidth;
@@ -74,6 +79,8 @@ const RangeSlider = ({
       
       offsetMinX.current = minPosition;
       offsetMaxX.current = maxPosition;
+      currentMinAbsRef.current = minPosition;
+      currentMaxAbsRef.current = maxPosition;
     }
   }, [sliderWidth, minValue, maxValue, value]);
   
@@ -81,13 +88,17 @@ const RangeSlider = ({
   const minPanResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
+    onStartShouldSetPanResponderCapture: () => true,
+    onMoveShouldSetPanResponderCapture: () => true,
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
     onPanResponderGrant: () => {
-      // Фиксируем стартовую позицию ползунка в пикселях
-      const startPos = ((value[0] - minValue) / (maxValue - minValue)) * sliderWidth;
-      startMinXRef.current = isFinite(startPos) ? startPos : 0;
-      // Готовим Animated к работе с dx
-      translateMinX.extractOffset();
-      translateMinX.setValue(0);
+      // Фиксируем стартовую позицию ползунка в пикселях от текущего offset
+      const startPosFromValue = ((value[0] - minValue) / (maxValue - minValue)) * sliderWidth;
+      startMinXRef.current = isFinite(offsetMinX.current) && offsetMinX.current > 0
+        ? offsetMinX.current
+        : (isFinite(startPosFromValue) ? startPosFromValue : 0);
+      currentMinAbsRef.current = startMinXRef.current;
       isDraggingMin.current = true;
     },
     onPanResponderMove: (_, gestureState) => {
@@ -95,10 +106,10 @@ const RangeSlider = ({
       let newAbs = startMinXRef.current + gestureState.dx;
       // Ограничиваем движение в пределах трека и до правого ползунка
       if (newAbs < 0) newAbs = 0;
-      if (newAbs > offsetMaxX.current) newAbs = offsetMaxX.current;
-      // Применяем ограниченный dx к анимации (учитывая extractOffset)
-      const clampedDx = newAbs - startMinXRef.current;
-      translateMinX.setValue(clampedDx);
+      if (newAbs > currentMaxAbsRef.current) newAbs = currentMaxAbsRef.current;
+      // Двигаем ползунок абсолютным значением
+      translateMinX.setValue(newAbs);
+      currentMinAbsRef.current = newAbs;
       // Вычисляем значение из абсолютной позиции
       const ratio = sliderWidth > 0 ? (newAbs / sliderWidth) : 0;
       const newValue = minValue + ratio * (maxValue - minValue);
@@ -117,18 +128,32 @@ const RangeSlider = ({
       }
       // Ограничиваем значение в пределах [min, current max]
       steppedValue = Math.max(minValue, Math.min(value[1], steppedValue));
-      setValue([steppedValue, value[1]]);
+      // НИКАКИХ обновлений состояния во время перетаскивания - только эмит родителю
       emitThrottled([steppedValue, value[1]]);
     },
     onPanResponderRelease: () => {
-      translateMinX.flattenOffset();
-      
-      // Обновляем offsetMinX.current
-      const minPosition = ((value[0] - minValue) / (maxValue - minValue)) * sliderWidth;
-      offsetMinX.current = minPosition;
+      // Фиксируем финальный offset
+      offsetMinX.current = currentMinAbsRef.current;
+      // Вычисляем финальное значение из текущей позиции
+      const ratio = sliderWidth > 0 ? (currentMinAbsRef.current / sliderWidth) : 0;
+      const newValue = minValue + ratio * (maxValue - minValue);
+      let steppedValue;
+      if (typeof step === 'number') {
+        steppedValue = Math.round(newValue / step) * step;
+      } else {
+        let testValue = minValue;
+        while (testValue < newValue && testValue < maxValue) {
+          const nextStep = step(testValue);
+          if (testValue + nextStep > newValue) break;
+          testValue += nextStep;
+        }
+        steppedValue = testValue;
+      }
+      steppedValue = Math.max(minValue, Math.min(value[1], steppedValue));
+      // Обновляем состояние ТОЛЬКО после завершения жеста
       isDraggingMin.current = false;
-      // Финальная отправка значения после завершения жеста
-      onValueChange([value[0], value[1]]);
+      setValue([steppedValue, value[1]]);
+      onValueChange([steppedValue, value[1]]);
     }
   });
   
@@ -136,19 +161,24 @@ const RangeSlider = ({
   const maxPanResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
+    onStartShouldSetPanResponderCapture: () => true,
+    onMoveShouldSetPanResponderCapture: () => true,
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
     onPanResponderGrant: () => {
-      const startPos = ((value[1] - minValue) / (maxValue - minValue)) * sliderWidth;
-      startMaxXRef.current = isFinite(startPos) ? startPos : 0;
-      translateMaxX.extractOffset();
-      translateMaxX.setValue(0);
+      const startPosFromValue = ((value[1] - minValue) / (maxValue - minValue)) * sliderWidth;
+      startMaxXRef.current = isFinite(offsetMaxX.current) && offsetMaxX.current > 0
+        ? offsetMaxX.current
+        : (isFinite(startPosFromValue) ? startPosFromValue : 0);
+      currentMaxAbsRef.current = startMaxXRef.current;
       isDraggingMax.current = true;
     },
     onPanResponderMove: (_, gestureState) => {
       let newAbs = startMaxXRef.current + gestureState.dx;
-      if (newAbs < offsetMinX.current) newAbs = offsetMinX.current;
+      if (newAbs < currentMinAbsRef.current) newAbs = currentMinAbsRef.current;
       if (newAbs > sliderWidth) newAbs = sliderWidth;
-      const clampedDx = newAbs - startMaxXRef.current;
-      translateMaxX.setValue(clampedDx);
+      translateMaxX.setValue(newAbs);
+      currentMaxAbsRef.current = newAbs;
       const ratio = sliderWidth > 0 ? (newAbs / sliderWidth) : 0;
       const newValue = minValue + ratio * (maxValue - minValue);
       let steppedValue;
@@ -164,18 +194,32 @@ const RangeSlider = ({
         steppedValue = testValue;
       }
       steppedValue = Math.max(value[0], Math.min(maxValue, steppedValue));
-      setValue([value[0], steppedValue]);
+      // НИКАКИХ обновлений состояния во время перетаскивания - только эмит родителю
       emitThrottled([value[0], steppedValue]);
     },
     onPanResponderRelease: () => {
-      translateMaxX.flattenOffset();
-      
       // Обновляем offsetMaxX.current
-      const maxPosition = ((value[1] - minValue) / (maxValue - minValue)) * sliderWidth;
-      offsetMaxX.current = maxPosition;
+      offsetMaxX.current = currentMaxAbsRef.current;
+      // Вычисляем финальное значение из текущей позиции
+      const ratio = sliderWidth > 0 ? (currentMaxAbsRef.current / sliderWidth) : 0;
+      const newValue = minValue + ratio * (maxValue - minValue);
+      let steppedValue;
+      if (typeof step === 'number') {
+        steppedValue = Math.round(newValue / step) * step;
+      } else {
+        let testValue = minValue;
+        while (testValue < newValue && testValue < maxValue) {
+          const nextStep = step(testValue);
+          if (testValue + nextStep > newValue) break;
+          testValue += nextStep;
+        }
+        steppedValue = testValue;
+      }
+      steppedValue = Math.max(value[0], Math.min(maxValue, steppedValue));
+      // Обновляем состояние ТОЛЬКО после завершения жеста
       isDraggingMax.current = false;
-      // Финальная отправка значения после завершения жеста
-      onValueChange([value[0], value[1]]);
+      setValue([value[0], steppedValue]);
+      onValueChange([value[0], steppedValue]);
     }
   });
 
