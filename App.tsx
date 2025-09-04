@@ -19,6 +19,34 @@ import { supabase } from './src/lib/supabaseClient';
 import './src/translations';
 
 export default function App() {
+  // Заглушка console.* в продакшене (оставляем только console.error)
+  React.useEffect(() => {
+    if (!__DEV__) {
+      const original = {
+        log: console.log,
+        info: console.info,
+        debug: console.debug,
+        warn: console.warn,
+        error: console.error,
+      } as const;
+
+      console.log = () => {};
+      console.info = () => {};
+      console.debug = () => {};
+      console.warn = () => {};
+      // console.error сохраняем без изменений
+
+      return () => {
+        console.log = original.log;
+        console.info = original.info;
+        console.debug = original.debug;
+        console.warn = original.warn;
+        console.error = original.error;
+      };
+    }
+    return;
+  }, []);
+
   // Одноразовая миграция/очистка кэша при смене версии (не применяем для Web)
   React.useEffect(() => {
     if (Platform.OS === 'web') return; // web: не выполняем версионную миграцию/очистку
