@@ -71,7 +71,7 @@ interface PropertyContextType {
     hasMore: boolean;
   }>;
   setFilteredProperties: (properties: Property[]) => void;
-  refreshProperties: () => Promise<void>;
+  refreshProperties: (type?: 'all' | 'sale' | 'rent') => Promise<void>;
   loadMoreProperties: (type?: 'all' | 'sale' | 'rent') => Promise<void>; // Асинхронная подгрузка без debounce
   invalidateCache: () => Promise<void>; // Добавлен новый метод для обновления кэша
   getHasMore: (type?: 'all' | 'sale' | 'rent') => boolean; // Селектор наличия следующей страницы
@@ -185,7 +185,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
 
   // RU: Обновлённая функция refreshProperties с учётом активного типа и безопасным состоянием.
   // EN: Updated refreshProperties respects active type and keeps state safe.
-  const refreshProperties = async () => {
+  const refreshProperties = async (type?: 'all' | 'sale' | 'rent') => {
     // Пропускаем обновление, если уже идет запрос
     if (requestInProgress.current.all) {
       console.log('Обновление пропущено: уже выполняется запрос');
@@ -196,7 +196,11 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       requestInProgress.current.all = true;
       setLoading(true);
 
-      const activeType = activePropertyTypeRef.current;
+      const activeType = type ?? activePropertyTypeRef.current;
+      // Если явно передали тип, синхронизируем с ref
+      if (type) {
+        activePropertyTypeRef.current = type;
+      }
       if (activeType === 'all') {
         // Загружаем общий список (all)
         const result = await propertyService.getProperties(1, pageSize);

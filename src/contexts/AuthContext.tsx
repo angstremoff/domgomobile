@@ -49,17 +49,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error('Auth login error:', error);
+      }
+      return { error };
+    } catch (e: any) {
+      console.error('Auth login exception:', e);
+      return { error: e };
+    }
   };
 
   const register = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    return { error, user: data.user };
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        console.error('Auth register error:', error);
+      }
+      return { error, user: data?.user ?? null };
+    } catch (e: any) {
+      console.error('Auth register exception:', e);
+      return { error: e, user: null };
+    }
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Auth logout error:', error);
+      }
+    } catch (e) {
+      console.error('Auth logout exception:', e);
+    }
   };
 
   return (

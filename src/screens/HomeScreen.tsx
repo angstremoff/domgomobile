@@ -115,9 +115,10 @@ const HomeScreen = ({ navigation }: any) => {
     if (!favoritesLoading && favorites && previousFavoritesLength.current !== favorites.length) {
       console.log(`Количество избранных изменилось: ${previousFavoritesLength.current} -> ${favorites.length}`);
       previousFavoritesLength.current = favorites.length;
-      refreshProperties();
+      // ВАЖНО: Обновляем данные для текущей активной вкладки
+      refreshProperties(propertyType);
     }
-  }, [favorites, favoritesLoading, refreshProperties]);
+  }, [favorites, favoritesLoading, refreshProperties, propertyType]);
 
   // Мемоизированная функция для фильтрации объектов недвижимости
   // использует вынесенную логику из filterHelpers.ts
@@ -548,6 +549,9 @@ const HomeScreen = ({ navigation }: any) => {
   const shouldRestoreScrollRef = useRef(false);
   
   useEffect(() => {
+    // Таймер для отложенного восстановления позиции скролла
+    let restoreTimeout: ReturnType<typeof setTimeout> | null = null;
+
     if (filteredProperties.length > 0) {
       console.log('Обновление списка объявлений: ', {
         'Предыдущий размер': prevPropertiesCountRef.current,
@@ -563,7 +567,7 @@ const HomeScreen = ({ navigation }: any) => {
         shouldRestoreScrollRef.current = false;
         
         // Небольшая задержка для уверенности, что список обновился
-        setTimeout(() => {
+        restoreTimeout = setTimeout(() => {
           if (flatListRef.current && scrollOffsetRef.current > 0) {
             console.log('Восстанавливаем позицию прокрутки на:', scrollOffsetRef.current);
             flatListRef.current.scrollToOffset({
@@ -576,6 +580,13 @@ const HomeScreen = ({ navigation }: any) => {
       
       prevPropertiesCountRef.current = filteredProperties.length;
     }
+
+    // Очистка таймера при повторном выполнении эффекта/размонтировании
+    return () => {
+      if (restoreTimeout) {
+        clearTimeout(restoreTimeout);
+      }
+    };
   }, [filteredProperties, propertyType]);
 
   // Обработка загрузки дополнительных объявлений с сохранением позиции прокрутки
@@ -671,10 +682,8 @@ const HomeScreen = ({ navigation }: any) => {
             setFiltersAppliedSale(false);
             setFiltersAppliedRent(false);
             
-            // Загружаем все объявления
-            await refreshProperties();
-            // Показываем все объявления
-            setFilteredProperties(properties);
+            // Загружаем все объявления ЯВНО для типа 'all'
+            await refreshProperties('all');
           }}
         >
           <Text style={[
