@@ -670,11 +670,15 @@ const HomeScreen = ({ navigation }: any) => {
             });
             setFiltersAppliedSale(false);
             setFiltersAppliedRent(false);
+            // Очищаем typeItems, чтобы избежать показа старых данных из других вкладок
+            setTypeItems([]);
+            
+            // Очищаем текущий список перед загрузкой, чтобы избежать показа неправильных данных
+            setFilteredProperties([]);
             
             // Загружаем все объявления
             await refreshProperties();
-            // Показываем все объявления
-            setFilteredProperties(properties);
+            // Примечание: refreshProperties автоматически обновит filteredProperties через debounce
           }}
         >
           <Text style={[

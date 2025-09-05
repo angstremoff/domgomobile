@@ -186,6 +186,9 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   // RU: Обновлённая функция refreshProperties с учётом активного типа и безопасным состоянием.
   // EN: Updated refreshProperties respects active type and keeps state safe.
   const refreshProperties = async () => {
+    // Устанавливаем activePropertyTypeRef в 'all' при вызове refreshProperties
+    activePropertyTypeRef.current = 'all';
+    
     // Пропускаем обновление, если уже идет запрос
     if (requestInProgress.current.all) {
       console.log('Обновление пропущено: уже выполняется запрос');
@@ -226,13 +229,13 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
           setHasMore(prev => ({ ...prev, [activeType]: result.hasMore }));
           setTotalCount(prev => ({ ...prev, [activeType]: result.totalCount }));
           setCurrentPage(prev => ({ ...prev, [activeType]: 1 }));
-          lastFetchTime.current[activeType] = Date.now();
+          lastFetchTime.current[activeType as 'sale' | 'rent'] = Date.now();
           // Синхронизируем кэш типа
           if (!typeCache.current[activeType]) {
             // @ts-ignore
             typeCache.current[activeType] = { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 };
           }
-          typeCache.current[activeType] = {
+          typeCache.current[activeType as 'sale' | 'rent'] = {
             data: result.data,
             totalCount: result.totalCount,
             hasMore: result.hasMore,
@@ -471,7 +474,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
 
       if (citiesData) {
         // Добавляем координаты для городов
-        const citiesWithCoordinates = citiesData.map(city => ({
+        const citiesWithCoordinates = citiesData.map((city: any) => ({
           ...city,
           latitude: city.latitude || '45.267136',
           longitude: city.longitude || '19.833549',
@@ -514,8 +517,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       
       // Преобразуем данные в формат Property
       const formattedProperty = {
-        ...data,
-        images: data.images || []
+        ...(data as any),
+        images: (data as any).images || []
       } as Property;
 
       return formattedProperty;
