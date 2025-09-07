@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Property } from '../contexts/PropertyContext';
 import { useProperties } from '../contexts/PropertyContext';
 import { WebView } from 'react-native-webview';
+import { Logger } from '../utils/logger';
  
 
 interface MapScreenProps {
@@ -92,7 +93,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
                 setMapCenter(data.center, data.zoom);
               }
             } catch (error) {
-              console.error('Error processing message:', error);
+              Logger.error('Error processing message:', error);
             }
           });
         });
@@ -196,7 +197,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
                 
                 markers.push(marker);
               } catch (error) {
-                console.error('Error creating marker:', error);
+                Logger.error('Error creating marker:', error);
               }
             }
           });
@@ -242,7 +243,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
         navigation.navigate('PropertyDetails', { propertyId: data.propertyId });
       } else if (data.event === 'markersUpdated') {
         // Можно обновить счетчик объектов
-        console.log(`На карте ${data.count} объектов`);
+        Logger.debug(`На карте ${data.count} объектов`);
       } else if (data.event === 'mapLoaded') {
         // Карта загружена, можно отправить данные
         if (webViewRef.current && mapItems) {
@@ -264,7 +265,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
         }
       }
     } catch (error) {
-      console.error('Error handling WebView message:', error);
+      Logger.error('Error handling WebView message:', error);
     }
   };
 

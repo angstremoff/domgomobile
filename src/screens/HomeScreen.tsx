@@ -12,6 +12,7 @@ import { useProperties } from '../contexts/PropertyContext';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
 import { applyPropertyFilters } from '../utils/filterHelpers';
+import { Logger } from '../utils/logger';
 
 const HomeScreen = ({ navigation }: any) => {
   // Вернулись к использованию стандартного компонента PropertyCard
@@ -113,7 +114,7 @@ const HomeScreen = ({ navigation }: any) => {
   useEffect(() => {
     // Обновляем только если количество избранных изменилось
     if (!favoritesLoading && favorites && previousFavoritesLength.current !== favorites.length) {
-      console.log(`Количество избранных изменилось: ${previousFavoritesLength.current} -> ${favorites.length}`);
+      Logger.debug(`Количество избранных изменилось: ${previousFavoritesLength.current} -> ${favorites.length}`);
       previousFavoritesLength.current = favorites.length;
       refreshProperties();
     }
@@ -256,7 +257,7 @@ const HomeScreen = ({ navigation }: any) => {
     if (lastFilterRequest.current.type === type && 
         lastFilterRequest.current.category === category &&
         now - lastFilterRequest.current.timestamp < FILTER_THROTTLE_MS) {
-      console.log(`Пропускаем дублирующий запрос фильтра: ${type} - ${category}`);
+      Logger.debug(`Пропускаем дублирующий запрос фильтра: ${type} - ${category}`);
       return;
     }
     
@@ -295,7 +296,7 @@ const HomeScreen = ({ navigation }: any) => {
       // Проверяем, не устарел ли наш запрос (другой мог стартовать пока этот выполнялся)
       if (lastFilterRequest.current.type !== type || 
           lastFilterRequest.current.category !== category) {
-        console.log('Запрос устарел, пропускаем обработку результатов');
+        Logger.debug('Запрос устарел, пропускаем обработку результатов');
         return;
       }
       
@@ -326,7 +327,7 @@ const HomeScreen = ({ navigation }: any) => {
             const propCityIdStr = String(prop.city_id);
             return propCityIdStr === cityIdStr;
           } catch (error) {
-            console.error('Ошибка при фильтрации по городу:', error);
+            Logger.error('Ошибка при фильтрации по городу:', error);
             return false;
           }
         });
@@ -342,7 +343,7 @@ const HomeScreen = ({ navigation }: any) => {
       
       setFilteredProperties(filtered);
     } catch (error) {
-      console.error('Ошибка при фильтрации:', error);
+      Logger.error('Ошибка при фильтрации:', error);
     } finally {
       setLoadingMore(false);
     }
@@ -436,7 +437,7 @@ const HomeScreen = ({ navigation }: any) => {
         }
       }
     } catch (e) {
-      console.error('Ошибка при сбросе фильтров и обновлении данных:', e);
+      Logger.error('Ошибка при сбросе фильтров и обновлении данных:', e);
     }
   };
 
@@ -549,7 +550,7 @@ const HomeScreen = ({ navigation }: any) => {
   
   useEffect(() => {
     if (filteredProperties.length > 0) {
-      console.log('Обновление списка объявлений: ', {
+      Logger.debug('Обновление списка объявлений: ', {
         'Предыдущий размер': prevPropertiesCountRef.current,
         'Новый размер': filteredProperties.length,
         'Текущая позиция прокрутки': scrollOffsetRef.current,
@@ -565,7 +566,7 @@ const HomeScreen = ({ navigation }: any) => {
         // Небольшая задержка для уверенности, что список обновился
         setTimeout(() => {
           if (flatListRef.current && scrollOffsetRef.current > 0) {
-            console.log('Восстанавливаем позицию прокрутки на:', scrollOffsetRef.current);
+            Logger.debug('Восстанавливаем позицию прокрутки на:', scrollOffsetRef.current);
             flatListRef.current.scrollToOffset({
               offset: scrollOffsetRef.current,
               animated: false
@@ -589,7 +590,7 @@ const HomeScreen = ({ navigation }: any) => {
     }
     if (!loadingMore && getHasMore(propertyType)) {
       const currentOffset = scrollOffsetRef.current;
-      console.log('Начало загрузки дополнительных объявлений: ', {
+      Logger.debug('Начало загрузки дополнительных объявлений: ', {
         'Тип': propertyType,
         'Текущая позиция прокрутки': currentOffset,
         'Количество объявлений': filteredProperties.length
@@ -601,7 +602,7 @@ const HomeScreen = ({ navigation }: any) => {
       setLoadingMore(true);
       try {
         await loadMoreProperties(propertyType);
-        console.log('Загрузка завершена: ', {
+        Logger.debug('Загрузка завершена: ', {
           'Новая позиция прокрутки': scrollOffsetRef.current,
           'Разница': scrollOffsetRef.current - currentOffset,
           'Количество объявлений в filteredProperties': filteredProperties.length
@@ -722,7 +723,7 @@ const HomeScreen = ({ navigation }: any) => {
                 setFilteredProperties(list);
               }
             } catch (error) {
-              console.error('Ошибка при загрузке объявлений для продажи:', error);
+              Logger.error('Ошибка при загрузке объявлений для продажи:', error);
             }
           }}
         >
@@ -767,7 +768,7 @@ const HomeScreen = ({ navigation }: any) => {
                 setFilteredProperties(list);
               }
             } catch (error) {
-              console.error('Ошибка при загрузке объявлений для аренды:', error);
+              Logger.error('Ошибка при загрузке объявлений для аренды:', error);
             }
           }}
         >
@@ -1074,14 +1075,14 @@ const HomeScreen = ({ navigation }: any) => {
           ref={flatListRef}
           data={filteredProperties}
           onContentSizeChange={() => {
-            console.log('Изменился размер списка: ', {
+            Logger.debug('Изменился размер списка: ', {
               'Количество объявлений в FlatList': filteredProperties.length,
               'Текущая позиция прокрутки': scrollOffsetRef.current,
             });
             
             // Восстанавливаем позицию прокрутки если размер списка изменился и флаг восстановления установлен
             if (shouldRestoreScrollRef.current && scrollOffsetRef.current > 0) {
-              console.log('Восстанавливаем позицию при изменении размера:', scrollOffsetRef.current);
+              Logger.debug('Восстанавливаем позицию при изменении размера:', scrollOffsetRef.current);
               flatListRef.current?.scrollToOffset({
                 offset: scrollOffsetRef.current,
                 animated: false
@@ -1099,7 +1100,7 @@ const HomeScreen = ({ navigation }: any) => {
             scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
             // Логируем позицию прокрутки каждые 500 пикселей
             if (Math.floor(scrollOffsetRef.current) % 500 === 0) {
-              console.log('Текущая позиция прокрутки:', Math.floor(scrollOffsetRef.current));
+              Logger.debug('Текущая позиция прокрутки:', Math.floor(scrollOffsetRef.current));
             }
           }}
           renderItem={({ item }: { item: Property }) => (
@@ -1196,7 +1197,7 @@ const HomeScreen = ({ navigation }: any) => {
                   // Не нужно вызывать setFilteredProperties, так как это сделает getPropertiesByType
                 }
               } catch (error) {
-                console.error(`Ошибка при обновлении объявлений типа ${propertyType}:`, error);
+                Logger.error(`Ошибка при обновлении объявлений типа ${propertyType}:`, error);
               }
             } else {
               // Если выбраны все объявления, используем стандартное обновление

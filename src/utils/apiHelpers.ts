@@ -1,8 +1,9 @@
 /**
+/**
  * Утилиты для работы с API запросами
  */
 
-import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
+import { Logger } from './logger';
 
 /**
  * Функция для выполнения повторных попыток запроса при ошибках
@@ -25,8 +26,8 @@ export async function retry<T>(
       throw error;
     }
     
-    console.log(`Ошибка при выполнении запроса, повторная попытка через ${delayMs}мс...`);
-    console.log(`Осталось попыток: ${retries - 1}`);
+    Logger.debug(`Ошибка при выполнении запроса, повторная попытка через ${delayMs}мс...`);
+    Logger.debug(`Осталось попыток: ${retries - 1}`);
     
     // Ждем перед повторной попыткой
     await new Promise(resolve => setTimeout(resolve, delayMs));
@@ -44,7 +45,7 @@ export async function retry<T>(
  * @returns Результат промиса или ошибка по таймауту
  */
 export function withTimeout<T>(
-  promise: Promise<T> | PostgrestFilterBuilder<any, any, any>,
+  promise: Promise<T> | any,
   timeoutMs = 10000,
   errorMessage = 'Превышено время ожидания запроса'
 ): Promise<T> {

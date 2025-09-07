@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { showErrorAlert, showAlert } from '../utils/alertUtils';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
+import { Logger } from '../utils/logger';
 
 const LoginScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -26,7 +27,7 @@ const LoginScreen = ({ navigation }: any) => {
       const { error } = await login(email, password);
       
       if (error) {
-        console.log('Ошибка входа:', error.message);
+        Logger.debug('Ошибка входа:', error.message);
         showErrorAlert(error.message || t('auth.loginFailed'));
         return;
       }
@@ -37,7 +38,7 @@ const LoginScreen = ({ navigation }: any) => {
         routes: [{ name: 'MainTabs' }],
       });
     } catch (error: any) {
-      console.log('Unexpected error:', error);
+      Logger.error('Unexpected error:', error);
       showErrorAlert(t('auth.loginFailed'));
     } finally {
       setLoading(false);

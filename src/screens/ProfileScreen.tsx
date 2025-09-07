@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   Image
 } from 'react-native';
+import { Logger } from '../utils/logger';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -48,7 +49,7 @@ const ProfileScreen = ({ navigation }: any) => {
       const { data, error } = await supabase
         .from('users')
         .select('name, phone, avatar_url')
-        .eq('id', user?.id)
+        .eq('id', user?.id || '')
         .single();
 
       if (error) throw error;
@@ -60,7 +61,7 @@ const ProfileScreen = ({ navigation }: any) => {
         });
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      Logger.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,7 @@ const ProfileScreen = ({ navigation }: any) => {
       // Показываем индикатор загрузки
       setLoading(true);
       
-      console.log('Updating profile with data:', {
+      Logger.debug('Updating profile with data:', {
         id: user?.id,
         name: profile.name,
         phone: profile.phone
@@ -92,17 +93,17 @@ const ProfileScreen = ({ navigation }: any) => {
       const { data, error } = await supabase
         .from('users')
         .upsert({
-          id: user?.id,
+          id: user?.id || '',
           name: profile.name,
           phone: profile.phone,
-          email: user?.email
+          email: user?.email || ''
         })
         .select(); // Получаем обновленные данные
       
-      console.log('Supabase upsert response:', { data, error });
+      Logger.debug('Supabase upsert response:', { data, error });
 
       if (error) {
-        console.error('Error details:', error);
+        Logger.error('Error details:', error);
         throw error;
       }
       
@@ -115,7 +116,7 @@ const ProfileScreen = ({ navigation }: any) => {
       });
       
       if (authError) {
-        console.error('Error updating auth metadata:', authError);
+        Logger.error('Error updating auth metadata:', authError);
         throw authError;
       }
 
@@ -127,7 +128,7 @@ const ProfileScreen = ({ navigation }: any) => {
           phone: updatedProfile.phone || '',
           avatar_url: updatedProfile.avatar_url
         });
-        console.log('Profile updated successfully:', updatedProfile);
+        Logger.debug('Profile updated successfully:', updatedProfile);
       }
 
       // Сбрасываем кеш профиля, принудительно запрашивая новые данные
@@ -136,7 +137,7 @@ const ProfileScreen = ({ navigation }: any) => {
       setEditMode(false);
       showSuccessAlert(t('common.profileUpdated'));
     } catch (error) {
-      console.error('Error updating profile:', error);
+      Logger.error('Error updating profile:', error);
       showErrorAlert(t('profile.errors.saveFailed'));
     } finally {
       setLoading(false);
@@ -149,7 +150,7 @@ const ProfileScreen = ({ navigation }: any) => {
       await logout();
       navigation.navigate('Home');
     } catch (error) {
-      console.error('Error logging out:', error);
+      Logger.error('Error logging out:', error);
       showErrorAlert(t('auth.logoutFailed'));
     } finally {
       setLoading(false);

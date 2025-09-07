@@ -10,6 +10,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { WebView } from 'react-native-webview';
 import Colors from '../constants/colors';
 import { showErrorAlert } from '../utils/alertUtils';
+import { Logger } from '../utils/logger';
 
 const { width } = Dimensions.get('window');
 
@@ -45,7 +46,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     // Если при переходе были переданы данные объявления — отобразим их сразу
     const paramProp = route.params?.property;
     if (paramProp) {
-      console.log(`Используем данные объявления из параметров. ID: ${paramProp.id}, статус: ${paramProp.status}`);
+      Logger.debug(`Используем данные объявления из параметров. ID: ${paramProp.id}, статус: ${paramProp.status}`);
       setProperty(paramProp);
     }
 
@@ -53,14 +54,14 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     const fetchProperty = async () => {
       try {
         setLoading(true);
-        console.log('Загружаем данные объявления по ID:', propertyId);
+        Logger.debug('Загружаем данные объявления по ID:', propertyId);
         const data = await propertyService.getPropertyById(propertyId);
         if (data) {
-          console.log('Актуальные данные объявления получены, есть agency?:', !!data?.agency?.id);
+          Logger.debug('Актуальные данные объявления получены, есть agency?:', !!data?.agency?.id);
           setProperty(data);
         }
       } catch (error) {
-        console.log('(NOBRIDGE) ERROR ', 'Ошибка загрузки данных объявления:', error);
+        Logger.debug('(NOBRIDGE) ERROR ', 'Ошибка загрузки данных объявления:', error);
         showErrorAlert(t('common.errorLoadingData'));
       } finally {
         setLoading(false);
@@ -118,9 +119,9 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         } : {})
       });
       
-      console.log('Поделились объявлением:', property.id);
+      Logger.debug('Поделились объявлением:', property.id);
     } catch (error) {
-      console.error('Ошибка при шаринге:', error);
+      Logger.error('Ошибка при шаринге:', error);
     }
   };
 
@@ -242,15 +243,15 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
       
       if (data.startsWith('log:')) {
         // Это логи для отладки
-        console.log('Лог из WebView:', data.substring(4));
+        Logger.debug('Лог из WebView:', data.substring(4));
         return;
       }
       
-      console.log('Получено сообщение от WebView:', data);
+      Logger.debug('Получено сообщение от WebView:', data);
       
       if (data === 'ready') {
         // WebView готов, отправляем координаты
-        console.log('WebView готов, отправляем координаты');
+        Logger.debug('WebView готов, отправляем координаты');
         
         // Добавляем небольшую задержку перед отправкой координат
         setTimeout(() => {
@@ -258,11 +259,11 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         }, 500);
       } else if (data === 'mapLoaded') {
         // Карта загружена
-        console.log('Карта успешно загружена');
+        Logger.debug('Карта успешно загружена');
         setMapLoading(false);
       }
     } catch (error) {
-      console.error('Ошибка обработки сообщения от WebView:', error);
+      Logger.error('Ошибка обработки сообщения от WebView:', error);
     }
   };
 
@@ -287,7 +288,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
             lat = coords.lat;
             lng = coords.lng;
           } catch (e) {
-            console.error('Ошибка парсинга координат:', e);
+            Logger.error('Ошибка парсинга координат:', e);
           }
         }
       } else if (property.latitude && property.longitude) {
@@ -297,7 +298,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
       }
       
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-        console.error('Нет корректных координат для объявления');
+        Logger.error('Нет корректных координат для объявления');
         setMapLoading(false);
         return;
       }
@@ -309,7 +310,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
       
       webViewRef.current.postMessage(JSON.stringify(message));
     } catch (error) {
-      console.error('Ошибка отправки координат:', error);
+      Logger.error('Ошибка отправки координат:', error);
       setMapLoading(false);
     }
   }, [property]);
@@ -342,7 +343,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const fullAddress = translatedCityName && streetName ? `${translatedCityName}, ${streetName}` : translatedCityName || streetName;
   
   // Отладочный вывод для всего объекта
-  console.log('Детали объявления:', JSON.stringify({
+  Logger.debug('Детали объявления:', JSON.stringify({
     id: property.id,
     title: property.title,
     status: property.status, 
@@ -367,7 +368,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
             renderItem={({ item, index }) => {
               // Отладочный вывод для проверки статуса
               const isInactive = property?.status === 'sold' || property?.status === 'rented';
-              console.log(`Детали объявления: айди=${property.id}, статус=${property.status}, неактивно=${isInactive}`);
+              Logger.debug(`Детали объявления: айди=${property.id}, статус=${property.status}, неактивно=${isInactive}`);
             
               return (
                 <TouchableOpacity 

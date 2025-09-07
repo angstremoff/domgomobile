@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from 'react-i18next';
 import Colors from '../constants/colors';
 import { propertyService } from '../services/propertyService';
+import { Logger } from '../utils/logger';
 
 interface City {
   id: number;
@@ -36,7 +37,7 @@ const HeaderControls = ({ darkMode, toggleDarkMode, isHomeScreen = false, select
       const citiesData = await propertyService.getCities();
       setCities(citiesData);
     } catch (error) {
-      console.error('Ошибка при загрузке городов:', error);
+      Logger.error('Ошибка при загрузке городов:', error);
     }
   };
 

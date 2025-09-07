@@ -1,5 +1,6 @@
 import i18next from 'i18next';
 import { useAlerts } from '../components/AlertProvider';
+import { Logger } from './logger';
 
 // Интерфейс для кнопок алерта
 interface AlertButton {
@@ -52,7 +53,7 @@ export const showAlert = (
     _alertFunctions.showAlert(translatedTitle, translatedMessage, alertButtons);
   } else {
     // Иначе выводим предупреждение в консоль
-    console.warn('AlertProvider not initialized. Please wrap your app with AlertProvider.');
+    Logger.warn('AlertProvider not initialized. Please wrap your app with AlertProvider.');
   }
 };
 

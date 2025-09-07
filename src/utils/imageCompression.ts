@@ -1,4 +1,5 @@
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { Logger } from './logger';
 
 /**
  * Функция для сжатия изображений перед загрузкой в Supabase
@@ -10,10 +11,10 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
  */
 export async function compressImage(uri: string, maxSizeMB: number = 0.4): Promise<{ uri: string }> {
   try {
-    console.log('Начинаем сжатие изображения:', uri);
+    Logger.debug('Начинаем сжатие изображения:', uri);
     
     if (!uri) {
-      console.error('Пустой URI изображения');
+      Logger.error('Пустой URI изображения');
       throw new Error('Пустой URI изображения');
     }
     
@@ -32,14 +33,14 @@ export async function compressImage(uri: string, maxSizeMB: number = 0.4): Promi
         { compress: quality, format: SaveFormat.JPEG }
       );
       
-      console.log('Сжатие выполнено успешно');
-      console.log('Исходный URI:', uri);
-      console.log('Сжатый URI:', compressed.uri);
-      console.log('Использовано качество:', quality);
+      Logger.debug('Сжатие выполнено успешно');
+      Logger.debug('Исходный URI:', uri);
+      Logger.debug('Сжатый URI:', compressed.uri);
+      Logger.debug('Использовано качество:', quality);
       
       return { uri: compressed.uri };
     } catch (manipulateError) {
-      console.error('Ошибка при манипуляции с изображением:', manipulateError);
+      Logger.error('Ошибка при манипуляции с изображением:', manipulateError);
       // Пробуем с меньшим качеством, если первая попытка не удалась
       try {
         let compressed = await manipulateAsync(
@@ -48,16 +49,16 @@ export async function compressImage(uri: string, maxSizeMB: number = 0.4): Promi
           { compress: 0.4, format: SaveFormat.JPEG }
         );
         
-        console.log('Сжатие выполнено успешно со вторым набором параметров');
+        Logger.debug('Сжатие выполнено успешно со вторым набором параметров');
         return { uri: compressed.uri };
       } catch (secondError) {
-        console.error('Вторая попытка сжатия также не удалась:', secondError);
+        Logger.error('Вторая попытка сжатия также не удалась:', secondError);
         // В случае ошибки возвращаем исходное изображение
         return { uri };
       }
     }
   } catch (error) {
-    console.error('Ошибка при сжатии изображения:', error);
+    Logger.error('Ошибка при сжатии изображения:', error);
     // В случае ошибки возвращаем исходное изображение
     return { uri };
   }

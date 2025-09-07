@@ -15,6 +15,7 @@ import AlertInitializer from './src/components/AlertInitializer';
 import AppNavigator from './src/navigation/AppNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { logError } from './src/utils/sentry';
+import { Logger } from './src/utils/logger';
 import { supabase } from './src/lib/supabaseClient';
 import './src/translations';
 
@@ -34,12 +35,12 @@ export default function App() {
           '0';
         const storedVersion = await AsyncStorage.getItem(APP_VERSION_KEY);
         if (storedVersion !== currentVersion) {
-          console.log('Версия приложения изменилась, выполняем очистку локального кэша');
+          Logger.debug('Версия приложения изменилась, выполняем очистку локального кэша');
           try {
             // Полная очистка предотвращает влияние любых неизвестных ключей
             await AsyncStorage.clear();
           } catch (e) {
-            console.warn('Ошибка при очистке AsyncStorage:', e);
+            Logger.warn('Ошибка при очистке AsyncStorage:', e);
           }
           try {
             // Чистим внутренний кэш сервисов на всякий случай
@@ -47,13 +48,13 @@ export default function App() {
               propertyService.clearCache();
             }
           } catch (e) {
-            console.warn('Ошибка при очистке in-memory кэша:', e);
+            Logger.warn('Ошибка при очистке in-memory кэша:', e);
           }
           await AsyncStorage.setItem(APP_VERSION_KEY, currentVersion);
-          console.log('Локальное хранилище и кэши очищены. Установлена версия:', currentVersion);
+          Logger.debug('Локальное хранилище и кэши очищены. Установлена версия:', currentVersion);
         }
       } catch (e) {
-        console.warn('Ошибка миграции версии приложения:', e);
+        Logger.warn('Ошибка миграции версии приложения:', e);
       }
     })();
   }, []);
@@ -63,7 +64,7 @@ export default function App() {
     // Обработчик для ссылок, по которым открывается приложение
     const handleDeepLink = async (event: { url: string }) => {
       const url = event.url;
-      console.log('Получена ссылка:', url);
+      Logger.debug('Получена ссылка:', url);
       
       // Проверяем, что это ссылка подтверждения email
       if (url.includes('domgomobile://auth/callback')) {
@@ -73,7 +74,7 @@ export default function App() {
         const refreshToken = params.get('refresh_token');
         const type = params.get('type');
         
-        console.log('Обработка подтверждения email. Тип:', type);
+        Logger.debug('Обработка подтверждения email. Тип:', type);
         
         if (accessToken && refreshToken) {
           // Устанавливаем сессию пользователя в Supabase
@@ -83,9 +84,9 @@ export default function App() {
           });
           
           if (error) {
-            console.error('Ошибка установки сессии:', error);
+            Logger.error('Ошибка установки сессии:', error);
           } else {
-            console.log('Сессия установлена успешно');
+            Logger.debug('Сессия установлена успешно');
           }
         }
       }
@@ -106,7 +107,7 @@ export default function App() {
         try {
           urlObj = new URL(url);
         } catch (urlError) {
-          console.error('Ошибка при создании URL объекта:', urlError);
+          Logger.error('Ошибка при создании URL объекта:', urlError);
           
           // Если это кастомная схема, обрабатываем вручную
           if (url.startsWith('domgomobile://')) {
@@ -115,7 +116,7 @@ export default function App() {
             try {
               urlObj = new URL(tempUrl);
             } catch (e) {
-              console.error('Не удалось парсить даже после преобразования:', e);
+              Logger.error('Не удалось парсить даже после преобразования:', e);
               return; // Некорректный URL, прекращаем обработку
             }
           } else {
@@ -136,16 +137,16 @@ export default function App() {
                 
                 if (filteredParts.length > 0) {
                   propertyId = filteredParts[filteredParts.length - 1];
-                  console.log('Получена прямая ссылка на объявление (path):', propertyId);
+                  Logger.debug('Получена прямая ссылка на объявление (path):', propertyId);
                 } else {
-                  console.warn('Путь в URL пустой, ID не найден');
+                  Logger.warn('Путь в URL пустой, ID не найден');
                 }
               } else {
                 // Прямой парсинг URL, если объект URL не содержит pathname
                 const parts = url.split('domgomobile://property/');
                 if (parts.length > 1 && parts[1].trim() !== '') {
                   propertyId = parts[1].trim();
-                  console.log('Получена прямая ссылка на объявление (ручной парсинг):', propertyId);
+                  Logger.debug('Получена прямая ссылка на объявление (ручной парсинг):', propertyId);
                 }
               }
             }
@@ -156,14 +157,14 @@ export default function App() {
                 const queryId = queryParams.get('id');
                 if (queryId) {
                   propertyId = queryId;
-                  console.log('Получена прямая ссылка на объявление (query):', propertyId);
+                  Logger.debug('Получена прямая ссылка на объявление (query):', propertyId);
                 } else {
                   // Прямой парсинг query параметров, если URL API не работает
                   if (url.includes('?id=')) {
                     const parts = url.split('?id=');
                     if (parts.length > 1 && parts[1].trim() !== '') {
                       propertyId = parts[1].trim();
-                      console.log('Получена прямая ссылка на объявление (ручной парсинг query):', propertyId);
+                      Logger.debug('Получена прямая ссылка на объявление (ручной парсинг query):', propertyId);
                     }
                   }
                 }
@@ -173,7 +174,7 @@ export default function App() {
                   const parts = url.split('?id=');
                   if (parts.length > 1 && parts[1].trim() !== '') {
                     propertyId = parts[1].trim();
-                    console.log('Получена прямая ссылка на объявление (ручной парсинг query):', propertyId);
+                    Logger.debug('Получена прямая ссылка на объявление (ручной парсинг query):', propertyId);
                   }
                 }
               }
@@ -187,7 +188,7 @@ export default function App() {
           
           if (idIndex > 0 && idIndex < pathParts.length) {
             propertyId = pathParts[idIndex];
-            console.log('Получена веб-ссылка на объявление:', propertyId);
+            Logger.debug('Получена веб-ссылка на объявление:', propertyId);
           }
         }
         // Проверка формата ссылок через обработчик Netlify или GitHub Pages
@@ -195,7 +196,7 @@ export default function App() {
                  url.includes('angstremoff.github.io/domgomobile/deeplink-handler.html') ||
                  url.includes('angstremoff.github.io/domgomobile/property.html')) {
           propertyId = urlObj.searchParams.get('id');
-          console.log('Получена ссылка из обработчика deep links:', propertyId);
+          Logger.debug('Получена ссылка из обработчика deep links:', propertyId);
         }
         
         // Если удалось получить ID объявления, сохраняем его для открытия
@@ -204,18 +205,18 @@ export default function App() {
           globalThis.propertyDeepLinkId = propertyId;
           
           // Отправляем событие для всех компонентов, которые могут его обработать
-          console.log('Открываем объявление по ID:', propertyId);
+          Logger.debug('Открываем объявление по ID:', propertyId);
           
           // Добавляем интерфейс для TypeScript
           // Устанавливаем отложенную навигацию и позволяем AppNavigator обработать ее
-          console.log('Устанавливаем отложенную навигацию для ID:', propertyId);
+          Logger.debug('Устанавливаем отложенную навигацию для ID:', propertyId);
           // @ts-ignore - Игнорируем ошибки TypeScript для глобальных переменных
           globalThis.pendingPropertyNavigation = propertyId;
           
           // Прямая навигация, если приложение уже запущено
           // @ts-ignore - Игнорируем ошибки TypeScript
           if (globalThis.navigationRef && globalThis.navigationRef.current) {
-            console.log('Прямая навигация к экрану деталей объявления, ID:', propertyId);
+            Logger.debug('Прямая навигация к экрану деталей объявления, ID:', propertyId);
             try {
               // Очень важно: PropertyDetails ожидает параметр propertyId
               // @ts-ignore - Игнорируем ошибки TypeScript
@@ -224,14 +225,14 @@ export default function App() {
                 propertyId: propertyId, 
                 id: propertyId 
               });
-              console.log('Навигация к экрану PropertyDetails с ID:', propertyId);
+              Logger.debug('Навигация к экрану PropertyDetails с ID:', propertyId);
             } catch (error) {
-              console.error('Ошибка при прямой навигации:', error);
+              Logger.error('Ошибка при прямой навигации:', error);
             }
           }
         }
       } catch (error) {
-        console.error('Ошибка при обработке URL объявления:', error);
+        Logger.error('Ошибка при обработке URL объявления:', error);
       }
     };
     
@@ -259,44 +260,44 @@ export default function App() {
       try {
         // В режиме разработки обновления не работают
         if (__DEV__) {
-          console.log('Обновления отключены в режиме разработки');
+          Logger.debug('Обновления отключены в режиме разработки');
           return;
         }
 
-        console.log('Проверка обновлений...');
+        Logger.debug('Проверка обновлений...');
         
         // Проверяем наличие обновлений
         const update = await Updates.checkForUpdateAsync();
         
         if (update.isAvailable) {
-          console.log('Доступно обновление, загружаем...');
+          Logger.debug('Доступно обновление, загружаем...');
           
           try {
             // Загружаем обновление
             await Updates.fetchUpdateAsync();
             
             // Перезапускаем приложение с новыми файлами
-            console.log('Обновление загружено, перезапускаем приложение');
+            Logger.debug('Обновление загружено, перезапускаем приложение');
             await Updates.reloadAsync();
           } catch (error) {
-            console.error('Ошибка при загрузке обновления:', error);
+            Logger.error('Ошибка при загрузке обновления:', error);
             
             // Повторная попытка через 5 секунд
             setTimeout(async () => {
               try {
-                console.log('Повторная попытка загрузки обновления...');
+                Logger.debug('Повторная попытка загрузки обновления...');
                 await Updates.fetchUpdateAsync();
                 await Updates.reloadAsync();
               } catch (retryError) {
-                console.error('Повторная загрузка не удалась:', retryError);
+                Logger.error('Повторная загрузка не удалась:', retryError);
               }
             }, 5000);
           }
         } else {
-          console.log('Обновлений не найдено, используем текущую версию');
+          Logger.debug('Обновлений не найдено, используем текущую версию');
         }
       } catch (e) {
-        console.error('Ошибка при проверке обновлений:', e);
+        Logger.error('Ошибка при проверке обновлений:', e);
       }
     }
     
@@ -320,7 +321,7 @@ export default function App() {
     const handleError = (error: Error) => {
       // Логируем ошибку в Sentry
       logError(error, { context: 'Global error handler' });
-      console.error('Глобальная ошибка в приложении:', error);
+      Logger.error('Глобальная ошибка в приложении:', error);
     };
 
     // Функция обработки необработанных обещаний
@@ -328,7 +329,7 @@ export default function App() {
       logError(error instanceof Error ? error : new Error('Unhandled Promise Rejection: ' + error), {
         context: 'Unhandled Promise rejection'
       });
-      console.error('Необработанная ошибка в Promise:', error);
+      Logger.error('Необработанная ошибка в Promise:', error);
     };
 
     // Для React Native используем глобальный обработчик ошибок

@@ -1,6 +1,7 @@
 import { Alert, Linking } from 'react-native';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Logger } from '../utils/logger';
 
 // Константы для сервиса обновлений
 const GITHUB_API_URL = 'https://api.github.com/repos/angstremoff/domgomobile/releases/latest';
@@ -44,7 +45,7 @@ export const checkForUpdates = async (
   let timeoutId: NodeJS.Timeout | null = null;
 
   try {
-    console.log('Начинаем проверку обновлений...');
+    Logger.debug('Начинаем проверку обновлений...');
     
     // Проверяем, не слишком ли часто проверяем обновления
     if (!force) {
@@ -55,13 +56,13 @@ export const checkForUpdates = async (
           const now = Date.now();
           
           if (now - lastCheck < UPDATE_CHECK_INTERVAL) {
-            console.log('Слишком рано для новой проверки обновлений');
+            Logger.debug('Слишком рано для новой проверки обновлений');
             onNoUpdateAvailable?.();
             return { isUpdateAvailable: false, latestVersion: getCurrentVersion() };
           }
         }
       } catch (storageError) {
-        console.warn('Ошибка при проверке AsyncStorage:', storageError);
+        Logger.warn('Ошибка при проверке AsyncStorage:', storageError);
         // Продолжаем проверку даже если была ошибка с хранилищем
       }
     }
@@ -73,7 +74,7 @@ export const checkForUpdates = async (
     timeoutId = setTimeout(() => {
       if (controller) {
         controller.abort();
-        console.log('Запрос на проверку обновлений прерван по таймауту');
+        Logger.debug('Запрос на проверку обновлений прерван по таймауту');
       }
     }, 15000); // 15 секунд на запрос (увеличено с 5 до 15 секунд для слабых соединений)
     
@@ -81,11 +82,11 @@ export const checkForUpdates = async (
     try {
       await AsyncStorage.setItem(LAST_UPDATE_CHECK_KEY, Date.now().toString());
     } catch (storageError) {
-      console.warn('Ошибка при сохранении времени проверки:', storageError);
+        Logger.warn('Ошибка при сохранении времени проверки:', storageError);
     }
     
-    console.log('Отправляем запрос к GitHub API:', GITHUB_API_URL);
-    console.log('User-Agent:', `DomGoMobile/${getCurrentVersion()}`);
+    Logger.debug('Отправляем запрос к GitHub API:', GITHUB_API_URL);
+    Logger.debug('User-Agent:', `DomGoMobile/${getCurrentVersion()}`);
     
     // Функция запроса с повторными попытками
     const fetchWithRetry = async (url: string, options: any, retries = 2, delay = 2000): Promise<Response> => {
@@ -94,7 +95,7 @@ export const checkForUpdates = async (
       } catch (err) {
         if (retries <= 0) throw err;
         await new Promise(resolve => setTimeout(resolve, delay));
-        console.log(`Повторная попытка запроса (осталось ${retries})`);
+        Logger.debug(`Повторная попытка запроса (осталось ${retries})`);
         return fetchWithRetry(url, options, retries - 1, delay);
       }
     }
@@ -115,22 +116,22 @@ export const checkForUpdates = async (
     }
     
     if (!response.ok) {
-      console.error(`GitHub API вернул статус ${response.status}`);
+      Logger.error(`GitHub API вернул статус ${response.status}`);
       throw new Error(`GitHub API вернул статус ${response.status}`);
     }
     
-    console.log('Получен ответ от GitHub API');
+    Logger.debug('Получен ответ от GitHub API');
     
     let data;
     try {
       data = await response.json();
     } catch (jsonError) {
-      console.error('Ошибка при парсинге JSON:', jsonError);
+      Logger.error('Ошибка при парсинге JSON:', jsonError);
       throw new Error('Ошибка при парсинге ответа GitHub API');
     }
     
     if (!data || !data.tag_name) {
-      console.error('Отсутствует поле tag_name в ответе GitHub API:', data);
+      Logger.error('Отсутствует поле tag_name в ответе GitHub API:', data);
       throw new Error('Некорректный формат ответа GitHub API');
     }
     
@@ -138,12 +139,12 @@ export const checkForUpdates = async (
     const latestVersion = data.tag_name.replace(/^v/, '');
     const currentVersion = getCurrentVersion();
     
-    console.log(`Текущая версия: ${currentVersion}, Последняя версия: ${latestVersion}`);
+    Logger.debug(`Текущая версия: ${currentVersion}, Последняя версия: ${latestVersion}`);
     
     // Проверяем, есть ли обновление
     const isUpdateAvailable = compareVersions(currentVersion, latestVersion);
     
-    console.log(`Доступно обновление: ${isUpdateAvailable ? 'Да' : 'Нет'}`);
+    Logger.debug(`Доступно обновление: ${isUpdateAvailable ? 'Да' : 'Нет'}`);
     
     if (isUpdateAvailable) {
       onUpdateAvailable?.(latestVersion);
@@ -161,7 +162,7 @@ export const checkForUpdates = async (
     
     // Обработка ошибки прерывания
     if (error.name === 'AbortError') {
-      console.error('Запрос на проверку обновлений был прерван');
+    Logger.error('Запрос на проверку обновлений был прерван');
       const timeoutError = new Error('Время ожидания истекло. Проверьте подключение к интернету и попробуйте снова.');
       onError?.(timeoutError);
       return { isUpdateAvailable: false, latestVersion: getCurrentVersion() };
@@ -169,17 +170,17 @@ export const checkForUpdates = async (
 
     // Обработка ошибок сети
     if (error.message && error.message.includes('Network request failed')) {
-      console.error('Ошибка сети при проверке обновлений');
+    Logger.error('Ошибка сети при проверке обновлений');
       const networkError = new Error('Не удалось подключиться к серверу. Проверьте подключение к интернету.');
       onError?.(networkError);
       return { isUpdateAvailable: false, latestVersion: getCurrentVersion() };
     }
     
     // Улучшенный лог ошибки
-    console.error('Ошибка при проверке обновлений:', error);
-    console.error('Тип ошибки:', error?.name);
-    console.error('Сообщение:', error?.message);
-    console.error('Stack:', error?.stack);
+    Logger.error('Ошибка при проверке обновлений:', error);
+    Logger.error('Тип ошибки:', error?.name);
+    Logger.error('Сообщение:', error?.message);
+    Logger.error('Stack:', error?.stack);
     
     // Преобразуем ошибку в понятное для пользователя сообщение
     const userFriendlyError = new Error(
@@ -209,5 +210,5 @@ export const showUpdateDialog = (latestVersion: string, t: any) => {
   );
   
   // Логируем ссылку на загрузку
-  console.log('Ссылка на загрузку:', GITHUB_RELEASE_URL);
+  Logger.debug('Ссылка на загрузку:', GITHUB_RELEASE_URL);
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -14,6 +14,7 @@ import {
   Modal,
   FlatList
 } from 'react-native';
+import { Logger } from '../utils/logger';
 import * as ImagePicker from 'expo-image-picker';
 import { compressImage } from '../utils/imageCompression';
 import { useTranslation } from 'react-i18next';
@@ -112,7 +113,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
         if (error) throw error;
       }
     } catch (error) {
-      console.error('Ошибка при загрузке данных пользователя:', error);
+      Logger.error('Ошибка при загрузке данных пользователя:', error);
     }
   };
 
@@ -158,7 +159,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
       }
       
       // Запускаем выбор изображения
-      console.log('Запускаем выбор изображения...');
+      Logger.debug('Запускаем выбор изображения...');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
@@ -166,36 +167,36 @@ const AddPropertyScreen = ({ navigation }: any) => {
         allowsMultipleSelection: false,
       });
       
-      console.log('Результат выбора изображения:', JSON.stringify(result, null, 2));
+      Logger.debug('Результат выбора изображения:', JSON.stringify(result, null, 2));
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setUploadingImages(true);
         try {
           const asset = result.assets[0];
-          console.log('Выбранное изображение:', asset.uri);
-          console.log('Тип файла:', asset.mimeType);
-          console.log('Размер файла:', asset.fileSize ? `${asset.fileSize} байт` : 'неизвестно');
+          Logger.debug('Выбранное изображение:', asset.uri);
+          Logger.debug('Тип файла:', asset.mimeType);
+          Logger.debug('Размер файла:', asset.fileSize ? `${asset.fileSize} байт` : 'неизвестно');
           
           // Сжимаем изображение
-          console.log('Начинаем сжатие изображения...');
+          Logger.debug('Начинаем сжатие изображения...');
           const compressedImage = await compressImage(asset.uri);
-          console.log('Изображение сжато:', compressedImage.uri);
+          Logger.debug('Изображение сжато:', compressedImage.uri);
           
           // Добавляем в массив URI из локального хранилища для отображения
           setImages(prev => [...prev, compressedImage.uri]);
-          console.log('Изображение добавлено в список');
+          Logger.debug('Изображение добавлено в список');
           
         } catch (error) {
-          console.error('Ошибка при сжатии или добавлении изображения:', error);
+          Logger.error('Ошибка при сжатии или добавлении изображения:', error);
           showErrorAlert(t('property.errors.imageUploadFailed'));
         } finally {
           setUploadingImages(false);
         }
       } else {
-        console.log('Выбор изображения отменен или не выбрано ни одного изображения');
+        Logger.debug('Выбор изображения отменен или не выбрано ни одного изображения');
       }
     } catch (error) {
-      console.error('Ошибка при выборе изображения:', error);
+      Logger.error('Ошибка при выборе изображения:', error);
       showErrorAlert(t('property.errors.imageSelectFailed'));
       setUploadingImages(false);
     }
@@ -244,7 +245,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
           return;
         }
       } catch (error) {
-        console.error('Ошибка при проверке количества объявлений:', error);
+        Logger.error('Ошибка при проверке количества объявлений:', error);
       }
       
       // Сохраняем данные пользователя
@@ -254,18 +255,18 @@ const AddPropertyScreen = ({ navigation }: any) => {
             .from('users')
             .upsert({
               id: user.id,
-              email: user.email,
+              email: user.email || '',
               name: userData.name,
               phone: userData.phone
             }, { onConflict: 'id' });
 
           if (profileError) {
-            console.error('Ошибка при обновлении профиля:', profileError);
+            Logger.error('Ошибка при обновлении профиля:', profileError);
             throw profileError;
           }
         }
       } catch (error) {
-        console.error('Ошибка при сохранении данных пользователя:', error);
+        Logger.error('Ошибка при сохранении данных пользователя:', error);
         showErrorAlert(t('profile.errors.saveFailed'));
         setLoading(false);
         return;
@@ -276,13 +277,13 @@ const AddPropertyScreen = ({ navigation }: any) => {
       setUploadingImages(true);
       
       try {
-        console.log(`Начинаем загрузку ${images.length} изображений...`);
+        Logger.debug(`Начинаем загрузку ${images.length} изображений...`);
         
         for (let i = 0; i < images.length; i++) {
           const imageUri = images[i];
           
           try {
-            console.log(`Загрузка изображения ${i+1}/${images.length}: ${imageUri}`);
+            Logger.debug(`Загрузка изображения ${i+1}/${images.length}: ${imageUri}`);
             
             // Получаем расширение файла
             const uriParts = imageUri.split('.');
@@ -295,19 +296,19 @@ const AddPropertyScreen = ({ navigation }: any) => {
             // Проверяем, что расширение файла допустимо
             const validExtensions = ['jpg', 'jpeg', 'png', 'gif'];
             if (!validExtensions.includes(imageExtension)) {
-              console.error('Недопустимое расширение файла:', imageExtension);
+              Logger.error('Недопустимое расширение файла:', imageExtension);
               // Используем jpg как запасной вариант
-              console.log('Используем jpg как запасной вариант');
+              Logger.debug('Используем jpg как запасной вариант');
             }
             
             // Используем метод из propertyService для загрузки изображения
-            console.log('Вызываем propertyService.uploadImage...');
+            Logger.debug('Вызываем propertyService.uploadImage...');
             const imageUrl = await propertyService.uploadImage(imageUri, imageName);
             
             uploadedImageUrls.push(imageUrl);
-            console.log(`Изображение ${i+1}/${images.length} успешно загружено:`, imageUrl);
+            Logger.debug(`Изображение ${i+1}/${images.length} успешно загружено:`, imageUrl);
           } catch (imageError: any) {
-            console.error(`Ошибка при загрузке изображения ${i+1}/${images.length}:`, imageError);
+            Logger.error(`Ошибка при загрузке изображения ${i+1}/${images.length}:`, imageError);
             showErrorAlert(`${t('property.errors.imageUploadFailed')} (${i+1}/${images.length}): ${imageError.message || 'Неизвестная ошибка'}`);
             setLoading(false);
             setUploadingImages(false);
@@ -315,9 +316,9 @@ const AddPropertyScreen = ({ navigation }: any) => {
           }
         }
         
-        console.log('Все изображения успешно загружены:', uploadedImageUrls);
+        Logger.debug('Все изображения успешно загружены:', uploadedImageUrls);
       } catch (error: any) {
-        console.error('Общая ошибка при загрузке изображений:', error);
+        Logger.error('Общая ошибка при загрузке изображений:', error);
         showErrorAlert(`${t('property.errors.imageUploadFailed')}: ${error.message || 'Неизвестная ошибка'}`);
         setLoading(false);
         setUploadingImages(false);
@@ -349,7 +350,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
       if (result.success) {
         // Принудительно очищаем кэш и перезагружаем данные
         await invalidateCache();
-        console.log('Кэш объявлений очищен после создания нового объявления');
+        Logger.debug('Кэш объявлений очищен после создания нового объявления');
         
         resetForm();
         // Показываем уведомление и переходим на страницу с моими объявлениями
@@ -360,7 +361,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
         showErrorAlert(t('addProperty.failure'));
       }
     } catch (error) {
-      console.error('Ошибка при создании объявления:', error);
+      Logger.error('Ошибка при создании объявления:', error);
       showErrorAlert(t('property.errors.createFailed'));
     } finally {
       setLoading(false);
@@ -744,7 +745,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
           {cityId !== '0' && (
             <>
               {/* Отладочная информация */}
-              {console.log('Rendering MapCoordinateSelector with:', {
+              {Logger.debug('Rendering MapCoordinateSelector with:', {
                 selectedCity,
                 coordinates,
                 cityId,
@@ -754,7 +755,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
                 selectedCity={selectedCity || null}
                 initialCoordinates={coordinates}
                 onCoordinatesSelect={(coords) => {
-                  console.log('Coordinates selected:', coords);
+                  Logger.debug('Coordinates selected:', coords);
                   setCoordinates(coords);
                 }}
               />

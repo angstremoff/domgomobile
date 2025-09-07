@@ -11,6 +11,7 @@ import { useProperties } from '../contexts/PropertyContext';
 import HeaderControls from '../components/HeaderControls';
 import WebHeaderBar from '../components/WebHeaderBar';
 import Colors from '../constants/colors';
+import { Logger } from '../utils/logger';
 import { RootStackParamList } from '../types/navigation';
 
 // Расширяем тип globalThis для наших глобальных переменных
@@ -441,7 +442,7 @@ const AppNavigator = () => {
       if (globalThis.pendingPropertyNavigation) {
         // @ts-ignore - Игнорируем ошибку для глобальных переменных
         const propertyId = globalThis.pendingPropertyNavigation;
-        console.log('Обнаружена отложенная навигация к объявлению, ID:', propertyId);
+        Logger.debug('Обнаружена отложенная навигация к объявлению, ID:', propertyId);
         
         try {
           // Загружаем данные объявления по ID
@@ -458,7 +459,7 @@ const AppNavigator = () => {
                   id: propertyId, 
                   property: propertyData 
                 });
-                console.log('Выполнена отложенная навигация к экрану деталей объявления');
+                Logger.debug('Выполнена отложенная навигация к экрану деталей объявления');
                 // Очищаем переменные после использования
                 // @ts-ignore - Игнорируем ошибку для глобальных переменных
                 globalThis.pendingPropertyNavigation = null;
@@ -466,7 +467,7 @@ const AppNavigator = () => {
             }, 500);
           }
         } catch (error) {
-          console.error('Ошибка при загрузке объявления по ID:', error);
+          Logger.error('Ошибка при загрузке объявления по ID:', error);
           globalThis.pendingPropertyNavigation = null;
         }
       }
@@ -474,7 +475,7 @@ const AppNavigator = () => {
       // Проверяем старый механизм propertyDeepLinkId
       // @ts-ignore - Игнорируем ошибку для глобальных переменных
       else if (globalThis.propertyDeepLinkId) {
-        console.log('Открываем объявление из ссылки, ID:', globalThis.propertyDeepLinkId);
+        Logger.debug('Открываем объявление из ссылки, ID:', globalThis.propertyDeepLinkId);
         
         // Загружаем данные объявления по ID
         try {
@@ -498,7 +499,7 @@ const AppNavigator = () => {
             }, 500);
           }
         } catch (error) {
-          console.error('Ошибка при загрузке объявления по ссылке:', error);
+          Logger.error('Ошибка при загрузке объявления по ссылке:', error);
           globalThis.propertyDeepLinkId = null;
         }
       }

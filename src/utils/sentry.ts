@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import { SENTRY_DSN, APP_VERSION } from '@env';
+import { Logger } from './logger';
 
 /**
  * Инициализация Sentry для отслеживания ошибок
@@ -27,7 +28,7 @@ export const initSentry = () => {
   // Устанавливаем теги для лучшей фильтрации ошибок
   Sentry.setTag('app.version', APP_VERSION || '0.3.1');
   
-  console.log('Sentry успешно инициализирован');
+  Logger.debug('Sentry успешно инициализирован');
 };
 
 /**

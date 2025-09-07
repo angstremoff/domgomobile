@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
+import { Logger } from '../utils/logger';
 
 interface AuthContextValue {
   user: User | null;
@@ -26,7 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(data.session);
         setUser(data.session?.user ?? null);
       } catch (error) {
-        console.error('Ошибка при получении сессии:', error);
+        Logger.error('Ошибка при получении сессии:', error);
         // Очищаем данные сессии при ошибке
         setSession(null);
         setUser(null);
@@ -39,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Подписка на изменения состояния аутентификации
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event);
+      Logger.debug('Auth state changed:', event);
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);

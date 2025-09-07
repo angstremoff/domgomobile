@@ -8,6 +8,7 @@ import { Property } from '../contexts/PropertyContext';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from '../utils/alertUtils';
+import { Logger } from '../utils/logger';
 
 const MyPropertiesScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -24,7 +25,7 @@ const MyPropertiesScreen = ({ navigation }: any) => {
       const data = await propertyService.getUserProperties();
       setProperties(data as Property[]);
     } catch (error) {
-      console.error('Ошибка при загрузке объявлений:', error);
+      Logger.error('Ошибка при загрузке объявлений:', error);
       showErrorAlert(t('profile.errorLoadingProperties'));
     } finally {
       setLoading(false);
@@ -51,7 +52,7 @@ const MyPropertiesScreen = ({ navigation }: any) => {
       showSuccessAlert(t('profile.propertySoldMarked'));
       loadProperties();
     } catch (error) {
-      console.error('Ошибка при отметке объявления как проданного:', error);
+      Logger.error('Ошибка при отметке объявления как проданного:', error);
       showErrorAlert(t('profile.errorMarkingProperty'));
     }
   };
@@ -62,7 +63,7 @@ const MyPropertiesScreen = ({ navigation }: any) => {
       showSuccessAlert(t('profile.propertyRentedMarked'));
       loadProperties();
     } catch (error) {
-      console.error('Ошибка при отметке объявления как сданного:', error);
+      Logger.error('Ошибка при отметке объявления как сданного:', error);
       showErrorAlert(t('profile.errorMarkingProperty'));
     }
   };
@@ -73,7 +74,7 @@ const MyPropertiesScreen = ({ navigation }: any) => {
       showSuccessAlert(t('profile.propertyActiveMarked'));
       loadProperties();
     } catch (error) {
-      console.error('Ошибка при отметке объявления как активного:', error);
+      Logger.error('Ошибка при отметке объявления как активного:', error);
       showErrorAlert(t('profile.errorMarkingProperty'));
     }
   };
@@ -88,7 +89,7 @@ const MyPropertiesScreen = ({ navigation }: any) => {
           showSuccessAlert(t('property.messages.propertyDeleted'));
           loadProperties();
         } catch (error) {
-          console.error('Ошибка при удалении объявления:', error);
+          Logger.error('Ошибка при удалении объявления:', error);
           showErrorAlert(t('property.errors.deleteFailed'));
         }
       }

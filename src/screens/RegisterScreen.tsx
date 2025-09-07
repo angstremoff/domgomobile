@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { Logger } from '../utils/logger';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
@@ -83,7 +84,7 @@ const RegisterScreen = ({ navigation }: any) => {
             ]);
 
           if (profileError) {
-            console.log('Профиль будет создан после подтверждения email:', profileError);
+            Logger.debug('Профиль будет создан после подтверждения email:', profileError);
             // Не выбрасываем ошибку, так как пользователь уже создан в auth
           }
 
@@ -94,13 +95,13 @@ const RegisterScreen = ({ navigation }: any) => {
           navigation.navigate('Home');
         } catch (profileError) {
           // Ошибка создания профиля, но пользователь создан
-          console.log('Ошибка создания профиля:', profileError);
+          Logger.debug('Ошибка создания профиля:', profileError);
           showSuccessAlert(t('auth.confirmEmailSent'));
           navigation.navigate('Login');
         }
       }
     } catch (error: any) {
-      console.error('Registration error:', error);
+      Logger.error('Registration error:', error);
       // Показываем более конкретную ошибку, если она доступна
       if (error.message) {
         showErrorAlert(`${t('auth.registerFailed')}: ${error.message}`);

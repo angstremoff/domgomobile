@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFavorites } from '../contexts/FavoritesContext';
 import type { Property } from '../contexts/PropertyContext';
 import Colors from '../constants/colors';
+import { Logger } from '../utils/logger';
 
 interface PropertyCardProps {
   property: Property;
@@ -31,7 +32,7 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
   const fullAddress = translatedCityName && streetName ? `${translatedCityName}, ${streetName}` : translatedCityName || streetName;
 
   // Отладочный вывод для проверки статуса
-  console.log(`PropertyCard: id=${property.id}, title=${property.title}, status=${property.status}`);
+  Logger.debug(`PropertyCard: id=${property.id}, title=${property.title}, status=${property.status}`);
   
   // Проверяем, существует ли статус и является ли он проданным или сданным
   const isInactive = property.status === 'sold' || property.status === 'rented';

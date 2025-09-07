@@ -7,21 +7,10 @@ import { Buffer } from 'buffer';
 import * as FileSystem from 'expo-file-system';
 import { retry, withTimeout } from '../utils/apiHelpers';
 import { logError } from '../utils/sentry';
+import { Logger } from '../utils/logger';
+import { propertyCache, apiCache } from '../utils/cacheManager';
 
-// Тип для кэшированных данных
-type CachedData = {
-  data: any[];
-  totalCount: number;
-  timestamp: number;
-  hasMore: boolean;
-};
 
-// Кэш для хранения результатов запросов и предотвращения дублирования
-const requestCache: Record<string, CachedData> = {
-  all: { data: [], totalCount: 0, timestamp: 0, hasMore: false },
-  sale: { data: [], totalCount: 0, timestamp: 0, hasMore: false },
-  rent: { data: [], totalCount: 0, timestamp: 0, hasMore: false }
-};
 
 // Таймштамп последнего обновления данных в БД
 // Для отслеживания изменений и своевременной инвалидации кэша
@@ -33,34 +22,22 @@ const lastDataUpdate = { timestamp: Date.now() };
  * @param propertyId - ID объявления для инвалидации конкретного кэша деталей объявления
  */
 export const invalidateCache = (type?: 'all' | 'sale' | 'rent', propertyId?: string) => {
-  console.log(`Инвалидация кэша: ${type || 'все'} ${propertyId ? `для объявления ${propertyId}` : ''}`);
+  Logger.debug(`Инвалидация кэша: ${type || 'все'} ${propertyId ? `для объявления ${propertyId}` : ''}`);
   
-  // Если указан ID объявления, инвалидируем только его кэш
+  // Если указан ID объявления, инвалидируем кэш через LRU Cache Manager
   if (propertyId) {
-    if (requestCache[`detail-${propertyId}`]) {
-      requestCache[`detail-${propertyId}`].timestamp = 0;
-    }
+    propertyCache.delete(`detail-${propertyId}`);
+    apiCache.delete(`property-${propertyId}`);
   }
   
   // Инвалидируем кэш по указанному типу или все типы
   if (type) {
-    if (requestCache[type]) {
-      requestCache[type].timestamp = 0;
-    }
+    propertyCache.delete(`list-${type}`);
+    apiCache.delete(`list-${type}`);
   } else {
-    // Инвалидируем все типы кэша
-    ['all', 'sale', 'rent'].forEach(cacheType => {
-      if (requestCache[cacheType]) {
-        requestCache[cacheType].timestamp = 0;
-      }
-    });
-    
-    // Инвалидируем все кэши деталей объявлений
-    Object.keys(requestCache).forEach(key => {
-      if (key.startsWith('detail-')) {
-        requestCache[key].timestamp = 0;
-      }
-    });
+    // Полная очистка кэша
+    propertyCache.clear();
+    apiCache.clear();
   }
 };
 
@@ -72,12 +49,7 @@ const activeRequests = {
   byId: new Set()
 };
 
-// Минимальный интервал между запросами в мс
-// 5 минут для списков объявлений
-const MIN_REQUEST_INTERVAL = 300000; // 5 минут = 300 секунд = 300000 мс
 
-// 15 минут для детальной информации об объявлении
-const MIN_DETAIL_REQUEST_INTERVAL = 900000; // 15 минут = 900 секунд = 900000 мс
 
 type PropertyInsert = Database['public']['Tables']['properties']['Insert'];
 
@@ -86,21 +58,11 @@ type PropertyInsert = Database['public']['Tables']['properties']['Insert'];
  * Вызывается после создания или изменения объявления
  */
 const clearCache = () => {
-  console.log('Полная очистка кэша объявлений');
+  Logger.debug('Полная очистка кэша объявлений');
   
-  // Очищаем все кэши списков
-  ['all', 'sale', 'rent'].forEach(cacheType => {
-    if (requestCache[cacheType]) {
-      requestCache[cacheType] = { data: [], totalCount: 0, timestamp: 0, hasMore: false };
-    }
-  });
-  
-  // Очищаем кэши деталей объявлений
-  Object.keys(requestCache).forEach(key => {
-    if (key.startsWith('detail-')) {
-      delete requestCache[key];
-    }
-  });
+  // Очищаем все кэши через LRU Cache Manager
+  propertyCache.clear();
+  apiCache.clear();
   
   // Сбрасываем флаги активных запросов
   activeRequests.all = false;
@@ -123,31 +85,21 @@ export const propertyService = {
     invalidateCache(type, propertyId);
   },
   async getProperties(page = 1, pageSize = 10) {
-    // Проверяем есть ли активный запрос
-    if (activeRequests.all && page === 1) {
-      console.log('Активный запрос getProperties уже выполняется, ожидаем...');
-      // Возвращаем кэшированные данные, если они есть
-      if (requestCache.all.data.length > 0) {
-        console.log('Возвращаем кэшированные данные вместо нового запроса');
-        return { 
-          data: requestCache.all.data, 
-          totalCount: requestCache.all.totalCount,
-          hasMore: requestCache.all.hasMore
-        };
-      }
+    const cacheKey = `list-all-p${page}`;
+    
+    // Проверяем кэш через LRU Cache Manager
+    const cached = propertyCache.get(cacheKey);
+    if (cached && page === 1) {
+      Logger.debug('Возвращаем кэшированные данные вместо нового запроса');
+      return cached;
     }
     
-    // Проверяем, не было ли уже недавнего запроса
-    const now = Date.now();
-    if (page === 1 && 
-        requestCache.all.data.length > 0 && 
-        now - requestCache.all.timestamp < MIN_REQUEST_INTERVAL) {
-      console.log(`Недавний запрос (${Math.round((now - requestCache.all.timestamp)/1000)}с назад), возвращаем кэш`);
-      return { 
-        data: requestCache.all.data, 
-        totalCount: requestCache.all.totalCount,
-        hasMore: requestCache.all.hasMore
-      };
+    // Проверяем есть ли активный запрос
+    if (activeRequests.all && page === 1) {
+      Logger.debug('Активный запрос getProperties уже выполняется, ожидаем...');
+      if (cached) {
+        return cached;
+      }
     }
     
     try {
@@ -157,7 +109,7 @@ export const propertyService = {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
       
-      console.log(`Загружаем объявления: страница ${page}, размер страницы ${pageSize}, диапазон ${from}-${to}`);
+      Logger.debug(`Загружаем объявления: страница ${page}, размер страницы ${pageSize}, диапазон ${from}-${to}`);
       
       // Используем retry и withTimeout для улучшения надежности запросов
       const response = await retry<{
@@ -200,20 +152,15 @@ export const propertyService = {
         hasMore: (count || 0) > to + 1
       };
       
-      // Обновляем кэш, если это первая страница
+      // Сохраняем в кэш через LRU Cache Manager
       if (page === 1) {
-        requestCache.all = {
-          data: result.data,
-          totalCount: result.totalCount,
-          hasMore: result.hasMore,
-          timestamp: Date.now()
-        };
+        propertyCache.set(cacheKey, result);
       }
       
-      console.log(`Загружено объявлений: ${data?.length || 0} из ${count || 'неизвестно'}`);
+      Logger.debug(`Загружено объявлений: ${data?.length || 0} из ${count || 'неизвестно'}`);
       return result;
     } catch (error) {
-      console.error('Ошибка при получении объявлений:', error);
+      Logger.error('Ошибка при получении объявлений:', error);
       logError(error as Error, { context: 'getProperties', page, pageSize });
       return { data: [], totalCount: 0, hasMore: false };
     } finally {
@@ -222,22 +169,22 @@ export const propertyService = {
   },
 
   async getPropertyById(id: string) {
-    // Проверяем есть ли активный запрос на это объявление
-    if (activeRequests.byId.has(id)) {
-      console.log(`Активный запрос getPropertyById(${id}) уже выполняется, ожидаем...`);
-      // Проверяем наличие кэша по ID
-      if (requestCache[`detail-${id}`]?.data?.length > 0) {
-        console.log(`Возвращаем кэшированные данные объявления ${id}`);
-        return requestCache[`detail-${id}`].data[0];
-      }
+    const cacheKey = `detail-${id}`;
+    
+    // Проверяем кэш через LRU Cache Manager
+    const cached = propertyCache.get(cacheKey);
+    if (cached) {
+      Logger.debug(`Возвращаем кэшированные данные объявления ${id}`);
+      return cached;
     }
     
-    // Проверяем, не было ли уже недавнего запроса
-    const now = Date.now();
-    if (requestCache[`detail-${id}`]?.data?.length > 0 && 
-        now - requestCache[`detail-${id}`].timestamp < MIN_DETAIL_REQUEST_INTERVAL) {
-      console.log(`Недавний запрос объявления ${id} (${Math.round((now - requestCache[`detail-${id}`].timestamp)/1000)}с назад), возвращаем кэш`);
-      return requestCache[`detail-${id}`].data[0];
+    // Проверяем есть ли активный запрос на это объявление
+    if (activeRequests.byId.has(id)) {
+      Logger.debug(`Активный запрос getPropertyById(${id}) уже выполняется, ожидаем...`);
+      // Возвращаем кэшированные данные если есть
+      if (cached) {
+        return cached;
+      }
     }
     
     try {
@@ -262,7 +209,6 @@ export const propertyService = {
           .single();
           
         // Добавляем таймаут к запросу
-        // Преобразуем в Promise для корректной типизации
         return withTimeout<{ data: any | null; error: any | null }>(
           Promise.resolve(query) as Promise<{ data: any | null; error: any | null }>,
           10000, // 10 секунд таймаут
@@ -280,20 +226,15 @@ export const propertyService = {
         throw error;
       }
       
-      // Сохраняем в кэш
+      // Сохраняем в кэш через LRU Cache Manager
       if (data) {
-        requestCache[`detail-${id}`] = {
-          data: [data],
-          totalCount: 1,
-          hasMore: false,
-          timestamp: Date.now()
-        };
+        propertyCache.set(cacheKey, data);
       }
       
-      console.log('Данные объявления из базы:', JSON.stringify(data));
+      Logger.debug('Данные объявления из базы:', JSON.stringify(data));
       return data;
     } catch (error) {
-      console.error('Ошибка при получении объявления:', error);
+      Logger.error('Ошибка при получении объявления:', error);
       logError(error as Error, { context: 'getPropertyById', propertyId: id });
       return null;
     } finally {
@@ -352,7 +293,7 @@ export const propertyService = {
       
       return data || [];
     } catch (error) {
-      console.error('Ошибка при получении списка объявлений пользователя:', error);
+      Logger.error('Ошибка при получении списка объявлений пользователя:', error);
       logError(error as Error, { context: 'getUserProperties' });
       return [];
     }
@@ -373,7 +314,7 @@ export const propertyService = {
       
       return count || 0;
     } catch (error) {
-      console.error('Ошибка при получении количества объявлений пользователя:', error);
+      Logger.error('Ошибка при получении количества объявлений пользователя:', error);
       return 0;
     }
   },
@@ -408,10 +349,10 @@ export const propertyService = {
       // Инвалидируем весь кэш после успешного создания
       invalidateCache(); // Обновляем все списки, т.к. добавлено новое объявление
       
-      console.log('Объявление успешно создано:', data);
+      Logger.debug('Объявление успешно создано:', data);
       return { success: true, data };
     } catch (error) {
-      console.error('Ошибка при создании объявления:', error);
+      Logger.error('Ошибка при создании объявления:', error);
       return { success: false, error };
     }
   },
@@ -446,10 +387,10 @@ export const propertyService = {
       // Инвалидируем кэш, т.к. изменился статус объявления
       invalidateCache(undefined, id);
       
-      console.log('Статус объявления успешно обновлен на active:', id);
+      Logger.debug('Статус объявления успешно обновлен на active:', id);
       return { success: true };
     } catch (error) {
-      console.error('Ошибка при обновлении статуса объявления:', error);
+      Logger.error('Ошибка при обновлении статуса объявления:', error);
       return { success: false, error };
     }
   },
@@ -473,7 +414,7 @@ export const propertyService = {
       
       // Если текущий пользователь не владелец объявления
       if (!property || property.user_id !== user.id) {
-        console.error('Отказано в доступе: пользователь не является владельцем объявления');
+        Logger.error('Отказано в доступе: пользователь не является владельцем объявления');
         return { success: false, error: 'Отказано в доступе: вы не являетесь владельцем этого объявления' };
       }
       
@@ -487,7 +428,7 @@ export const propertyService = {
             return parts[parts.length - 1];
           });
           
-          console.log('Удаление файлов из хранилища:', fileNames);
+          Logger.debug('Удаление файлов из хранилища:', fileNames);
           
           // Удаляем все файлы из бакета property-images
           const { error: storageError } = await supabase
@@ -496,13 +437,13 @@ export const propertyService = {
             .remove(fileNames);
           
           if (storageError) {
-            console.error('Ошибка при удалении файлов из хранилища:', storageError);
+            Logger.error('Ошибка при удалении файлов из хранилища:', storageError);
             // Продолжаем удаление объявления даже если не удалось удалить фото
           } else {
-            console.log('Все фотографии успешно удалены из хранилища');
+            Logger.debug('Все фотографии успешно удалены из хранилища');
           }
         } catch (storageError) {
-          console.error('Ошибка при попытке удаления файлов:', storageError);
+          Logger.error('Ошибка при попытке удаления файлов:', storageError);
           // Продолжаем процесс удаления объявления даже если не удалось удалить фото
         }
       }
@@ -518,40 +459,30 @@ export const propertyService = {
       // Инвалидируем весь кэш после удаления объявления
       invalidateCache(); // Полностью обновляем все списки
       
-      console.log('Объявление успешно удалено:', propertyId);
+      Logger.debug('Объявление успешно удалено:', propertyId);
       return { success: true };
     } catch (error) {
-      console.error('Ошибка при удалении объявления:', error);
+      Logger.error('Ошибка при удалении объявления:', error);
       return { success: false, error };
     }
   },
 
   async getPropertiesByType(type: 'sale' | 'rent', page = 1, pageSize = 10) {
-    // Проверяем есть ли активный запрос
-    if (activeRequests[type] && page === 1) {
-      console.log(`Активный запрос getPropertiesByType(${type}) уже выполняется, ожидаем...`);
-      // Возвращаем кэшированные данные, если они есть
-      if (requestCache[type].data.length > 0) {
-        console.log(`Возвращаем кэшированные данные типа ${type} вместо нового запроса`);
-        return { 
-          data: requestCache[type].data, 
-          totalCount: requestCache[type].totalCount,
-          hasMore: requestCache[type].hasMore
-        };
-      }
+    const cacheKey = `list-${type}-p${page}`;
+    
+    // Проверяем кэш через LRU Cache Manager
+    const cached = propertyCache.get(cacheKey);
+    if (cached && page === 1) {
+      Logger.debug(`Возвращаем кэшированные данные типа ${type} вместо нового запроса`);
+      return cached;
     }
     
-    // Проверяем, не было ли уже недавнего запроса
-    const now = Date.now();
-    if (page === 1 && 
-        requestCache[type].data.length > 0 && 
-        now - requestCache[type].timestamp < MIN_REQUEST_INTERVAL) {
-      console.log(`Недавний запрос типа ${type} (${Math.round((now - requestCache[type].timestamp)/1000)}с назад), возвращаем кэш`);
-      return { 
-        data: requestCache[type].data, 
-        totalCount: requestCache[type].totalCount,
-        hasMore: requestCache[type].hasMore
-      };
+    // Проверяем есть ли активный запрос
+    if (activeRequests[type] && page === 1) {
+      Logger.debug(`Активный запрос getPropertiesByType(${type}) уже выполняется, ожидаем...`);
+      if (cached) {
+        return cached;
+      }
     }
     
     try {
@@ -561,7 +492,7 @@ export const propertyService = {
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
       
-      console.log(`Загружаем объявления типа ${type}: страница ${page}, размер страницы ${pageSize}, диапазон ${from}-${to}`);
+      Logger.debug(`Загружаем объявления типа ${type}: страница ${page}, размер страницы ${pageSize}, диапазон ${from}-${to}`);
       
       const { data, error, count } = await supabase
         .from('properties')
@@ -583,20 +514,15 @@ export const propertyService = {
         hasMore: (count || 0) > to + 1
       };
       
-      // Обновляем кэш, если это первая страница
+      // Сохраняем в кэш через LRU Cache Manager
       if (page === 1) {
-        requestCache[type] = {
-          data: result.data,
-          totalCount: result.totalCount,
-          hasMore: result.hasMore,
-          timestamp: Date.now()
-        };
+        propertyCache.set(cacheKey, result);
       }
       
-      console.log(`Загружено объявлений типа ${type}: ${data?.length || 0} из ${count || 'неизвестно'}`);
+      Logger.debug(`Загружено объявлений типа ${type}: ${data?.length || 0} из ${count || 'неизвестно'}`);
       return result;
     } catch (error) {
-      console.error(`Ошибка при получении объявлений типа ${type}:`, error);
+      Logger.error(`Ошибка при получении объявлений типа ${type}:`, error);
       return { data: [], totalCount: 0, hasMore: false };
     } finally {
       activeRequests[type] = false;
@@ -662,7 +588,7 @@ export const propertyService = {
       .eq('user_id', user.user.id);
     
     if (error) {
-      console.error('Ошибка при получении избранных объявлений:', error);
+      Logger.error('Ошибка при получении избранных объявлений:', error);
       throw error;
     }
     
@@ -678,7 +604,7 @@ export const propertyService = {
       }
       
       // Проверяем, является ли пользователь владельцем объявления
-      const { data: propertyCheck, error: checkError } = await supabase
+      const { data: property, error: checkError } = await supabase
         .from('properties')
         .select('user_id')
         .eq('id', id)
@@ -687,8 +613,8 @@ export const propertyService = {
       if (checkError) throw checkError;
       
       // Если текущий пользователь не владелец объявления
-      if (!propertyCheck || propertyCheck.user_id !== user.id) {
-        console.error('Отказано в доступе: пользователь не является владельцем объявления');
+      if (!property || property.user_id !== user.id) {
+        Logger.error('Отказано в доступе: пользователь не является владельцем объявления');
         return { success: false, error: 'Отказано в доступе: вы не являетесь владельцем этого объявления' };
       }
       
@@ -705,10 +631,10 @@ export const propertyService = {
       // Инвалидируем как общие списки, так и кэш детальной информации об объявлении
       invalidateCache(undefined, id);
       
-      console.log('Объявление успешно обновлено:', data[0]);
+      Logger.debug('Объявление успешно обновлено:', data[0]);
       return { success: true, data: data[0] };
     } catch (error) {
-      console.error('Ошибка при обновлении объявления:', error);
+      Logger.error('Ошибка при обновлении объявления:', error);
       return { success: false, error };
     }
   },
@@ -725,20 +651,20 @@ export const propertyService = {
       if (cachedData) {
         const { data, timestamp } = JSON.parse(cachedData);
         if (now - timestamp < CITIES_CACHE_TTL) {
-          console.log('Возвращаем кэшированный список городов');
+          Logger.debug('Возвращаем кэшированный список городов');
           return data;
         }
       }
       
       // Если кэш отсутствует или устарел, загружаем данные и обновляем кэш
-      console.log('Загружаем актуальный список городов');
+      Logger.debug('Загружаем актуальный список городов');
       const { data, error } = await supabase
         .from('cities')
         .select('*')
         .order('name');
       
       if (error) {
-        console.error('Ошибка при получении списка городов:', error);
+        Logger.error('Ошибка при получении списка городов:', error);
         throw error;
       }
       
@@ -750,7 +676,7 @@ export const propertyService = {
       
       return data;
     } catch (e) {
-      console.error('Ошибка при работе с кэшем городов:', e);
+      Logger.error('Ошибка при работе с кэшем городов:', e);
       
       // В случае ошибки пытаемся загрузить данные напрямую
       const { data, error } = await supabase
@@ -759,7 +685,7 @@ export const propertyService = {
         .order('name');
       
       if (error) {
-        console.error('Ошибка при получении списка городов:', error);
+        Logger.error('Ошибка при получении списка городов:', error);
         throw error;
       }
       
@@ -772,15 +698,15 @@ export const propertyService = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Пользователь не авторизован');
 
-      console.log('Загрузка изображения...');
-      console.log('Исходный URI:', uri);
+      Logger.debug('Загрузка изображения...');
+      Logger.debug('Исходный URI:', uri);
       
       // Нормализуем URI для совместимости с iOS и Android
       const normalizedUri = Platform.OS === 'ios' 
         ? uri.replace('file://', '') 
         : uri;
       
-      console.log('Нормализованный URI:', normalizedUri);
+      Logger.debug('Нормализованный URI:', normalizedUri);
       
       // Определяем тип файла из расширения
       const fileExt = fileName.split('.').pop()?.toLowerCase() || 'jpg';
@@ -788,26 +714,26 @@ export const propertyService = {
         ? 'image/jpeg' 
         : `image/${fileExt}`;
       
-      console.log('Тип файла:', mimeType);
+      Logger.debug('Тип файла:', mimeType);
       
       // Сжимаем изображение перед загрузкой
       const compressed = await compressImage(normalizedUri, 0.3);
-      console.log('Сжатое изображение URI:', compressed.uri);
+      Logger.debug('Сжатое изображение URI:', compressed.uri);
       
       const uniqueFileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `property-images/${uniqueFileName}`;
-      console.log('Путь:', filePath);
+      Logger.debug('Путь:', filePath);
       
       // Читаем файл как base64 вместо использования fetch
       const base64 = await FileSystem.readAsStringAsync(compressed.uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       
-      console.log('Файл прочитан как base64, размер:', base64.length);
+      Logger.debug('Файл прочитан как base64, размер:', base64.length);
       
       // Конвертируем base64 в ArrayBuffer
       const arrayBuffer = decode(base64);
-      console.log('Конвертирован в ArrayBuffer');
+      Logger.debug('Конвертирован в ArrayBuffer');
       
       // Загружаем в Supabase Storage
       const { error } = await supabase.storage
@@ -818,7 +744,7 @@ export const propertyService = {
         });
       
       if (error) {
-        console.error('Ошибка загрузки в Supabase:', error);
+        Logger.error('Ошибка загрузки в Supabase:', error);
         throw error;
       }
       
@@ -826,10 +752,10 @@ export const propertyService = {
         .from('properties')
         .getPublicUrl(filePath);
       
-      console.log('Успешно загружено, URL:', data.publicUrl);
+      Logger.debug('Успешно загружено, URL:', data.publicUrl);
       return data.publicUrl;
     } catch (error) {
-      console.error('Ошибка при загрузке изображения:', error);
+      Logger.error('Ошибка при загрузке изображения:', error);
       throw error;
     }
   },
@@ -844,8 +770,8 @@ export const propertyService = {
       const uniqueFileName = `${Math.random().toString(36).substring(2)}.${fileExt.toLowerCase()}`;
       const filePath = `property-images/${uniqueFileName}`;
       
-      console.log('Загрузка изображения base64...');
-      console.log('Путь:', filePath);
+      Logger.debug('Загрузка изображения base64...');
+      Logger.debug('Путь:', filePath);
       
       // Проверяем формат base64
       if (!base64Data) {
@@ -863,7 +789,7 @@ export const propertyService = {
       
       try {
         const decoded = Buffer.from(base64Str, 'base64');
-        console.log('Размер декодированных данных:', decoded.length, 'байт');
+        Logger.debug('Размер декодированных данных:', decoded.length, 'байт');
         
         // Загружаем в Supabase Storage
         const { error } = await supabase.storage
@@ -874,7 +800,7 @@ export const propertyService = {
           });
         
         if (error) {
-          console.error('Ошибка загрузки в Supabase:', error);
+          Logger.error('Ошибка загрузки в Supabase:', error);
           throw error;
         }
         
@@ -883,14 +809,14 @@ export const propertyService = {
           .from('properties')
           .getPublicUrl(filePath);
         
-        console.log('Успешно загружено, URL:', data.publicUrl);
+        Logger.debug('Успешно загружено, URL:', data.publicUrl);
         return data.publicUrl;
       } catch (decodeError) {
-        console.error('Ошибка при декодировании или загрузке base64:', decodeError);
+        Logger.error('Ошибка при декодировании или загрузке base64:', decodeError);
         throw decodeError;
       }
     } catch (error) {
-      console.error('Ошибка при загрузке изображения base64:', error);
+      Logger.error('Ошибка при загрузке изображения base64:', error);
       throw error;
     }
   },
@@ -906,8 +832,8 @@ export const propertyService = {
       const uniqueFileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `property-images/${uniqueFileName}`;
       
-      console.log('Загрузка через простой метод...');
-      console.log('Путь:', filePath);
+      Logger.debug('Загрузка через простой метод...');
+      Logger.debug('Путь:', filePath);
       
       // Для base64 нельзя использовать прямое сжатие через react-native-image-manipulator
       // Можно сначала декодировать base64, затем сжать и снова закодировать,
@@ -922,7 +848,7 @@ export const propertyService = {
         });
       
       if (error) {
-        console.error('Ошибка загрузки в Supabase:', error);
+        Logger.error('Ошибка загрузки в Supabase:', error);
         throw error;
       }
       
@@ -931,10 +857,10 @@ export const propertyService = {
         .from('properties')
         .getPublicUrl(filePath);
       
-      console.log('Успешно загружено, URL:', data.publicUrl);
+      Logger.debug('Успешно загружено, URL:', data.publicUrl);
       return data.publicUrl;
     } catch (error) {
-      console.error('Ошибка при загрузке изображения:', error);
+      Logger.error('Ошибка при загрузке изображения:', error);
       throw error;
     }
   }

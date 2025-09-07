@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect, useCa
 import { propertyService } from '../services/propertyService';
 import { Alert } from 'react-native';
 import { supabase } from '../lib/supabaseClient';
+import { Logger } from '../utils/logger';
 
 // Тип для свойства
 export interface Property {
@@ -154,7 +155,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     const now = Date.now();
     if (requestInProgress.current.all || 
         (now - lastFetchTime.current.all < MIN_FETCH_INTERVAL && properties.length > 0)) {
-      console.log('Запрос уже выполняется или данные были недавно загружены, пропускаем');
+      Logger.debug('Запрос уже выполняется или данные были недавно загружены, пропускаем');
       return;
     }
     
@@ -170,9 +171,9 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       setCurrentPage({ ...currentPage, all: 1 });
       lastFetchTime.current.all = Date.now();
       
-      console.log(`Данные успешно загружены из Supabase: ${result.data.length} из ${result.totalCount}`);
+      Logger.debug(`Данные успешно загружены из Supabase: ${result.data.length} из ${result.totalCount}`);
     } catch (error) {
-      console.error('Ошибка при загрузке данных:', error);
+      Logger.error('Ошибка при загрузке данных:', error);
     } finally {
       requestInProgress.current.all = false;
       setLoading(false);
@@ -191,7 +192,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     
     // Пропускаем обновление, если уже идет запрос
     if (requestInProgress.current.all) {
-      console.log('Обновление пропущено: уже выполняется запрос');
+      Logger.debug('Обновление пропущено: уже выполняется запрос');
       return;
     }
     
@@ -204,7 +205,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         // Загружаем общий список (all)
         const result = await propertyService.getProperties(1, pageSize);
         if (result.data && result.data.length > 0) {
-          console.log(`Данные успешно загружены из Supabase: ${result.data.length} из ${result.totalCount}`);
+          Logger.debug(`Данные успешно загружены из Supabase: ${result.data.length} из ${result.totalCount}`);
           setProperties(result.data);
           setFilteredProperties(result.data);
           setHasMore({ ...hasMore, all: result.hasMore });
@@ -212,7 +213,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
           setCurrentPage({ ...currentPage, all: 1 });
           lastFetchTime.current.all = Date.now();
         } else {
-          console.log('Нет данных из Supabase');
+          Logger.debug('Нет данных из Supabase');
           setProperties([]);
           setFilteredProperties([]);
           setHasMore({ ...hasMore, all: false });
@@ -221,7 +222,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         }
       } else {
         // Загружаем данные конкретного типа (sale/rent), чтобы не терять элементы при "all"-первой странице
-        console.log(`Обновляем данные для типа: ${activeType}`);
+        Logger.debug(`Обновляем данные для типа: ${activeType}`);
         const result = await propertyService.getPropertiesByType(activeType, 1, pageSize);
         if (result.data && result.data.length > 0) {
           setFilteredProperties(result.data);
@@ -249,7 +250,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      console.error('Ошибка при загрузке объявлений:', error);
+      Logger.error('Ошибка при загрузке объявлений:', error);
       if (activePropertyTypeRef.current === 'all') {
         setProperties([]);
       }
@@ -285,13 +286,13 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     activePropertyTypeRef.current = type;
     // Проверяем существование ключа в typeCache
     if (!typeCache.current[type]) {
-      console.log(`Инициализация кэша для типа ${type}`);
+      Logger.debug(`Инициализация кэша для типа ${type}`);
       typeCache.current[type] = { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 };
     }
     
     // Обрабатываем случай, когда запрос уже выполняется
     if (requestInProgress.current[type]) {
-      console.log(`Запрос ${type} уже выполняется, возвращаем кэшированные данные`);
+      Logger.debug(`Запрос ${type} уже выполняется, возвращаем кэшированные данные`);
       return typeCache.current[type];
     }
     
@@ -306,7 +307,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         now - cachedData.timestamp < MIN_FETCH_INTERVAL &&
         // Важно: если просим больший pageSize, чем в кэше, не используем кэш
         pageSize <= (cachedData.pageSize || cachedData.data.length)) {
-      console.log(`Возвращаем кэшированные данные для типа ${type}, обновлены ${Math.round((now - cachedData.timestamp)/1000)}с назад`);
+      Logger.debug(`Возвращаем кэшированные данные для типа ${type}, обновлены ${Math.round((now - cachedData.timestamp)/1000)}с назад`);
       return cachedData;
     }
     
@@ -346,7 +347,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         return { data: [], totalCount: 0, hasMore: false };
       }
     } catch (error) {
-      console.error(`Ошибка при загрузке объявлений типа ${type}:`, error);
+      Logger.error(`Ошибка при загрузке объявлений типа ${type}:`, error);
       // Показываем Alert только если это первая страница
       if (page === 1) {
         Alert.alert('Ошибка', `Не удалось загрузить объявления типа ${type === 'sale' ? 'продажа' : 'аренда'}`);
@@ -376,7 +377,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     
     try {
       requestInProgress.current[type as 'all' | 'sale' | 'rent'] = true;
-      console.log(`Загрузка дополнительных объявлений типа ${type}, страница ${currentPage[type] + 1}`);
+      Logger.debug(`Загрузка дополнительных объявлений типа ${type}, страница ${currentPage[type] + 1}`);
       
       let result;
       if (type === 'all') {
@@ -422,10 +423,10 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         setHasMore(prev => ({ ...prev, [type]: result.hasMore }));
         setTotalCount(prev => ({ ...prev, [type]: result.totalCount }));
         
-        console.log(`Загружено дополнительно ${result.data.length} объявлений типа ${type}`);
+        Logger.debug(`Загружено дополнительно ${result.data.length} объявлений типа ${type}`);
       }
     } catch (error) {
-      console.error(`Ошибка при загрузке дополнительных объявлений типа ${type}:`, error);
+      Logger.error(`Ошибка при загрузке дополнительных объявлений типа ${type}:`, error);
       Alert.alert('Ошибка', 'Не удалось загрузить дополнительные объявления');
     } finally {
       requestInProgress.current[type as 'all' | 'sale' | 'rent'] = false;
@@ -450,7 +451,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     // Перезагружаем данные
     await refreshProperties();
     
-    console.log('Кэш объявлений обновлен после создания нового объявления');
+    Logger.debug('Кэш объявлений обновлен после создания нового объявления');
   }, [refreshProperties]);
 
   // Загрузка списка городов с кэшированием
@@ -467,7 +468,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         .select('*');
 
       if (error) {
-        console.error('Error fetching cities:', error);
+        Logger.error('Error fetching cities:', error);
         setCitiesLoading(false);
         return [];
       }
@@ -486,7 +487,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         return citiesWithCoordinates;
       }
     } catch (error) {
-      console.error('Error in loadCities:', error);
+      Logger.error('Error in loadCities:', error);
       setCitiesLoading(false);
     }
     return [];
@@ -507,7 +508,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) {
-        console.error('Ошибка при загрузке объявления по ID:', error);
+        Logger.error('Ошибка при загрузке объявления по ID:', error);
         return null;
       }
 
@@ -523,7 +524,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
 
       return formattedProperty;
     } catch (error) {
-      console.error('Ошибка при загрузке объявления:', error);
+      Logger.error('Ошибка при загрузке объявления:', error);
       return null;
     }
   }, []);

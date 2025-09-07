@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
+import { Logger } from '../utils/logger';
 
 // Интерфейс для координат
 interface Coordinates {
@@ -51,7 +52,7 @@ const MapCoordinateSelector = ({ selectedCity, initialCoordinates, onCoordinates
     const lat = coordinates?.lat || (selectedCity?.latitude ? parseFloat(selectedCity.latitude) : 45.267136);
     const lng = coordinates?.lng || (selectedCity?.longitude ? parseFloat(selectedCity.longitude) : 19.833549);
 
-    console.log('Generating map with coordinates:', { lat, lng });
+    Logger.debug('Generating map with coordinates:', { lat, lng });
     
     return `
       <!DOCTYPE html>
@@ -124,7 +125,7 @@ const MapCoordinateSelector = ({ selectedCity, initialCoordinates, onCoordinates
             const lat = ${lat};
             const lng = ${lng};
             
-            console.log('Initializing map with coordinates:', lat, lng);
+            Logger.debug('Initializing map with coordinates:', lat, lng);
             
             // Инициализация карты с теми же настройками, что и в остальном приложении
             const map = new maplibregl.Map({
@@ -187,7 +188,7 @@ const MapCoordinateSelector = ({ selectedCity, initialCoordinates, onCoordinates
             }
             
             map.on('load', () => {
-              console.log('Map loaded successfully');
+              Logger.debug('Map loaded successfully');
             });
           });
         </script>
@@ -200,11 +201,11 @@ const MapCoordinateSelector = ({ selectedCity, initialCoordinates, onCoordinates
   const handleWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      console.log('Message from WebView:', data);
+      Logger.debug('Message from WebView:', data);
       
       if (data.action === 'coordinatesSelected' && data.coordinates) {
         // Обновляем координаты сначала, чтобы они точно были переданы
-        console.log('Applying new coordinates:', data.coordinates);
+        Logger.debug('Applying new coordinates:', data.coordinates);
         setCoordinates(data.coordinates);
         onCoordinatesSelect(data.coordinates);
         
@@ -212,17 +213,17 @@ const MapCoordinateSelector = ({ selectedCity, initialCoordinates, onCoordinates
         setIsMapVisible(false);
       } else if (data.action === 'cancelSelection') {
         // Просто закрываем модальное окно без изменения координат
-        console.log('Selection canceled');
+        Logger.debug('Selection canceled');
         setIsMapVisible(false);
       }
     } catch (error) {
-      console.error('Error handling WebView message:', error);
+      Logger.error('Error handling WebView message:', error);
     }
   };
 
   // Открытие карты
   const handleOpenMap = () => {
-    console.log('Opening map dialog with city:', selectedCity?.name);
+    Logger.debug('Opening map dialog with city:', selectedCity?.name);
     
     if (!selectedCity) {
       Alert.alert(t('common.info'), t('common.selectCity'));
@@ -235,7 +236,7 @@ const MapCoordinateSelector = ({ selectedCity, initialCoordinates, onCoordinates
         lat: parseFloat(selectedCity.latitude),
         lng: parseFloat(selectedCity.longitude)
       };
-      console.log('Setting default coordinates from city:', defaultCoords);
+      Logger.debug('Setting default coordinates from city:', defaultCoords);
       setCoordinates(defaultCoords);
       onCoordinatesSelect(defaultCoords);
     }

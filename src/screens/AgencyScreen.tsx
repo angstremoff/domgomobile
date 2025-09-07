@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 import type { AgencyScreenProps } from '../types/navigation';
 import OptimizedPropertyCard from '../components/OptimizedPropertyCard';
 import type { Property } from '../contexts/PropertyContext';
+import { Logger } from '../utils/logger';
 
 interface AgencyProfile {
   id: string;
@@ -62,14 +63,14 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
         }
 
         if (error) {
-          console.warn('Не удалось загрузить профиль агентства:', error);
+          Logger.warn('Не удалось загрузить профиль агентства:', error);
           setAgency(null);
         } else {
-          console.log('Agency profile loaded:', data);
+          Logger.debug('Agency profile loaded:', data);
           setAgency(data as AgencyProfile);
         }
       } catch (e) {
-        console.error('Ошибка загрузки агентства:', e);
+        Logger.error('Ошибка загрузки агентства:', e);
       } finally {
         setLoading(false);
       }
@@ -113,7 +114,7 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
 
         setProperties((data || []) as Property[]);
       } catch (e) {
-        console.error('Ошибка загрузки объявлений агентства:', e);
+        Logger.error('Ошибка загрузки объявлений агентства:', e);
       } finally {
         setPropsLoading(false);
       }

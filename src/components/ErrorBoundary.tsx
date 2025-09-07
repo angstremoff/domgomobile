@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import * as Sentry from '@sentry/react-native';
 import Colors from '../constants/colors';
+import { Logger } from '../utils/logger';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -37,7 +38,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       }
     });
     
-    console.error('Ошибка рендеринга компонента:', error, errorInfo);
+    Logger.error('Ошибка рендеринга компонента:', error, errorInfo);
   }
 
   resetError = () => {

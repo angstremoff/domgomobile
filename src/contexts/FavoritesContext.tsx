@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
+import { Logger } from '../utils/logger';
 
 interface FavoritesContextType {
   favorites: string[];
@@ -30,7 +31,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         setFavorites(validFavorites);
       }
     } catch (error) {
-      console.error('Error parsing local favorites:', error);
+      Logger.error('Error parsing local favorites:', error);
       setFavorites([]);
     }
     setIsLoading(false);
@@ -50,7 +51,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error loading favorites from Supabase:', error);
+        Logger.error('Error loading favorites from Supabase:', error);
         return;
       }
 
@@ -58,7 +59,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         setFavorites(data.map(f => f.property_id));
       }
     } catch (error) {
-      console.error('Error loading Supabase favorites:', error);
+      Logger.error('Error loading Supabase favorites:', error);
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +113,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         setFavorites([...favorites, propertyId]);
       }
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      Logger.error('Error toggling favorite:', error);
     }
   };
 

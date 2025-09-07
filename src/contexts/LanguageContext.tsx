@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Logger } from '../utils/logger';
 
 type LanguageType = 'ru' | 'sr';
 
@@ -24,7 +25,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           i18n.changeLanguage(storedLanguage);
         }
       } catch (error) {
-        console.error('Error loading language:', error);
+        Logger.error('Error loading language:', error);
       }
     };
 
@@ -37,7 +38,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await AsyncStorage.setItem('language', lang);
       i18n.changeLanguage(lang);
     } catch (error) {
-      console.error('Error saving language:', error);
+      Logger.error('Error saving language:', error);
     }
   };
 

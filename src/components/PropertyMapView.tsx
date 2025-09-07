@@ -5,6 +5,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
+import { Logger } from '../utils/logger';
 interface Coordinates {
   lat: number;
   lng: number;
@@ -107,7 +108,7 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
     try {
       return JSON.parse(prop.coordinates);
     } catch (e) {
-      console.error('Ошибка при парсинге координат:', e);
+      Logger.error('Ошибка при парсинге координат:', e);
       return null;
     }
   };
@@ -140,7 +141,7 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
       // Проверяем принадлежность к выбранному городу
       return propCityId === selCityId;
     } catch (error) {
-      console.error('Ошибка при фильтрации объекта:', error);
+      Logger.error('Ошибка при фильтрации объекта:', error);
       return false;
     }
   });
@@ -341,7 +342,7 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
                     }
                   }
                 } catch (e) {
-                  console.error('Error parsing WebView message:', e);
+                  Logger.error('Error parsing WebView message:', e);
                 }
               }}
             />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Image,
   Switch
 } from 'react-native';
+import { Logger } from '../utils/logger';
 import { useTranslation } from 'react-i18next';
 import { propertyService } from '../services/propertyService';
 import { Picker } from '@react-native-picker/picker';
@@ -69,7 +70,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
         await loadCities();
         await loadProperty();
       } catch (error) {
-        console.error('Ошибка при инициализации:', error);
+        Logger.error('Ошибка при инициализации:', error);
       }
     };
 
@@ -81,7 +82,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       const data = await propertyService.getCities();
       setCities(data);
     } catch (error) {
-      console.error('Ошибка при загрузке городов:', error);
+      Logger.error('Ошибка при загрузке городов:', error);
       showErrorAlert(t('property.errorLoadingCities'));
     }
   };
@@ -112,10 +113,10 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       setImages(data.images || []);
       setSelectedFeatures(data.features || []);
 
-      console.log('Загружено объявление:', data);
-      console.log('ID города:', data.city_id, 'Адрес (location):', data.location);
+      Logger.debug('Загружено объявление:', data);
+      Logger.debug('ID города:', data.city_id, 'Адрес (location):', data.location);
     } catch (error) {
-      console.error('Ошибка при загрузке объявления:', error);
+      Logger.error('Ошибка при загрузке объявления:', error);
       showErrorAlert(t('property.errorLoadingProperty'));
       navigation.goBack();
     } finally {
@@ -141,18 +142,18 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
 
   const pickImage = async () => {
     try {
-      console.log('Запрос на выбор изображения...');
+      Logger.debug('Запрос на выбор изображения...');
       
       // Запрашиваем разрешение на доступ к галерее
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
-        console.log('Разрешение на доступ к галерее не получено');
+        Logger.debug('Разрешение на доступ к галерее не получено');
         showErrorAlert(t('property.permissionDenied'));
         return;
       }
       
-      console.log('Разрешение получено, открываем галерею');
+      Logger.debug('Разрешение получено, открываем галерею');
       
       // Открываем галерею для выбора изображения
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -162,36 +163,36 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
         quality: 0.8,
       });
       
-      console.log('Результат выбора изображения:', result);
+      Logger.debug('Результат выбора изображения:', result);
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const selectedAsset = result.assets[0];
-        console.log('Выбрано изображение:', selectedAsset.uri);
+        Logger.debug('Выбрано изображение:', selectedAsset.uri);
         
         try {
           setUploadingImages(true);
           
           // Получаем имя файла из URI
           const fileName = selectedAsset.uri.split('/').pop() || 'image.jpg';
-          console.log('Имя файла:', fileName);
+          Logger.debug('Имя файла:', fileName);
           
           // Загружаем изображение на сервер
           const imageUrl = await propertyService.uploadImage(selectedAsset.uri, fileName);
-          console.log('Изображение загружено, URL:', imageUrl);
+          Logger.debug('Изображение загружено, URL:', imageUrl);
           
           // Добавляем URL в список изображений
           setImages(prev => [...prev, imageUrl]);
         } catch (error) {
-          console.error('Ошибка при загрузке изображения:', error);
+          Logger.error('Ошибка при загрузке изображения:', error);
           showErrorAlert(t('property.errorUploadingImage'));
         } finally {
           setUploadingImages(false);
         }
       } else {
-        console.log('Выбор изображения отменен или произошла ошибка');
+        Logger.debug('Выбор изображения отменен или произошла ошибка');
       }
     } catch (error) {
-      console.error('Ошибка при выборе изображения:', error);
+      Logger.error('Ошибка при выборе изображения:', error);
       showErrorAlert(t('property.errorSelectingImage'));
       setUploadingImages(false);
     }
@@ -231,8 +232,8 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       }
 
       setSaving(true);
-      console.log('Сохранение объявления...');
-      console.log('ID объявления:', propertyId);
+      Logger.debug('Сохранение объявления...');
+      Logger.debug('ID объявления:', propertyId);
       
       // Проверяем обязательные поля
       if (!title || !price || !cityId || !address) {
@@ -256,22 +257,22 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
         images,
       };
       
-      console.log('Данные для обновления:', updatedProperty);
+      Logger.debug('Данные для обновления:', updatedProperty);
       
       // Отправляем запрос на обновление
       await propertyService.updateProperty(propertyId, updatedProperty);
       
       // Принудительно очищаем кэш и перезагружаем данные
       await invalidateCache();
-      console.log('Кэш объявлений очищен после обновления объявления');
+      Logger.debug('Кэш объявлений очищен после обновления объявления');
       
-      console.log('Объявление успешно обновлено');
+      Logger.debug('Объявление успешно обновлено');
       showSuccessAlert(t('property.updateSuccess'), () => {
         // Вместо goBack используем navigate для предотвращения ошибки навигации
         navigation.navigate('MyProperties');
       });
     } catch (error) {
-      console.error('Ошибка при сохранении объявления:', error);
+      Logger.error('Ошибка при сохранении объявления:', error);
       showErrorAlert(t('property.errorUpdatingProperty'));
     } finally {
       setSaving(false);

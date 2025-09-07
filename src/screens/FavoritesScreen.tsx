@@ -6,6 +6,7 @@ import { useFavorites } from '../contexts/FavoritesContext';
 import { supabase } from '../lib/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
+import { Logger } from '../utils/logger';
 
 interface Property {
   id: string;
@@ -53,7 +54,7 @@ const FavoritesScreen = ({ navigation }: any) => {
         setProperties(data as Property[]);
       }
     } catch (error) {
-      console.error('Ошибка загрузки избранных объявлений:', error);
+      Logger.error('Ошибка загрузки избранных объявлений:', error);
     } finally {
       setLoading(false);
     }

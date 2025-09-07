@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Logger } from '../utils/logger';
 
 interface ThemeContextType {
   darkMode: boolean;
@@ -28,7 +29,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           await AsyncStorage.setItem('@theme_preference', 'dark');
         }
       } catch (error) {
-        console.error('Ошибка при загрузке темы:', error);
+        Logger.error('Ошибка при загрузке темы:', error);
       }
     };
     
@@ -41,7 +42,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setDarkMode(newMode);
       await AsyncStorage.setItem('@theme_preference', newMode ? 'dark' : 'light');
     } catch (error) {
-      console.error('Ошибка при сохранении темы:', error);
+      Logger.error('Ошибка при сохранении темы:', error);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator
 } from 'react-native';
+import { Logger } from '../utils/logger';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,7 +33,7 @@ const SettingsScreen = ({ navigation }: any) => {
       await logout();
       showModal(t('settings.logoutSuccess.title'), t('settings.logoutSuccess.message'));
     } catch (error) {
-      console.error('Ошибка при выходе из аккаунта:', error);
+      Logger.error('Ошибка при выходе из аккаунта:', error);
       showModal(t('settings.logoutError.title'), t('settings.logoutError.message'));
     }
   };
@@ -48,8 +49,8 @@ const SettingsScreen = ({ navigation }: any) => {
       setIsCheckingUpdate(true);
       
       const currentVersion = getCurrentVersion();
-      console.log('Начинаем проверку обновлений...');
-      console.log('Текущая версия:', currentVersion);
+      Logger.debug('Начинаем проверку обновлений...');
+      Logger.debug('Текущая версия:', currentVersion);
       
       showModal(
         t('settings.update.checking') || 'Проверка обновлений', 
@@ -79,9 +80,9 @@ const SettingsScreen = ({ navigation }: any) => {
         }
       );
       
-      console.log('Результат проверки:', result);
+      Logger.debug('Результат проверки:', result);
     } catch (error: any) {
-      console.error('Ошибка при проверке обновлений:', error);
+      Logger.error('Ошибка при проверке обновлений:', error);
       showModal(
         t('settings.update.error') || 'Ошибка', 
         `Ошибка при проверке обновлений: ${error?.message || String(error)}`

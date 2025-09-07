@@ -1,4 +1,5 @@
 import { Property } from '../contexts/PropertyContext';
+import { Logger } from './logger';
 
 /**
  * Универсальная функция применения фильтров к списку объектов недвижимости
@@ -45,7 +46,7 @@ export const applyPropertyFilters = (
     try {
       cityIdStr = selectedCity.id.toString();
     } catch (e) {
-      console.error('Ошибка при преобразовании ID города:', e);
+      Logger.error('Ошибка при преобразовании ID города:', e);
       return filtered; // Возвращаем список без фильтрации по городу в случае ошибки
     }
     
@@ -61,14 +62,14 @@ export const applyPropertyFilters = (
         try {
           propCityIdStr = prop.city_id.toString();
         } catch (e) {
-          console.error('Ошибка при преобразовании city_id объекта:', prop, e);
+          Logger.error('Ошибка при преобразовании city_id объекта:', prop, e);
           return false;
         }
 
         // Сравниваем строки
         return propCityIdStr === cityIdStr;
       } catch (error) {
-        console.error('Ошибка при фильтрации по городу:', error);
+        Logger.error('Ошибка при фильтрации по городу:', error);
         return false;
       }
     });
