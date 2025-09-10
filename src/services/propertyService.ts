@@ -467,7 +467,7 @@ export const propertyService = {
     }
   },
 
-  async getPropertiesByType(type: 'sale' | 'rent', page = 1, pageSize = 10) {
+  async getPropertiesByType(type: 'sale' | 'rent' | 'newBuildings', page = 1, pageSize = 10) {
     const cacheKey = `list-${type}-p${page}`;
     
     // Проверяем кэш через LRU Cache Manager
@@ -478,7 +478,8 @@ export const propertyService = {
     }
     
     // Проверяем есть ли активный запрос
-    if (activeRequests[type] && page === 1) {
+    const requestKey = type === 'newBuildings' ? 'sale' : type;
+    if (activeRequests[requestKey] && page === 1) {
       Logger.debug(`Активный запрос getPropertiesByType(${type}) уже выполняется, ожидаем...`);
       if (cached) {
         return cached;
@@ -486,7 +487,7 @@ export const propertyService = {
     }
     
     try {
-      activeRequests[type] = true;
+      activeRequests[requestKey] = true;
       
       // Вычисляем начальную позицию для пагинации
       const from = (page - 1) * pageSize;
@@ -494,15 +495,27 @@ export const propertyService = {
       
       Logger.debug(`Загружаем объявления типа ${type}: страница ${page}, размер страницы ${pageSize}, диапазон ${from}-${to}`);
       
-      const { data, error, count } = await supabase
+      let query = supabase
         .from('properties')
         .select(`
           *,
           user:users(name, phone, is_agency),
           city:cities(name),
           agency:agency_profiles(id, name, phone, logo_url, description)
-        `, { count: 'exact' })
-        .eq('type', type)
+        `, { count: 'exact' });
+      
+      // Специальная логика для новостроек
+      if (type === 'newBuildings') {
+        Logger.debug('Применяем фильтрацию для новостроек: type=sale AND is_new_building=true');
+        query = query
+          .eq('type', 'sale') // Фильтруем по типу "Продажа"
+          .eq('is_new_building', true); // И добавляем фильтр по флагу новостройки
+      } else {
+        Logger.debug(`Применяем стандартную фильтрацию для типа: ${type}`);
+        query = query.eq('type', type);
+      }
+      
+      const { data, error, count } = await query
         .order('created_at', { ascending: false })
         .range(from, to);
       
@@ -525,7 +538,7 @@ export const propertyService = {
       Logger.error(`Ошибка при получении объявлений типа ${type}:`, error);
       return { data: [], totalCount: 0, hasMore: false };
     } finally {
-      activeRequests[type] = false;
+      activeRequests[requestKey] = false;
     }
   },
 

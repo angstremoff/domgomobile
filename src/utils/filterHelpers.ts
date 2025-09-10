@@ -12,7 +12,7 @@ import { Logger } from './logger';
  */
 export const applyPropertyFilters = (
   properties: Property[],
-  propertyType: 'all' | 'sale' | 'rent', 
+  propertyType: 'all' | 'sale' | 'rent' | 'newBuildings', 
   propertyCategory: string,
   selectedCity: { id: string | number } | null,
   activeFilters: {
@@ -27,10 +27,12 @@ export const applyPropertyFilters = (
     return [];
   }
 
-  // Базовая фильтрация по типу (продажа/аренда)
-  let filtered = properties.filter(prop =>
-    propertyType === 'all' ? true : (prop && prop.type === propertyType)
-  );
+  // Базовая фильтрация по типу (продажа/аренда/новостройки)
+  let filtered = properties.filter(prop => {
+    if (propertyType === 'all') return true;
+    if (propertyType === 'newBuildings') return prop && prop.type === 'sale'; // Новостройки - это подмножество продажи
+    return prop && prop.type === propertyType;
+  });
 
   // Фильтрация по категории (квартира/дом/коммерческая/земля)
   if (propertyCategory && propertyCategory !== 'all') {
@@ -76,7 +78,7 @@ export const applyPropertyFilters = (
   }
   
   // Применение дополнительных фильтров
-  if (propertyType === 'rent' || propertyType === 'sale') {
+  if (propertyType === 'rent' || propertyType === 'sale' || propertyType === 'newBuildings') {
     // Фильтр по типу недвижимости
     if (activeFilters.propertyTypes.length > 0) {
       filtered = filtered.filter(prop => 

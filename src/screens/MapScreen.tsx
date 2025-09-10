@@ -15,19 +15,23 @@ interface MapScreenProps {
 
 const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
   const { t } = useTranslation();
+  const { selectedCity, properties: routeProperties } = route.params || {};
   const { properties } = useProperties();
   const [activeFilter, setActiveFilter] = useState<'all' | 'sale' | 'rent'>('all');
   const [mapItems, setMapItems] = useState<Property[]>([]);
   const webViewRef = useRef<WebView>(null);
   
+  // Используем объявления из параметров навигации или глобальные
+  const propertiesForMap = routeProperties || properties;
+  
   useEffect(() => {
     // Фильтрация объектов для карты
     if (activeFilter === 'all') {
-      setMapItems(properties);
+      setMapItems(propertiesForMap);
     } else {
-      setMapItems(properties.filter(prop => prop.type === activeFilter));
+      setMapItems(propertiesForMap.filter((prop: Property) => prop.type === activeFilter));
     }
-  }, [activeFilter, properties]);
+  }, [activeFilter, propertiesForMap]);
 
   useEffect(() => {
     // Отправка отфильтрованных объектов в WebView
@@ -51,6 +55,9 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
   }, [mapItems]);
 
   // HTML код для WebView с OpenStreetMap (как в веб-версии)
+  const centerLng = selectedCity && selectedCity.longitude ? selectedCity.longitude : '20.457273';
+  const centerLat = selectedCity && selectedCity.latitude ? selectedCity.latitude : '44.787197';
+  
   const mapHTML = `
     <!DOCTYPE html>
     <html lang="en">
@@ -119,7 +126,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
                 maxzoom: 19
               }]
             },
-            center: [20.457273, 44.787197], // Белград по умолчанию
+            center: [${centerLng}, ${centerLat}], // Центр по выбранному городу или Белград по умолчанию
             zoom: 9
           });
           

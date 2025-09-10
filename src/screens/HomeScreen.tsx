@@ -6,7 +6,6 @@ import PropertyCard from '../components/PropertyCard';
 import PropertyCardCompact from '../components/PropertyCardCompact';
 import type { Property } from '../contexts/PropertyContext';
 import FilterModal from '../components/FilterModal';
-import PropertyMapView from '../components/PropertyMapView';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { useProperties } from '../contexts/PropertyContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -29,7 +28,7 @@ const HomeScreen = ({ navigation }: any) => {
     getHasMore,
     getPropertiesByType
   } = useProperties();
-  const [propertyType, setPropertyType] = useState<'all' | 'sale' | 'rent'>('all');
+  const [propertyType, setPropertyType] = useState<'all' | 'sale' | 'rent' | 'newBuildings'>('all');
   const [propertyCategory, setPropertyCategory] = useState<string>('all');
   // Локальная база данных для вкладок sale/rent, чтобы не зависеть от глобального properties
   const [typeItems, setTypeItems] = useState<Property[]>([]);
@@ -123,7 +122,7 @@ const HomeScreen = ({ navigation }: any) => {
   // Мемоизированная функция для фильтрации объектов недвижимости
   // использует вынесенную логику из filterHelpers.ts
   const applyFilters = useCallback(() => {
-    // Базовый источник: вкладка "Все" -> global properties; вкладки sale/rent -> локальные typeItems
+    // Базовый источник: вкладка "Все" -> global properties; вкладки sale/rent/newBuildings -> локальные typeItems
     const base = propertyType === 'all' ? properties : typeItems;
     if (base.length > 0) {
       // Не применяем пользовательские фильтры на Продажа/Аренда, пока их явно не применили
@@ -139,7 +138,7 @@ const HomeScreen = ({ navigation }: any) => {
       // или фильтры были явно применены
       const shouldUseActive =
         hasUserFilters || (propertyCategory !== 'all') ||
-        (propertyType === 'rent' ? filtersAppliedRent : propertyType === 'sale' ? filtersAppliedSale : false);
+        (propertyType === 'rent' ? filtersAppliedRent : (propertyType === 'sale' || propertyType === 'newBuildings') ? filtersAppliedSale : false);
       const filtersForApply = shouldUseActive ? activeFilters : emptyFilters;
       const filtered = applyPropertyFilters(
         base,
@@ -182,10 +181,10 @@ const HomeScreen = ({ navigation }: any) => {
     };
   }, [applyFilters, propertyType]);
 
-  // МГНОВЕННАЯ реакция на смену города во вкладках Продажа/Аренда
+  // МГНОВЕННАЯ реакция на смену города во вкладках Продажа/Аренда/Новостройки
   // Во вкладке "Все" уже есть debounce-логика выше
   useEffect(() => {
-    if (propertyType === 'sale' || propertyType === 'rent') {
+    if (propertyType === 'sale' || propertyType === 'rent' || propertyType === 'newBuildings') {
       const base = typeItems;
       if (base.length === 0) return;
       // Не применять фильтры до явного действия пользователя
@@ -200,7 +199,7 @@ const HomeScreen = ({ navigation }: any) => {
       // или фильтры были явно применены
       const shouldUseActive =
         hasUserFilters || (propertyCategory !== 'all') ||
-        (propertyType === 'rent' ? filtersAppliedRent : propertyType === 'sale' ? filtersAppliedSale : false);
+        (propertyType === 'rent' ? filtersAppliedRent : (propertyType === 'sale' || propertyType === 'newBuildings') ? filtersAppliedSale : false);
       const filtersForApply = shouldUseActive ? activeFilters : emptyFilters;
       const filtered = applyPropertyFilters(
         base,
@@ -219,7 +218,7 @@ const HomeScreen = ({ navigation }: any) => {
       setTempFilters(rentFilters);
       // Не применять фильтры автоматически при выборе вкладки "Аренда"
       setFiltersAppliedRent(false);
-    } else if (propertyType === 'sale') {
+    } else if (propertyType === 'sale' || propertyType === 'newBuildings') {
       setActiveFilters(saleFilters);
       setTempFilters(saleFilters);
       // Не применять фильтры автоматически при выборе вкладки "Продажа"
@@ -377,7 +376,7 @@ const HomeScreen = ({ navigation }: any) => {
 
   const handleClearFilters = async () => {
     // Сбрасываем все фильтры
-    if (propertyType === 'sale') {
+    if (propertyType === 'sale' || propertyType === 'newBuildings') {
       setSaleFilters({
         propertyTypes: [],
         price: [0, 500000],
@@ -416,7 +415,7 @@ const HomeScreen = ({ navigation }: any) => {
     
     // Применяем фильтрацию заново, получая актуальные данные из сервиса по текущему типу
     try {
-      if (propertyType === 'sale' || propertyType === 'rent') {
+      if (propertyType === 'sale' || propertyType === 'rent' || propertyType === 'newBuildings') {
         const { data } = await getPropertiesByType(propertyType, 1, 30);
         // Обновляем локальную базу текущего типа
         setTypeItems(data);
@@ -455,7 +454,7 @@ const HomeScreen = ({ navigation }: any) => {
     // Загружаем текущие фильтры в зависимости от выбранной вкладки
     if (propertyType === 'rent') {
       setTempFilters({...rentFilters});
-    } else if (propertyType === 'sale') {
+    } else if (propertyType === 'sale' || propertyType === 'newBuildings') {
       setTempFilters({...saleFilters});
     } else {
       setTempFilters({
@@ -484,7 +483,7 @@ const HomeScreen = ({ navigation }: any) => {
         : 'all';
 
     // Обновляем активные фильтры в зависимости от выбранной вкладки
-    if (propertyType === 'sale') {
+    if (propertyType === 'sale' || propertyType === 'newBuildings') {
       setSaleFilters(tempFilters);
       setActiveFilters(tempFilters);
       setFiltersAppliedSale(true);
@@ -507,7 +506,7 @@ const HomeScreen = ({ navigation }: any) => {
         propertyType,
         categoryToApply,
         selectedCity,
-        propertyType === 'sale' ? tempFilters : propertyType === 'rent' ? tempFilters : activeFilters
+        propertyType === 'sale' || propertyType === 'newBuildings' ? tempFilters : propertyType === 'rent' ? tempFilters : activeFilters
       );
       setFilteredProperties(filtered);
     }
@@ -528,7 +527,7 @@ const HomeScreen = ({ navigation }: any) => {
         rentFilters.price[0] !== 0 ||
         rentFilters.price[1] !== 3000
       );
-    } else if (propertyType === 'sale') {
+    } else if (propertyType === 'sale' || propertyType === 'newBuildings') {
       // Проверяем, отличаются ли текущие фильтры от значений по умолчанию
       return (
         saleFilters.propertyTypes.length > 0 ||
@@ -540,6 +539,23 @@ const HomeScreen = ({ navigation }: any) => {
       );
     }
     return false;
+  };
+
+  // Функция для открытия полноэкранной карты
+  const handleOpenMap = () => {
+    // Если выбран город, открываем карту с этим городом
+    // Если город не выбран, открываем карту Белграда по умолчанию
+    const cityForMap = selectedCity || {
+      id: 1,
+      name: 'Белград',
+      latitude: '44.787197',
+      longitude: '20.457273'
+    };
+    
+    navigation.navigate('Map', {
+      selectedCity: cityForMap,
+      properties: filteredProperties
+    });
   };
 
   const loading = propertiesLoading || favoritesLoading;
@@ -781,34 +797,48 @@ const HomeScreen = ({ navigation }: any) => {
           </Text>
         </TouchableOpacity>
 
-        {propertyType !== 'all' && (
-          <TouchableOpacity
-            style={[
-              styles.clearFilterButton, 
-              { backgroundColor: theme.card, borderColor: theme.border },
-              !areFiltersApplied() && styles.disabledButton
-            ]}
-            onPress={handleClearFilters}
-            disabled={!areFiltersApplied()}
-          >
-            <View style={styles.clearFilterIconContainer}>
-              <FontAwesome5 name="filter" size={16} color={areFiltersApplied() ? theme.primary : theme.secondary} />
-              <Ionicons name="close" size={14} color={areFiltersApplied() ? theme.primary : theme.secondary} style={styles.closeIcon} />
-            </View>
-          </TouchableOpacity>
-        )}
-        
-        {/* Кнопка переключения режима отображения */}
         <TouchableOpacity
-          style={[styles.viewModeButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-          onPress={() => setCompactView(!compactView)}
+          style={[
+            styles.filterButton, 
+            { backgroundColor: theme.card, borderColor: theme.border },
+            propertyType === 'newBuildings' && [styles.activeFilter, { backgroundColor: theme.primary }]
+          ]}
+          onPress={async () => {
+            setPropertyType('newBuildings');
+            setPropertyCategory('all');
+            // Для новостроек пока дублируем функционал продажи
+            setActiveFilters(saleFilters);
+            setFiltersAppliedSale(false);
+            
+            try {
+              const result = await getPropertiesByType('newBuildings', 1, 30);
+              if (result && result.data) {
+                setTypeItems(result.data);
+                let list = [...result.data];
+                if (selectedCity && selectedCity.id) {
+                  const cityIdStr = String(selectedCity.id);
+                  list = list.filter(p => {
+                    if (!p || p.city_id === undefined || p.city_id === null) return false;
+                    try { return String(p.city_id) === cityIdStr; } catch { return false; }
+                  });
+                }
+                setFilteredProperties(list);
+              }
+            } catch (error) {
+              Logger.error('Ошибка при загрузке объявлений для новостроек:', error);
+            }
+          }}
         >
-          <Ionicons 
-            name={compactView ? "grid-outline" : "list-outline"} 
-            size={20} 
-            color={theme.primary} 
-          />
+          <Text style={[
+            styles.filterText, 
+            { color: theme.text },
+            propertyType === 'newBuildings' && [styles.activeFilterText, { color: theme.headerText }]
+          ]}>
+            {t('common.newBuildings')}
+          </Text>
         </TouchableOpacity>
+
+
       </View>
       
       {propertyType !== 'all' && (
@@ -1003,7 +1033,7 @@ const HomeScreen = ({ navigation }: any) => {
       {propertyType !== 'all' && (
         <View
           style={[
-            // Обёртка только для веба, чтобы кнопка фильтра была в общей сетке и слева
+            // Обёртка для веба, чтобы кнопки были в общей сетке
             isWeb
               ? (isDesktop
                   ? { width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 96 }
@@ -1013,34 +1043,105 @@ const HomeScreen = ({ navigation }: any) => {
               : null,
           ]}
         >
-          <TouchableOpacity
-            style={[
-              styles.filterButtonStandalone,
-              { backgroundColor: theme.card, borderColor: theme.border },
-              // Desktop web: совпадение внутреннего отступа с карточками списка (16px)
-              isWeb && isDesktop ? { alignSelf: 'flex-start', cursor: 'pointer', paddingVertical: 8, height: 40, width: '100%', paddingLeft: 16, paddingRight: 16, marginLeft: 16 } : null,
-              // На вебе убираем горизонтальные внешние отступы, чтобы кнопка выровнялась по левому краю контейнера
-              isWeb ? { marginHorizontal: 0 } : null,
-            ]}
-            onPress={handleOpenFilterModal}
-          >
-            <View style={styles.filterButtonContent}>
+          {/* Контейнер с одинаковыми кнопками в одну строку */}
+          <View style={[
+            styles.filterRowContainer,
+            isWeb ? { marginHorizontal: 0 } : null,
+          ]}>
+            {/* Кнопка фильтров */}
+            <TouchableOpacity
+              style={[
+                styles.uniformButton,
+                { backgroundColor: theme.card, borderColor: theme.border },
+                isWeb && isDesktop ? { cursor: 'pointer' } : null,
+              ]}
+              onPress={handleOpenFilterModal}
+            >
               <Ionicons
                 name="filter-outline"
-                size={isWeb && isDesktop ? 20 : 18}
+                size={16}
                 color={theme.primary}
-                style={styles.filterIcon}
+                style={styles.buttonIcon}
               />
               <Text style={[
-                styles.filterButtonText,
+                styles.uniformButtonText,
                 { color: theme.text },
-                // На desktop web уменьшаем шрифт до 14px для一致ия с вкладками
-                isWeb && isDesktop ? { fontSize: 14, fontWeight: '500' } : null,
               ]}>
-                {t('filters.title')}
+                {t('common.filters')}
               </Text>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+
+            {/* Кнопка сброса фильтров */}
+            <TouchableOpacity
+              style={[
+                styles.uniformButton,
+                { backgroundColor: theme.card, borderColor: theme.border },
+                !areFiltersApplied() && styles.disabledButton,
+                isWeb && isDesktop ? { cursor: 'pointer' } : null,
+              ]}
+              onPress={handleClearFilters}
+              disabled={!areFiltersApplied()}
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={16}
+                color={areFiltersApplied() ? theme.primary : theme.secondary}
+                style={styles.buttonIcon}
+              />
+              <Text style={[
+                styles.uniformButtonText,
+                { color: areFiltersApplied() ? theme.text : theme.secondary },
+              ]}>
+                {t('common.reset')}
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Кнопка переключения режима отображения */}
+            <TouchableOpacity
+              style={[
+                styles.uniformButton,
+                { backgroundColor: theme.card, borderColor: theme.border },
+                isWeb && isDesktop ? { cursor: 'pointer' } : null,
+              ]}
+              onPress={() => setCompactView(!compactView)}
+            >
+              <Ionicons 
+                name={compactView ? "grid-outline" : "list-outline"} 
+                size={16}
+                color={theme.primary}
+                style={styles.buttonIcon}
+              />
+              <Text style={[
+                styles.uniformButtonText,
+                { color: theme.text },
+              ]}>
+                {t('common.view')}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Кнопка карты */}
+            <TouchableOpacity
+              style={[
+                styles.uniformButton,
+                { backgroundColor: theme.card, borderColor: theme.border },
+                isWeb && isDesktop ? { cursor: 'pointer' } : null,
+              ]}
+              onPress={handleOpenMap}
+            >
+              <Ionicons
+                name="map-outline"
+                size={16}
+                color={theme.primary}
+                style={styles.buttonIcon}
+              />
+              <Text style={[
+                styles.uniformButtonText,
+                { color: theme.text },
+              ]}>
+                {t('common.map')}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <FilterModal
             visible={filterModalVisible}
@@ -1048,18 +1149,15 @@ const HomeScreen = ({ navigation }: any) => {
             onFiltersChange={handleTempFiltersChange}
             onClose={handleCloseFilterModal}
             onApply={handleApplyFilters}
-            propertyType={propertyType === 'sale' ? 'sale' : 'rent'}
+            propertyType={propertyType === 'sale' || propertyType === 'newBuildings' ? 'sale' : 'rent'}
             darkMode={darkMode}
           />
         </View>
       )}
       
       {!(isWeb && isDesktop) && (
-        <PropertyMapView 
-          properties={filteredProperties}
-          selectedCity={selectedCity}
-          onPropertySelect={(property) => navigation.navigate('PropertyDetails', { propertyId: property.id })}
-        />
+        // Полноэкранная карта теперь открывается через кнопку "Карта"
+        <View style={{ display: 'none' }} />
       )}
 
       {loading ? (
@@ -1190,7 +1288,7 @@ const HomeScreen = ({ navigation }: any) => {
           } // Ключ для пересоздания списка при смене режима/брейкпоинта
           onRefresh={async () => {
             // Если выбран определенный тип сделки, загружаем объявления именно этого типа
-            if (propertyType === 'sale' || propertyType === 'rent') {
+            if (propertyType === 'sale' || propertyType === 'rent' || propertyType === 'newBuildings') {
               try {
                 const result = await getPropertiesByType(propertyType);
                 if (result && result.data) {
@@ -1429,6 +1527,39 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     backgroundColor: 'white',
     marginLeft: 8,
+  },
+  // Новые стили для строки фильтров
+  filterRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 4,
+    marginTop: 4,
+    gap: 8, // Одинаковый отступ между кнопками
+  },
+  // Единый стиль для всех кнопок
+  uniformButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: 'white',
+    flex: 1, // Все кнопки одинаковой ширины
+    minHeight: 38, // Уменьшенная высота
+  },
+  uniformButtonText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginLeft: 1,
+    flexShrink: 1, // Позволяет тексту сжиматься
+  },
+  buttonIcon: {
+    marginRight: 4,
   },
 });
 

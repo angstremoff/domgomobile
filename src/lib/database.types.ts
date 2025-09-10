@@ -129,6 +129,7 @@ export type Database = {
           features: string[] | null
           id: string
           images: string[]
+          is_new_building: boolean | null
           location: string
           price: number
           property_type: string
@@ -148,6 +149,7 @@ export type Database = {
           features?: string[] | null
           id?: string
           images?: string[]
+          is_new_building?: boolean | null
           location: string
           price: number
           property_type: string
@@ -167,6 +169,7 @@ export type Database = {
           features?: string[] | null
           id?: string
           images?: string[]
+          is_new_building?: boolean | null
           location?: string
           price?: number
           property_type?: string
