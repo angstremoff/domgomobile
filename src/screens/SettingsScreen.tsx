@@ -6,7 +6,8 @@ import {
   TouchableOpacity, 
   Switch,
   ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Logger } from '../utils/logger';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +18,9 @@ import Colors from '../constants/colors';
 import CustomModal from '../components/CustomModal';
 // Импортируем новый сервис обновлений
 import { checkForUpdates, getCurrentVersion, showUpdateDialog } from '../services/UpdateService';
+// Импортируем новые сервисы для диагностики
+import AppVersionManager from '../services/AppVersionManager';
+import CacheDiagnostics from '../utils/CacheDiagnostics';
 
 const SettingsScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
@@ -27,6 +31,7 @@ const SettingsScreen = ({ navigation }: any) => {
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -42,6 +47,69 @@ const SettingsScreen = ({ navigation }: any) => {
     setModalTitle(title);
     setModalMessage(message);
     setModalVisible(true);
+  };
+
+  // Новая функция для диагностики кэша
+  const runCacheDiagnostics = async () => {
+    try {
+      setIsDiagnosing(true);
+      Logger.debug('Запуск полной диагностики кэша...');
+      
+      const diagnostics = await CacheDiagnostics.runFullDiagnostics();
+      
+      let message = `Платформа: ${diagnostics.diagnosticInfo.platform}\n`;
+      message += `Ключей в AsyncStorage: ${diagnostics.diagnosticInfo.asyncStorageKeys.length}\n`;
+      message += `Примерный размер: ${Math.round(diagnostics.diagnosticInfo.asyncStorageSize / 1024)} KB\n\n`;
+      
+      if (diagnostics.issues.hasIssues) {
+        message += `Обнаружено проблем: ${diagnostics.issues.issues.length}\n`;
+        message += diagnostics.issues.issues.join('\n') + '\n\n';
+        
+        if (diagnostics.autoFix) {
+          if (diagnostics.autoFix.fixed) {
+            message += `Автоматическое исправление: Успешно\n`;
+            message += diagnostics.autoFix.actions.join('\n');
+          } else {
+            message += `Ошибки при исправлении:\n`;
+            message += diagnostics.autoFix.errors.join('\n');
+          }
+        }
+      } else {
+        message += 'Проблем не обнаружено ✅';
+      }
+      
+      showModal('Диагностика кэша', message);
+      
+    } catch (error) {
+      Logger.error('Ошибка при диагностике кэша:', error);
+      showModal('Ошибка', `Ошибка при выполнении диагностики: ${error}`);
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
+
+  // Функция принудительной очистки кэша
+  const forceClearCache = async () => {
+    Alert.alert(
+      'Очистка кэша',
+      'Это очистит все локальные данные и кэши. Продолжить?',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Очистить',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AppVersionManager.forceClearAll('Принудительная очистка из настроек');
+              showModal('Успех', 'Кэш успешно очищен. Перезапустите приложение.');
+            } catch (error) {
+              Logger.error('Ошибка при очистке кэша:', error);
+              showModal('Ошибка', `Ошибка при очистке кэша: ${error}`);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const checkForUpdatesFromGitHub = async () => {
@@ -144,6 +212,26 @@ const SettingsScreen = ({ navigation }: any) => {
       <View style={[styles.section, { backgroundColor: theme.card }]}>        
         <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('settings.about')}</Text>
         
+        {/* Диагностика кэша */}
+        <TouchableOpacity 
+          style={styles.settingItem} 
+          onPress={runCacheDiagnostics}
+          disabled={isDiagnosing}
+        >
+          <Text style={[styles.settingLabel, { color: theme.text }]}>🔍 Диагностика кэша</Text>
+          {isDiagnosing ? (
+            <ActivityIndicator size="small" color={theme.primary} />
+          ) : (
+            <Ionicons name="chevron-forward" size={20} color={theme.secondary} />
+          )}
+        </TouchableOpacity>
+        
+        {/* Очистка кэша */}
+        <TouchableOpacity style={styles.settingItem} onPress={forceClearCache}>
+          <Text style={[styles.settingLabel, { color: '#EF4444' }]}>🗑️ Очистить кэш</Text>
+          <Ionicons name="chevron-forward" size={20} color={theme.secondary} />
+        </TouchableOpacity>
+        
         <TouchableOpacity style={styles.settingItem} onPress={checkForUpdatesFromGitHub}>
           <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.version')}</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -229,6 +317,20 @@ const styles = StyleSheet.create({
   logoutText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  buttonItem: {
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '500',
   }
 });
 

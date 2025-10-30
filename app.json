@@ -2,7 +2,7 @@
   "expo": {
     "name": "DomGoMobile",
     "slug": "DomGoMobile",
-    "version": "0.9.2",
+    "version": "0.9.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -59,7 +59,7 @@
         "projectId": "313d8153-28aa-426a-a0f3-b580238521e5"
       }
     },
-    "runtimeVersion": "1.0.3",
+    "runtimeVersion": "1.0.4",
     "owner": "angstremoff"
   }
 }

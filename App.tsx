@@ -2,9 +2,7 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import * as Updates from 'expo-updates';
 import { Linking, Platform } from 'react-native';
-import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { propertyService } from './src/services/propertyService';
+import AppVersionManager from './src/services/AppVersionManager';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
@@ -20,46 +18,50 @@ import { supabase } from './src/lib/supabaseClient';
 import './src/translations';
 
 export default function App() {
-  // Одноразовая миграция/очистка кэша при смене версии (не применяем для Web)
+  // Улучшенная система управления версиями и кэшированием
   React.useEffect(() => {
-    if (Platform.OS === 'web') return; // web: не выполняем версионную миграцию/очистку
-    const APP_VERSION_KEY = 'app_version';
-    (async () => {
+    const initializeApp = async () => {
       try {
-        // Получаем версию приложения без обращения к expo-application,
-        // чтобы Dev Client не падал при отсутствии нативного модуля
-        const currentVersion =
-          (Constants?.expoConfig as any)?.version ||
-          // как крайний случай — runtimeVersion, чтобы хотя бы менялось при bump-е
-          (Updates.runtimeVersion as string | undefined) ||
-          '0';
-        const storedVersion = await AsyncStorage.getItem(APP_VERSION_KEY);
-        if (storedVersion !== currentVersion) {
-          Logger.debug('Версия приложения изменилась, выполняем очистку локального кэша');
-          try {
-            // Полная очистка предотвращает влияние любых неизвестных ключей
-            await AsyncStorage.clear();
-          } catch (e) {
-            Logger.warn('Ошибка при очистке AsyncStorage:', e);
-          }
-          try {
-            // Чистим внутренний кэш сервисов на всякий случай
-            if (propertyService && typeof propertyService.clearCache === 'function') {
-              propertyService.clearCache();
-            }
-          } catch (e) {
-            Logger.warn('Ошибка при очистке in-memory кэша:', e);
-          }
-          await AsyncStorage.setItem(APP_VERSION_KEY, currentVersion);
-          Logger.debug('Локальное хранилище и кэши очищены. Установлена версия:', currentVersion);
+        Logger.debug('🚀 НАЧАЛО ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ...');
+        
+        // Получаем диагностическую информацию до очистки
+        const diagnosticInfo = await AppVersionManager.getDiagnosticInfo();
+        Logger.debug('🔍 ИНФОРМАЦИЯ О ВЕРСИЯХ:');
+        Logger.debug('  - Текущая версия:', diagnosticInfo.current);
+        Logger.debug('  - Сохранённая версия:', diagnosticInfo.stored);
+        
+        // Проверяем и очищаем кэш при необходимости
+        const wasCleared = await AppVersionManager.checkAndClearIfNeeded();
+        
+        if (wasCleared) {
+          Logger.debug('🧹 Кэш был очищен из-за изменения версии или других условий');
+          
+          // Получаем обновлённую информацию после очистки
+          const updatedInfo = await AppVersionManager.getVersionInfo();
+          Logger.debug('🔄 Обновлённая информация о версии:', updatedInfo);
+        } else {
+          Logger.debug('✅ Кэш не требует очистки');
         }
-      } catch (e) {
-        Logger.warn('Ошибка миграции версии приложения:', e);
+        
+        Logger.debug('✨ ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ЗАВЕРШЕНА УСПЕШНО!');
+        
+      } catch (error) {
+        Logger.error('❌ КРИТИЧЕСКАЯ ОШИБКА при инициализации приложения:', error);
+        
+        // При критической ошибке пытаемся очистить кэш для восстановления
+        try {
+          await AppVersionManager.forceClearAll(`Критическая ошибка инициализации: ${error}`);
+          Logger.debug('⚙️ Кэш очищен для восстановления после ошибки');
+        } catch (clearError) {
+          Logger.error('❌ Не удалось очистить кэш после ошибки:', clearError);
+        }
       }
-    })();
+    };
+    
+    initializeApp();
   }, []);
 
-  // Обработка глубоких ссылок (deep links) для подтверждения email
+    // Обработка глубоких ссылок (deep links) для подтверждения email
   React.useEffect(() => {
     // Обработчик для ссылок, по которым открывается приложение
     const handleDeepLink = async (event: { url: string }) => {
