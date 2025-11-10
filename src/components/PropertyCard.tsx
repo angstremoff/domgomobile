@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +31,13 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
   const streetName = property.location || '';
   const fullAddress = translatedCityName && streetName ? `${translatedCityName}, ${streetName}` : translatedCityName || streetName;
 
+  const formattedPrice = useMemo(() => {
+    const priceValue = typeof property.price === 'number' ? property.price : Number(property.price);
+    const priceLabel = Number.isFinite(priceValue) ? priceValue.toLocaleString() : property.price;
+    const suffix = property.type === 'rent' ? `/ ${t('property.month')}` : '';
+    return `${priceLabel}€${suffix}`;
+  }, [property.price, property.type, t]);
+
   // Отладочный вывод для проверки статуса
   Logger.debug(`PropertyCard: id=${property.id}, title=${property.title}, status=${property.status}`);
   
@@ -60,11 +67,6 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
           ]}
           resizeMode="cover"
         />
-        {Platform.OS === 'web' && (
-          <View style={styles.priceOverlayWeb}>
-            <Text style={styles.priceOverlayText}>{property.price.toLocaleString()}€{property.type === 'rent' ? ` / ${t('property.month')}` : ''}</Text>
-          </View>
-        )}
         {isInactive && (
           <View style={styles.statusOverlay}>
             <Text style={styles.statusText}>
@@ -110,8 +112,7 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
 
       <View style={[styles.infoContainer, Platform.OS === 'web' && styles.infoContainerWeb]}>
         <Text style={[styles.price, { color: theme.primary }]}>
-          {property.price.toLocaleString()}€
-          {property.type === 'rent' ? `/ ${t('property.month')}` : ''}
+          {formattedPrice}
         </Text>
         <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
           {property.title}

@@ -106,35 +106,45 @@ const ImageViewer = ({ images, visible, initialIndex = 0, onClose, darkMode = fa
           </TouchableOpacity>
         </View>
 
-        <FlatList
-          ref={flatListRef}
-          data={images}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          renderItem={renderItem}
-          keyExtractor={(_, index) => `image-full-${index}`}
-          onScroll={handleScroll}
-          getItemLayout={(_, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
-          initialScrollIndex={initialIndex}
-        />
+        <View style={styles.carouselContainer}>
+          <FlatList
+            ref={flatListRef}
+            data={images}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            renderItem={renderItem}
+            keyExtractor={(_, index) => `image-full-${index}`}
+            onScroll={handleScroll}
+            getItemLayout={(_, index) => ({
+              length: width,
+              offset: width * index,
+              index,
+            })}
+            initialScrollIndex={initialIndex}
+          />
 
-        {/* Кнопки навигации по изображениям */}
-        {currentIndex > 0 && (
-          <TouchableOpacity style={styles.navButtonLeft} onPress={handlePrev}>
-            <Ionicons name="chevron-back" size={28} color={theme.text} />
-          </TouchableOpacity>
-        )}
-        
-        {currentIndex < images.length - 1 && (
-          <TouchableOpacity style={styles.navButtonRight} onPress={handleNext}>
-            <Ionicons name="chevron-forward" size={28} color={theme.text} />
-          </TouchableOpacity>
-        )}
+          {/* Кнопки навигации по изображениям */}
+          {currentIndex > 0 && (
+            <TouchableOpacity
+              style={styles.navButtonLeft}
+              onPress={handlePrev}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="chevron-back" size={22} color={theme.text} />
+            </TouchableOpacity>
+          )}
+          
+          {currentIndex < images.length - 1 && (
+            <TouchableOpacity
+              style={styles.navButtonRight}
+              onPress={handleNext}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Ionicons name="chevron-forward" size={22} color={theme.text} />
+            </TouchableOpacity>
+          )}
+        </View>
       </SafeAreaView>
     </Modal>
   );
@@ -143,6 +153,10 @@ const ImageViewer = ({ images, visible, initialIndex = 0, onClose, darkMode = fa
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  carouselContainer: {
+    flex: 1,
+    position: 'relative',
   },
   header: {
     flexDirection: 'row',
@@ -186,21 +200,27 @@ const styles = StyleSheet.create({
   },
   navButtonLeft: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
+    top: '50%',
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    transform: [{ translateY: -20 }],
   },
   navButtonRight: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
+    top: '50%',
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    transform: [{ translateY: -20 }],
   }
 });
 

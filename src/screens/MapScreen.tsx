@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Property } from '../contexts/PropertyContext';
@@ -13,287 +13,328 @@ interface MapScreenProps {
   route: any;
 }
 
+type MapFeature = {
+  type: 'Feature';
+  properties: {
+    id: string;
+    title: string;
+    type: Property['type'];
+    price: string;
+    description: string;
+  };
+  geometry: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+};
+
+type MapFeatureCollection = {
+  type: 'FeatureCollection';
+  features: MapFeature[];
+};
+
 const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const { selectedCity, properties: routeProperties } = route.params || {};
   const { properties } = useProperties();
   const [activeFilter, setActiveFilter] = useState<'all' | 'sale' | 'rent'>('all');
-  const [mapItems, setMapItems] = useState<Property[]>([]);
-  const webViewRef = useRef<WebView>(null);
-  
-  // Используем объявления из параметров навигации или глобальные
-  const propertiesForMap = routeProperties || properties;
-  
-  useEffect(() => {
-    // Фильтрация объектов для карты
+  const isWeb = Platform.OS === 'web';
+
+  const propertiesForMap: Property[] = Array.isArray(routeProperties)
+    ? routeProperties
+    : Array.isArray(properties)
+      ? properties
+      : [];
+
+  const filteredItems = useMemo<Property[]>(() => {
     if (activeFilter === 'all') {
-      setMapItems(propertiesForMap);
-    } else {
-      setMapItems(propertiesForMap.filter((prop: Property) => prop.type === activeFilter));
+      return propertiesForMap;
     }
+
+    return propertiesForMap.filter((item) => item?.type === activeFilter);
   }, [activeFilter, propertiesForMap]);
 
-  useEffect(() => {
-    // Отправка отфильтрованных объектов в WebView
-    if (webViewRef.current && mapItems) {
-      const mapData = {
-        action: 'updateMarkers',
-        properties: mapItems.map(item => ({
+  const extractCoordinates = useCallback((item: Property): { lat: number; lng: number } | null => {
+    if (item.latitude && item.longitude) {
+      const lat = parseFloat(String(item.latitude));
+      const lng = parseFloat(String(item.longitude));
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat, lng };
+      }
+    }
+
+    if (item.coordinates) {
+      try {
+        if (typeof item.coordinates === 'string') {
+          const parsed = JSON.parse(item.coordinates);
+          if (parsed?.lat && parsed?.lng) {
+            const lat = parseFloat(String(parsed.lat));
+            const lng = parseFloat(String(parsed.lng));
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              return { lat, lng };
+            }
+          }
+        } else if (typeof item.coordinates === 'object') {
+          const lat = parseFloat(String(item.coordinates.lat));
+          const lng = parseFloat(String(item.coordinates.lng));
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            return { lat, lng };
+          }
+        }
+      } catch (error) {
+        Logger.error('Ошибка парсинга координат объекта на карте:', error);
+      }
+    }
+
+    return null;
+  }, []);
+
+  const mapPoints = useMemo(() => {
+    return filteredItems.reduce<MapFeature[]>((acc, item) => {
+      const coords = extractCoordinates(item);
+      if (!coords) {
+        return acc;
+      }
+
+      const isSale = item.type === 'sale';
+      const dealLabel = isSale ? t('common.sale') : t('common.rent');
+      const priceValue = typeof item.price === 'number' ? item.price : Number(item.price);
+      const formattedPrice = !Number.isNaN(priceValue)
+        ? `${priceValue.toLocaleString('ru-RU')} ${isSale ? '€' : '€/мес'}`
+        : t('property.priceOnRequest');
+
+      const image = Array.isArray(item.images) && item.images.length > 0
+        ? item.images[0]
+        : 'https://via.placeholder.com/300x200?text=DomGo';
+
+      acc.push({
+        type: 'Feature',
+        properties: {
           id: item.id,
           title: item.title,
-          price: item.price,
           type: item.type,
-          coordinates: item.latitude && item.longitude ? {
-            lng: parseFloat(item.longitude),
-            lat: parseFloat(item.latitude)
-          } : null,
-          images: item.images
-        }))
+          price: formattedPrice,
+          description: `${dealLabel} • ${formattedPrice}`,
+          imageUrl: image,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [coords.lng, coords.lat],
+        },
+      } as MapFeature & { properties: MapFeature['properties'] & { imageUrl: string } });
+
+      return acc;
+    }, []);
+  }, [extractCoordinates, filteredItems, t]);
+
+  const mapCenter = useMemo(() => {
+    if (selectedCity?.latitude && selectedCity?.longitude) {
+      return {
+        lat: parseFloat(String(selectedCity.latitude)),
+        lng: parseFloat(String(selectedCity.longitude)),
       };
-      webViewRef.current.postMessage(JSON.stringify(mapData));
     }
-  }, [mapItems]);
 
-  // HTML код для WebView с OpenStreetMap (как в веб-версии)
-  const centerLng = selectedCity && selectedCity.longitude ? selectedCity.longitude : '20.457273';
-  const centerLat = selectedCity && selectedCity.latitude ? selectedCity.latitude : '44.787197';
-  
-  const mapHTML = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <title>Карта объявлений</title>
-      <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
-      <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
-      <style>
-        body { margin: 0; padding: 0; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-        .property-popup { max-width: 280px; }
-        .property-popup-content { width: 250px; }
-        .property-image { width: 100%; height: 120px; object-fit: cover; border-top-left-radius: 4px; border-top-right-radius: 4px; }
-        .property-info { padding: 8px; background-color: white; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; }
-        .property-title { font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .property-price { font-size: 14px; color: #4B5563; }
-      </style>
-    </head>
-    <body>
-      <div id="map"></div>
-      <script>
-        let map;
-        let markers = [];
-        
-        document.addEventListener('DOMContentLoaded', () => {
-          initMap();
-          
-          // Слушаем сообщения от React Native
-          window.addEventListener('message', (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              
-              if (data.action === 'updateMarkers') {
-                updateMarkers(data.properties);
-              } else if (data.action === 'setFilter') {
-                filterMarkers(data.filter);
-              } else if (data.action === 'setCenter') {
-                setMapCenter(data.center, data.zoom);
-              }
-            } catch (error) {
-              Logger.error('Error processing message:', error);
+    if (mapPoints.length > 0) {
+      const [lng, lat] = mapPoints[0].geometry.coordinates;
+      return { lat, lng };
+    }
+
+    return { lat: 44.787197, lng: 20.457273 }; // Белград по умолчанию
+  }, [mapPoints, selectedCity]);
+
+  const mapHtml = useMemo(() => {
+    const postMessageSnippet = isWeb
+      ? `if (window.parent) { window.parent.postMessage(payload, '*'); }`
+      : `if (window.ReactNativeWebView?.postMessage) { window.ReactNativeWebView.postMessage(payload); }`;
+
+    const features = mapPoints.map((feature) => ({
+      ...feature,
+      properties: {
+        ...feature.properties,
+        imageUrl: (feature as any).properties.imageUrl ?? 'https://via.placeholder.com/300x200?text=DomGo',
+      },
+    }));
+
+    const geojson: MapFeatureCollection & { features: (MapFeature & { properties: MapFeature['properties'] & { imageUrl: string } })[] } = {
+      type: 'FeatureCollection',
+      features,
+    };
+
+    const zoom = mapPoints.length > 1 ? 10 : 12;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+          <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+          <style>
+            html, body { margin: 0; padding: 0; height: 100%; }
+            #map { position: absolute; inset: 0; }
+            .marker {
+              width: auto;
+              height: auto;
+              cursor: pointer;
+              border-radius: 4px;
+              box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+              display: flex;
+              align-items: center;
+              background-color: white;
+              padding: 3px 6px;
+              font-family: system-ui, -apple-system, sans-serif;
+              font-size: 12px;
+              font-weight: bold;
+              border-left: 3px solid #1E88E5;
             }
-          });
-        });
-        
-        function initMap() {
-          map = new maplibregl.Map({
-            container: 'map',
-            style: {
-              version: 8,
-              sources: {
-                'osm': {
-                  type: 'raster',
-                  tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-                  tileSize: 256,
-                  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }
+            .marker.rent { border-left-color: #4CAF50; }
+            .marker.sale { border-left-color: #1E88E5; }
+            .popup-content { width: 220px; }
+            .popup-image {
+              width: 100%;
+              height: 120px;
+              object-fit: cover;
+              border-radius: 4px;
+              margin-bottom: 8px;
+            }
+            .popup-title { font-weight: 600; margin-bottom: 4px; }
+            .popup-price { color: #4B5563; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div id="map"></div>
+          <script>
+            const map = new maplibregl.Map({
+              container: 'map',
+              style: {
+                version: 8,
+                sources: {
+                  osm: {
+                    type: 'raster',
+                    tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                    tileSize: 256
+                  }
+                },
+                layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
               },
-              layers: [{
-                id: 'osm',
-                type: 'raster',
-                source: 'osm',
-                minzoom: 0,
-                maxzoom: 19
-              }]
-            },
-            center: [${centerLng}, ${centerLat}], // Центр по выбранному городу или Белград по умолчанию
-            zoom: 9
-          });
-          
-          map.addControl(new maplibregl.NavigationControl());
-          
-          // Сообщаем, что карта загружена
-          setTimeout(() => {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              event: 'mapLoaded'
-            }));
-          }, 1000);
-        }
-        
-        function updateMarkers(properties) {
-          // Удаляем старые маркеры
-          markers.forEach(marker => marker.remove());
-          markers = [];
-          
-          // Добавляем новые маркеры
-          properties.forEach(property => {
-            if (property.coordinates) {
-              try {
-                // Создаем маркер
-                const el = document.createElement('div');
-                el.className = 'marker';
-                el.style.width = '25px';
-                el.style.height = '25px';
-                el.style.borderRadius = '50%';
-                el.style.backgroundColor = property.type === 'sale' ? '#EF4444' : '#3B82F6';
-                el.style.border = '3px solid white';
-                el.style.boxShadow = '0 3px 6px rgba(0,0,0,0.3)';
-                
-                const marker = new maplibregl.Marker(el)
-                  .setLngLat([property.coordinates.lng, property.coordinates.lat])
-                  .addTo(map);
-                
-                // Создаем всплывающее окно
-                const popup = new maplibregl.Popup({
-                  closeButton: true,
-                  closeOnClick: false,
-                  offset: [0, -15],
-                  className: 'property-popup',
-                });
-                
-                const popupContent = document.createElement('div');
-                popupContent.className = 'property-popup-content';
-                
-                // Формируем содержимое всплывающего окна
-                const image = property.images && property.images.length > 0 
-                  ? property.images[0] 
-                  : 'https://via.placeholder.com/300x200?text=Нет+фото';
-                
-                popupContent.innerHTML = \`
-                  <div class="property-content">
-                    <img src="\${image}" class="property-image" alt="\${property.title}"/>
-                    <div class="property-info">
-                      <div class="property-title">\${property.title}</div>
-                      <div class="property-price">\${property.price ? property.price.toLocaleString() + ' €' : 'Цена не указана'} \${property.type === 'rent' ? '/мес' : ''}</div>
-                    </div>
-                  </div>
-                \`;
-                
-                popup.setDOMContent(popupContent);
-                
-                // Обработчик клика по маркеру
-                marker.getElement().addEventListener('click', () => {
-                  marker.setPopup(popup);
-                  
-                  // Сообщаем React Native о клике по маркеру
-                  window.ReactNativeWebView.postMessage(JSON.stringify({
-                    event: 'markerClick',
-                    propertyId: property.id
-                  }));
-                });
-                
-                markers.push(marker);
-              } catch (error) {
-                Logger.error('Error creating marker:', error);
-              }
-            }
-          });
-          
-          // Если есть маркеры, центрируем карту
-          if (markers.length > 0) {
-            const bounds = new maplibregl.LngLatBounds();
-            markers.forEach(marker => {
-              bounds.extend(marker.getLngLat());
+              center: [${mapCenter.lng}, ${mapCenter.lat}],
+              zoom: ${zoom}
             });
-            
-            map.fitBounds(bounds, { padding: 50 });
-          }
-          
-          // Сообщаем количество маркеров
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            event: 'markersUpdated',
-            count: markers.length
-          }));
-        }
-        
-        function setMapCenter(center, zoom) {
-          if (map) {
-            map.flyTo({
-              center: center,
-              zoom: zoom || map.getZoom(),
-              essential: true
-            });
-          }
-        }
-      </script>
-    </body>
-    </html>
-  `;
 
-  // Обработчик сообщений от WebView
-  const handleWebViewMessage = (event: any) => {
+            map.addControl(new maplibregl.NavigationControl());
+
+            const data = ${JSON.stringify(geojson)};
+
+            data.features.forEach((feature) => {
+              const el = document.createElement('div');
+              el.className = 'marker ' + feature.properties.type;
+              el.textContent = feature.properties.price;
+
+              const popup = new maplibregl.Popup({ offset: 12 });
+              popup.setHTML(
+                '<div class="popup-content">' +
+                  '<img class="popup-image" src="' + feature.properties.imageUrl + '" alt="' + feature.properties.title + '" />' +
+                  '<div class="popup-title">' + feature.properties.title + '</div>' +
+                  '<div class="popup-price">' + feature.properties.description + '</div>' +
+                '</div>'
+              );
+
+              el.addEventListener('click', () => {
+                const payload = JSON.stringify({
+                  type: 'marker_click',
+                  id: feature.properties.id,
+                });
+
+                ${postMessageSnippet}
+              });
+
+              new maplibregl.Marker(el)
+                .setLngLat(feature.geometry.coordinates)
+                .setPopup(popup)
+                .addTo(map);
+            });
+
+            if (data.features.length > 1) {
+              const bounds = new maplibregl.LngLatBounds();
+              data.features.forEach((feature) => bounds.extend(feature.geometry.coordinates));
+              map.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+            }
+          </script>
+        </body>
+      </html>
+    `;
+  }, [isWeb, mapCenter.lat, mapCenter.lng, mapPoints]);
+
+  useEffect(() => {
+    if (!isWeb) {
+      return;
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data?.type === 'marker_click' && data?.id) {
+          navigation.navigate('PropertyDetails', { propertyId: data.id });
+        }
+      } catch (error) {
+        Logger.error('Ошибка обработки сообщения из iframe карты:', error);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [isWeb, navigation]);
+
+  const mapKey = useMemo(() => {
+    return `${activeFilter}-${mapPoints.length}-${mapPoints.map((point) => point.properties.id).join('|')}`;
+  }, [activeFilter, mapPoints]);
+
+  const handleNativeMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      
-      if (data.event === 'markerClick' && data.propertyId) {
-        // Переход на экран деталей объявления
-        navigation.navigate('PropertyDetails', { propertyId: data.propertyId });
-      } else if (data.event === 'markersUpdated') {
-        // Можно обновить счетчик объектов
-        Logger.debug(`На карте ${data.count} объектов`);
-      } else if (data.event === 'mapLoaded') {
-        // Карта загружена, можно отправить данные
-        if (webViewRef.current && mapItems) {
-          const mapData = {
-            action: 'updateMarkers',
-            properties: mapItems.map(item => ({
-              id: item.id,
-              title: item.title,
-              price: item.price,
-              type: item.type,
-              coordinates: item.latitude && item.longitude ? {
-                lng: parseFloat(item.longitude),
-                lat: parseFloat(item.latitude)
-              } : null,
-              images: item.images
-            }))
-          };
-          webViewRef.current.postMessage(JSON.stringify(mapData));
-        }
+      if (data?.type === 'marker_click' && data?.id) {
+        navigation.navigate('PropertyDetails', { propertyId: data.id });
       }
     } catch (error) {
-      Logger.error('Error handling WebView message:', error);
+      Logger.error('Error parsing WebView message:', error);
     }
   };
 
   return (
     <View style={styles.container}>
-      <WebView
-        ref={webViewRef}
-        originWhitelist={['*']}
-        source={{ html: mapHTML }}
-        style={styles.map}
-        onMessage={handleWebViewMessage}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        startInLoadingState={true}
-        renderLoading={() => (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#1E3A8A" />
-          </View>
-        )}
-      />
-      
+      {isWeb ? (
+        <View style={styles.webMapWrapper}>
+          {/* eslint-disable-next-line react-native/no-inline-styles */}
+          <iframe
+            key={mapKey}
+            title="map-screen"
+            srcDoc={mapHtml}
+            style={{ width: '100%', height: '100%', border: '0' }}
+            sandbox="allow-scripts allow-same-origin"
+          />
+        </View>
+      ) : (
+        <WebView
+          key={mapKey}
+          originWhitelist={['*']}
+          source={{ html: mapHtml }}
+          style={styles.map}
+          onMessage={handleNativeMessage}
+          javaScriptEnabled
+          domStorageEnabled
+          startInLoadingState
+          renderLoading={() => (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#1E3A8A" />
+            </View>
+          )}
+        />
+      )}
+
       {/* Фильтры */}
       <View style={styles.filterContainer}>
         <TouchableOpacity
@@ -342,6 +383,10 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  webMapWrapper: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
   },
   loadingContainer: {
     position: 'absolute',

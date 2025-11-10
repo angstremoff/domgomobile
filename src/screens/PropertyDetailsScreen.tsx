@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Linking, ActivityIndicator, FlatList, SafeAreaView, Share, Platform } from 'react-native';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, useWindowDimensions, Linking, ActivityIndicator, FlatList, SafeAreaView, Share, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Property } from '../contexts/PropertyContext';
@@ -11,8 +11,6 @@ import { WebView } from 'react-native-webview';
 import Colors from '../constants/colors';
 import { showErrorAlert } from '../utils/alertUtils';
 import { Logger } from '../utils/logger';
-
-const { width } = Dimensions.get('window');
 
 // Тип для параметров навигации
 type RouteParams = {
@@ -30,16 +28,65 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const { toggleFavorite, isFavorite } = useFavorites();
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
-  
+  const { width: windowWidth } = useWindowDimensions();
+  const isWebPlatform = Platform.OS === 'web';
+  const isDesktopWeb = isWebPlatform && windowWidth >= 1024;
+  const desktopContentMaxWidth = 960;
+  const desktopHorizontalPadding = 64; // scrollContent padding 32 с каждой стороны
+  const availableDesktopWidth = Math.max(windowWidth - desktopHorizontalPadding, 480);
+  const carouselWidth = isDesktopWeb
+    ? Math.min(availableDesktopWidth, desktopContentMaxWidth)
+    : windowWidth;
+  const carouselHeight = isDesktopWeb ? Math.min(carouselWidth * 0.5625, 520) : 300;
+
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [showPhoneNumber, setShowPhoneNumber] = useState(false);
   const [isViewerVisible, setIsViewerVisible] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  const [mapLoading, setMapLoading] = useState(true);
+  const [mapLoading, setMapLoading] = useState(!isWebPlatform);
   const flatListRef = useRef<FlatList>(null);
   const webViewRef = useRef<WebView>(null);
+
+  const propertyCoords = useMemo(() => {
+    if (!property) {
+      return null;
+    }
+
+    try {
+      let lat: number | undefined;
+      let lng: number | undefined;
+
+      if (property.coordinates) {
+        if (typeof property.coordinates === 'object') {
+          lat = property.coordinates.lat;
+          lng = property.coordinates.lng;
+        } else if (typeof property.coordinates === 'string') {
+          const parsed = JSON.parse(property.coordinates);
+          lat = parsed?.lat;
+          lng = parsed?.lng;
+        }
+      } else if (property.latitude && property.longitude) {
+        lat = parseFloat(property.latitude);
+        lng = parseFloat(property.longitude);
+      }
+
+      if (typeof lat === 'number' && !Number.isNaN(lat) && typeof lng === 'number' && !Number.isNaN(lng)) {
+        return { lat, lng } as const;
+      }
+    } catch (error) {
+      Logger.error('Ошибка парсинга координат объявления:', error);
+    }
+
+    return null;
+  }, [property]);
+
+  useEffect(() => {
+    if (isWebPlatform && showMap) {
+      setMapLoading(false);
+    }
+  }, [isWebPlatform, showMap]);
 
   // Проверяем, есть ли объявление в контексте, если нет - загружаем с сервера
   useEffect(() => {
@@ -236,6 +283,64 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   </html>
   `;
 
+  const webFallbackHTML = useMemo(() => {
+    if (!propertyCoords) {
+      return null;
+    }
+
+    const { lat, lng } = propertyCoords;
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+          <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+          <style>
+            html, body { margin: 0; padding: 0; height: 100%; }
+            #map { position: absolute; inset: 0; }
+            .marker {
+              width: 24px;
+              height: 24px;
+              border-radius: 50%;
+              background-color: #3B82F6;
+              border: 3px solid white;
+              box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            }
+          </style>
+        </head>
+        <body>
+          <div id="map"></div>
+          <script>
+            const map = new maplibregl.Map({
+              container: 'map',
+              style: {
+                version: 8,
+                sources: {
+                  osm: {
+                    type: 'raster',
+                    tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                    tileSize: 256
+                  }
+                },
+                layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+              },
+              center: [${lng}, ${lat}],
+              zoom: 15
+            });
+
+            map.addControl(new maplibregl.NavigationControl());
+
+            const el = document.createElement('div');
+            el.className = 'marker';
+            new maplibregl.Marker(el).setLngLat([${lng}, ${lat}]).addTo(map);
+          </script>
+        </body>
+      </html>
+    `;
+  }, [propertyCoords]);
+
   // Обработчик сообщений от WebView
   const handleWebViewMessage = (event: any) => {
     try {
@@ -274,46 +379,18 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     }
 
     try {
-      let lat, lng;
-      
-      // Пробуем получить координаты из разных источников
-      if (property.coordinates) {
-        // Из поля coordinates
-        if (typeof property.coordinates === 'object') {
-          lat = property.coordinates.lat;
-          lng = property.coordinates.lng;
-        } else if (typeof property.coordinates === 'string') {
-          try {
-            const coords = JSON.parse(property.coordinates);
-            lat = coords.lat;
-            lng = coords.lng;
-          } catch (e) {
-            Logger.error('Ошибка парсинга координат:', e);
-          }
-        }
-      } else if (property.latitude && property.longitude) {
-        // Из прямых полей latitude и longitude
-        lat = parseFloat(property.latitude);
-        lng = parseFloat(property.longitude);
-      }
-      
-      if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+      if (!propertyCoords) {
         Logger.error('Нет корректных координат для объявления');
         setMapLoading(false);
         return;
       }
       
-      // Отправляем сообщение в WebView с координатами
-      const message = {
-        coords: { lat, lng }
-      };
-      
-      webViewRef.current.postMessage(JSON.stringify(message));
+      webViewRef.current.postMessage(JSON.stringify({ coords: propertyCoords }));
     } catch (error) {
       Logger.error('Ошибка отправки координат:', error);
       setMapLoading(false);
     }
-  }, [property]);
+  }, [propertyCoords]);
 
   if (loading) {
     return (
@@ -353,9 +430,9 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView>
+      <ScrollView contentContainerStyle={[styles.scrollContent, isDesktopWeb && styles.webScrollContent]}>
         {/* Карусель изображений */}
-        <View style={styles.imageContainer}>
+        <View style={[styles.imageContainer, isDesktopWeb && styles.webImageContainer, isDesktopWeb && { width: carouselWidth, height: carouselHeight }]}>
           <FlatList
             ref={flatListRef}
             data={property.images}
@@ -365,6 +442,9 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
             keyExtractor={(item, index) => `${property.id}-image-${index}`}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            style={isDesktopWeb ? { width: carouselWidth } : undefined}
+            contentContainerStyle={isDesktopWeb ? styles.webFlatListContent : undefined}
+            extraData={carouselWidth}
             renderItem={({ item, index }) => {
               // Отладочный вывод для проверки статуса
               const isInactive = property?.status === 'sold' || property?.status === 'rented';
@@ -374,7 +454,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
                 <TouchableOpacity 
                   onPress={() => { setActiveImageIndex(index); setIsViewerVisible(true); }} 
                   activeOpacity={0.9}
-                  style={{ width: width, height: 300 }} // Устанавливаем стиль здесь, чтобы оверлей мог наложиться
+                  style={{ width: carouselWidth, height: carouselHeight }}
                 >
                   <Image
                     source={{ uri: item }}
@@ -395,8 +475,8 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               );
             }}
             getItemLayout={(_, index) => ({
-              length: width,
-              offset: width * index,
+              length: carouselWidth,
+              offset: carouselWidth * index,
               index,
             })}
           />
@@ -443,7 +523,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         </View>
         
         {/* Основная информация о объекте */}
-        <View style={[styles.detailsContainer, { backgroundColor: theme.card }]}>
+        <View style={[styles.detailsContainer, { backgroundColor: theme.card }, isDesktopWeb && styles.webDetailsContainer]}>
           {/* Цена и заголовок */}
           <Text style={[styles.price, { color: theme.primary }]}>
             {property.price}€{property.type === 'rent' ? ` / ${t('property.month')}` : ''}
@@ -494,7 +574,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
           </View>
           
           {/* Карта */}
-          {property && property.coordinates && (
+          {propertyCoords && (
             <View style={styles.sectionContainer}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('property.location')}</Text>
               
@@ -510,19 +590,33 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               
               {showMap && (
                 <View style={styles.mapContainer}>
-                  <WebView
-                    ref={webViewRef}
-                    originWhitelist={['*']}
-                    source={{ html: mapHTML }}
-                    style={styles.map}
-                    onMessage={handleWebViewMessage}
-                    javaScriptEnabled={true}
-                    domStorageEnabled={true}
-                  />
-                  {mapLoading && (
-                    <View style={styles.mapLoadingContainer}>
-                      <ActivityIndicator size="large" color={theme.primary} />
+                  {isWebPlatform && webFallbackHTML ? (
+                    <View style={styles.webMapWrapper}>
+                      {/* eslint-disable-next-line react-native/no-inline-styles */}
+                      <iframe
+                        title="property-map"
+                        srcDoc={webFallbackHTML}
+                        style={{ width: '100%', height: '100%', border: '0' }}
+                        sandbox="allow-scripts allow-same-origin"
+                      />
                     </View>
+                  ) : (
+                    <>
+                      <WebView
+                        ref={webViewRef}
+                        originWhitelist={['*']}
+                        source={{ html: mapHTML }}
+                        style={styles.map}
+                        onMessage={handleWebViewMessage}
+                        javaScriptEnabled={true}
+                        domStorageEnabled={true}
+                      />
+                      {mapLoading && (
+                        <View style={styles.mapLoadingContainer}>
+                          <ActivityIndicator size="large" color={theme.primary} />
+                        </View>
+                      )}
+                    </>
                   )}
                 </View>
               )}
@@ -616,6 +710,13 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
 
 // Стили
 const styles = StyleSheet.create({
+  scrollContent: {
+    paddingBottom: 32,
+  },
+  webScrollContent: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
   // Стили для отображения статуса продано/сдано
   statusOverlay: {
     position: 'absolute',
@@ -659,8 +760,16 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 300,
   },
+  webImageContainer: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 24,
+  },
+  webFlatListContent: {
+    flexGrow: 1,
+  },
   imageItem: {
-    width: width,
+    width: '100%',
     height: 300,
   },
   propertyImage: {
@@ -725,6 +834,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 16,
     marginTop: -16,
   },
+  webDetailsContainer: {
+    width: '100%',
+    maxWidth: 960,
+    paddingHorizontal: 32,
+    paddingVertical: 24,
+    marginTop: 32,
+    borderRadius: 20,
+  },
   price: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -777,6 +894,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 8,
     overflow: 'hidden',
+  },
+  webMapWrapper: {
+    flex: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#E5E7EB',
   },
   map: {
     flex: 1,

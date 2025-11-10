@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Modal, FlatList } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Modal, FlatList, StyleProp, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTranslation } from 'react-i18next';
@@ -18,9 +18,23 @@ interface HeaderControlsProps {
   isHomeScreen?: boolean;
   selectedCity?: City | null;
   onCitySelect?: (city: City | null) => void;
+  showCityButton?: boolean;
+  showLanguageToggle?: boolean;
+  showThemeToggle?: boolean;
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
-const HeaderControls = ({ darkMode, toggleDarkMode, isHomeScreen = false, selectedCity, onCitySelect }: HeaderControlsProps) => {
+const HeaderControls = ({
+  darkMode,
+  toggleDarkMode,
+  isHomeScreen = false,
+  selectedCity,
+  onCitySelect,
+  showCityButton = true,
+  showLanguageToggle = true,
+  showThemeToggle = true,
+  containerStyle,
+}: HeaderControlsProps) => {
   const { language, setLanguage } = useLanguage();
   const { t } = useTranslation();
   const theme = darkMode ? Colors.dark : Colors.light;
@@ -29,8 +43,10 @@ const HeaderControls = ({ darkMode, toggleDarkMode, isHomeScreen = false, select
 
   // Загрузка списка городов
   useEffect(() => {
-    loadCities();
-  }, []);
+    if (showCityButton && isHomeScreen) {
+      loadCities();
+    }
+  }, [showCityButton, isHomeScreen]);
 
   const loadCities = async () => {
     try {
@@ -62,9 +78,11 @@ const HeaderControls = ({ darkMode, toggleDarkMode, isHomeScreen = false, select
     return t(`cities.${cityName}`, cityName);
   };
 
+  const shouldShowCityButton = showCityButton && isHomeScreen;
+
   return (
-    <View style={styles.container}>
-      {isHomeScreen && (
+    <View style={[styles.container, containerStyle]}> 
+      {shouldShowCityButton && (
         <>
           <TouchableOpacity 
             style={[styles.iconButton, styles.cityButtonContainer]} 
@@ -79,69 +97,69 @@ const HeaderControls = ({ darkMode, toggleDarkMode, isHomeScreen = false, select
               </Text>
             </View>
           </TouchableOpacity>
-        </>
-      )}
-      
-      <TouchableOpacity 
-        style={styles.iconButton} 
-        onPress={toggleLanguage}
-      >
-        <Text style={styles.flagText}>
-          {language === 'ru' ? '🇷🇺' : '🇷🇸'}
-        </Text>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        style={[styles.iconButton, darkMode ? {} : { backgroundColor: '#1E3A8A', borderRadius: 0 }]}
-        onPress={toggleDarkMode}
-      >
-        <Ionicons 
-          name={darkMode ? "sunny" : "moon"} 
-          size={22} 
-          color={darkMode ? "#F1F5F9" : "#FFFFFF"} 
-        />
-      </TouchableOpacity>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isCityModalVisible}
-        onRequestClose={() => setIsCityModalVisible(false)}
-      >
-        <View style={[styles.modalContainer, { backgroundColor: darkMode ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)' }]}>
-          <View style={[styles.cityModalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.cityModalTitle, { color: theme.text }]}>{t('common.selectCity')}</Text>
-              <TouchableOpacity onPress={() => setIsCityModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.text} />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Опция "Все города" */}
-            <TouchableOpacity
-              style={styles.cityModalItem}
-              onPress={() => handleCitySelect(null)}
-            >
-              <Text style={[styles.cityModalItemText, { color: theme.primary, fontWeight: '600' }]}>{t('common.allCities')}</Text>
-            </TouchableOpacity>
-            
-            <FlatList
-              data={cities}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={isCityModalVisible}
+            onRequestClose={() => setIsCityModalVisible(false)}
+          >
+            <View style={[styles.modalContainer, { backgroundColor: darkMode ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)' }]}> 
+              <View style={[styles.cityModalContent, { backgroundColor: theme.card, borderColor: theme.border }]}> 
+                <View style={styles.modalHeader}>
+                  <Text style={[styles.cityModalTitle, { color: theme.text }]}>{t('common.selectCity')}</Text>
+                  <TouchableOpacity onPress={() => setIsCityModalVisible(false)}>
+                    <Ionicons name="close" size={24} color={theme.text} />
+                  </TouchableOpacity>
+                </View>
                 <TouchableOpacity
                   style={styles.cityModalItem}
-                  onPress={() => handleCitySelect(item)}
+                  onPress={() => handleCitySelect(null)}
                 >
-                  <Text style={[styles.cityModalItemText, { color: darkMode ? theme.text : '#1E3A8A' }]}>
-                    {getTranslatedCityName(item.name)}
-                  </Text>
+                  <Text style={[styles.cityModalItemText, { color: theme.primary, fontWeight: '600' }]}>{t('common.allCities')}</Text>
                 </TouchableOpacity>
-              )}
+                <FlatList
+                  data={cities}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.cityModalItem}
+                      onPress={() => handleCitySelect(item)}
+                    >
+                      <Text style={[styles.cityModalItemText, { color: darkMode ? theme.text : '#1E3A8A' }]}> 
+                        {getTranslatedCityName(item.name)}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            </View>
+          </Modal>
+        </>
+      )}
+      <View style={styles.toggles}>
+        {showLanguageToggle && (
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={toggleLanguage}
+          >
+            <Text style={styles.flagText}>
+              {language === 'ru' ? '🇷🇺' : '🇷🇸'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        {showThemeToggle && (
+          <TouchableOpacity
+            style={[styles.iconButton, darkMode ? {} : { backgroundColor: '#1E3A8A', borderRadius: 0 }]}
+            onPress={toggleDarkMode}
+          >
+            <Ionicons
+              name={darkMode ? "sunny" : "moon"}
+              size={22}
+              color={darkMode ? "#F1F5F9" : "#FFFFFF"}
             />
-          </View>
-        </View>
-      </Modal>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };
@@ -151,6 +169,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 5,
+  },
+  toggles: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   iconButton: {
     width: 32,

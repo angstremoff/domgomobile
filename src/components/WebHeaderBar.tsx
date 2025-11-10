@@ -41,13 +41,12 @@ const WebHeaderBar: React.FC<WebHeaderBarProps> = ({
       <View
         style={[
           styles.inner,
-          // На desktop web центрируем контейнер, внутри остаётся левое выравнивание за счёт paddingHorizontal: 96
           isWeb
             ? (isDesktop
                 ? { alignSelf: 'center', paddingHorizontal: 96, maxWidth: 1280, width: '100%' }
                 : isTabletWeb
                   ? { alignSelf: 'center', paddingHorizontal: 48, maxWidth: 1280, width: '100%' }
-                  : { alignSelf: 'center', paddingHorizontal: 12, maxWidth: 1280, width: '100%' })
+                  : { alignSelf: 'center', paddingHorizontal: 16, maxWidth: 1280, width: '100%' })
             : null,
         ]}
       >
@@ -55,13 +54,15 @@ const WebHeaderBar: React.FC<WebHeaderBarProps> = ({
           <Text style={[styles.brand, { color: theme.headerText }]}>{title}</Text>
         </TouchableOpacity>
 
-        <HeaderControls
-          darkMode={darkMode}
-          toggleDarkMode={toggleDarkMode}
-          isHomeScreen={isHomeScreen}
-          selectedCity={selectedCity}
-          onCitySelect={onCitySelect}
-        />
+        <View style={styles.controlsWrap}>
+          <HeaderControls
+            darkMode={darkMode}
+            toggleDarkMode={toggleDarkMode}
+            isHomeScreen={isHomeScreen}
+            selectedCity={selectedCity}
+            onCitySelect={onCitySelect}
+          />
+        </View>
       </View>
     </View>
   );
@@ -76,14 +77,21 @@ const styles = StyleSheet.create({
     maxWidth: 1280,
     alignSelf: 'center',
     paddingHorizontal: 96,
-    height: 56,
+    height: 64,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 32,
   },
   brand: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  controlsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
 });
 

@@ -10,6 +10,28 @@ import { logError } from '../utils/sentry';
 import { Logger } from '../utils/logger';
 import { propertyCache, apiCache } from '../utils/cacheManager';
 
+const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
+type AllowedImageExtension = typeof ALLOWED_IMAGE_EXTENSIONS[number];
+const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
+
+const ensureAllowedExtension = (ext: string): AllowedImageExtension => {
+  const normalized = ext.toLowerCase();
+  if ((ALLOWED_IMAGE_EXTENSIONS as readonly string[]).includes(normalized)) {
+    return normalized as AllowedImageExtension;
+  }
+
+  throw new Error(`Неподдерживаемый формат изображения: ${ext}. Допустимы: ${ALLOWED_IMAGE_EXTENSIONS.join(', ')}`);
+};
+
+const ensureFileNotTooLarge = (bytes: number, context: string) => {
+  if (bytes > MAX_IMAGE_UPLOAD_BYTES) {
+    throw new Error(`${context} превышает максимальный размер ${Math.round(MAX_IMAGE_UPLOAD_BYTES / (1024 * 1024))} МБ`);
+  }
+};
+
+const extractBase64Payload = (value: string) => {
+  return value.includes('base64,') ? value.split('base64,')[1] : value;
+};
 
 
 // Таймштамп последнего обновления данных в БД
@@ -721,10 +743,11 @@ export const propertyService = {
       
       Logger.debug('Нормализованный URI:', normalizedUri);
       
-      // Определяем тип файла из расширения
-      const fileExt = fileName.split('.').pop()?.toLowerCase() || 'jpg';
-      const mimeType = fileExt === 'jpg' || fileExt === 'jpeg' 
-        ? 'image/jpeg' 
+      // Определяем тип файла из расширения и валидируем
+      const extFromName = fileName.split('.').pop()?.toLowerCase() ?? '';
+      const fileExt = ensureAllowedExtension(extFromName);
+      const mimeType = fileExt === 'jpg' || fileExt === 'jpeg'
+        ? 'image/jpeg'
         : `image/${fileExt}`;
       
       Logger.debug('Тип файла:', mimeType);
@@ -732,22 +755,25 @@ export const propertyService = {
       // Сжимаем изображение перед загрузкой
       const compressed = await compressImage(normalizedUri, 0.3);
       Logger.debug('Сжатое изображение URI:', compressed.uri);
-      
+
       const uniqueFileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `property-images/${uniqueFileName}`;
       Logger.debug('Путь:', filePath);
-      
+
       // Читаем файл как base64 вместо использования fetch
       const base64 = await FileSystem.readAsStringAsync(compressed.uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-      
+
       Logger.debug('Файл прочитан как base64, размер:', base64.length);
-      
+
       // Конвертируем base64 в ArrayBuffer
-      const arrayBuffer = decode(base64);
+      const imagePayload = extractBase64Payload(base64);
+      const decodedForSize = Buffer.from(imagePayload, 'base64');
+      ensureFileNotTooLarge(decodedForSize.byteLength, 'Изображение');
+      const arrayBuffer = decode(imagePayload);
       Logger.debug('Конвертирован в ArrayBuffer');
-      
+
       // Загружаем в Supabase Storage
       const { error } = await supabase.storage
         .from('properties')
@@ -780,9 +806,10 @@ export const propertyService = {
       if (!user) throw new Error('Пользователь не авторизован');
 
       // Создаем уникальное имя файла
-      const uniqueFileName = `${Math.random().toString(36).substring(2)}.${fileExt.toLowerCase()}`;
+      const normalizedExt = ensureAllowedExtension(fileExt);
+      const uniqueFileName = `${Math.random().toString(36).substring(2)}.${normalizedExt}`;
       const filePath = `property-images/${uniqueFileName}`;
-      
+
       Logger.debug('Загрузка изображения base64...');
       Logger.debug('Путь:', filePath);
       
@@ -792,23 +819,22 @@ export const propertyService = {
       }
       
       // Преобразуем base64 в Uint8Array для Supabase
-      const base64Str = base64Data.includes('base64,') 
-        ? base64Data.split('base64,')[1] 
-        : base64Data;
-        
+      const base64Str = extractBase64Payload(base64Data);
+
       if (!base64Str) {
         throw new Error('Некорректный формат base64');
       }
-      
+
       try {
         const decoded = Buffer.from(base64Str, 'base64');
+        ensureFileNotTooLarge(decoded.byteLength, 'Изображение base64');
         Logger.debug('Размер декодированных данных:', decoded.length, 'байт');
-        
+
         // Загружаем в Supabase Storage
         const { error } = await supabase.storage
           .from('properties')
           .upload(filePath, decoded, {
-            contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
+            contentType: `image/${normalizedExt === 'jpg' ? 'jpeg' : normalizedExt}`,
             upsert: true
           });
         
@@ -841,22 +867,27 @@ export const propertyService = {
       if (!user) throw new Error('Пользователь не авторизован');
       
       // Генерируем имя файла как в веб-версии
-      const fileExt = fileName.split('.').pop() || 'jpg';
+      const fileExt = ensureAllowedExtension(fileName.split('.').pop() || '');
       const uniqueFileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `property-images/${uniqueFileName}`;
-      
+
       Logger.debug('Загрузка через простой метод...');
       Logger.debug('Путь:', filePath);
-      
+
       // Для base64 нельзя использовать прямое сжатие через react-native-image-manipulator
       // Можно сначала декодировать base64, затем сжать и снова закодировать,
       // но это сложно и может вызвать ошибки
-      
+
+      // Подготавливаем данные: выделяем payload и проверяем размер
+      const base64Payload = extractBase64Payload(fileBase64);
+      const decoded = Buffer.from(base64Payload, 'base64');
+      ensureFileNotTooLarge(decoded.byteLength, 'Изображение base64');
+
       // Загружаем файл напрямую
       const { error } = await supabase.storage
         .from('properties')
-        .upload(filePath, fileBase64, {
-          contentType: `image/${fileExt}`,
+        .upload(filePath, decoded, {
+          contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
           upsert: true
         });
       

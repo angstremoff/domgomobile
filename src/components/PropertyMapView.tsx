@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
@@ -27,6 +27,26 @@ interface PropertyMapViewProps {
   selectedCity: any;
   onPropertySelect?: (property: Property) => void;
 }
+
+type MapFeature = {
+  type: 'Feature';
+  properties: {
+    id: string;
+    title: string;
+    type: Property['type'];
+    price: string;
+    description: string;
+  };
+  geometry: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+};
+
+type MapFeatureCollection = {
+  type: 'FeatureCollection';
+  features: MapFeature[];
+};
 
 const PropertyMapView: React.FC<PropertyMapViewProps> = ({ 
   properties, 
@@ -96,7 +116,7 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
   }
 
   // Парсинг координат если они в строковом формате
-  const parseCoordinates = (prop: Property): Coordinates | null => {
+  const parseCoordinates = useCallback((prop: Property): Coordinates | null => {
     if (!prop.coordinates) return null;
     
     // Если координаты уже в виде объекта
@@ -111,10 +131,10 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
       Logger.error('Ошибка при парсинге координат:', e);
       return null;
     }
-  };
+  }, []);
 
   // Фильтруем только свойства с координатами и принадлежащие выбранному городу
-  const propertiesWithCoords = properties.filter(p => {
+  const propertiesWithCoords = useMemo(() => properties.filter((p) => {
     try {
       // Нет города для фильтрации или нет координат у объекта - пропускаем
       if (!p || !selectedCity) return false;
@@ -144,140 +164,148 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
       Logger.error('Ошибка при фильтрации объекта:', error);
       return false;
     }
-  });
+  }), [properties, selectedCity, parseCoordinates]);
 
   // Генерация HTML с картой MapLibre как в web версии
-  const generateMapHTML = () => {
+  const generateMapHTML = useCallback(() => {
     let centerLat = 44.5315;
     let centerLng = 19.2249;
     let zoom = 12;
-    
-    // Устанавливаем центр карты по выбранному городу
+
     if (selectedCity && selectedCity.latitude && selectedCity.longitude) {
-      centerLat = parseFloat(selectedCity.latitude);
-      centerLng = parseFloat(selectedCity.longitude);
-    }
-    // Если есть объекты с координатами, устанавливаем центр по первому объекту
-    else if (propertiesWithCoords.length > 0) {
+      centerLat = parseFloat(String(selectedCity.latitude));
+      centerLng = parseFloat(String(selectedCity.longitude));
+    } else if (propertiesWithCoords.length > 0) {
       const firstPropCoords = parseCoordinates(propertiesWithCoords[0]);
       if (firstPropCoords) {
         centerLat = firstPropCoords.lat;
         centerLng = firstPropCoords.lng;
       }
     }
-    
-    // Создаем маркеры для всех объектов
-    const markersJson = propertiesWithCoords.map((property) => {
+
+    const features = propertiesWithCoords.reduce<MapFeature[]>((acc, property) => {
       const coords = parseCoordinates(property);
-      if (!coords) return null;
-      
-      const propType = property.type === 'sale' ? t('common.sale') : t('common.rent');
-      const price = property.price + (property.type === 'sale' ? '€' : '€/мес');
-      
-      return {
+      if (!coords) {
+        return acc;
+      }
+
+      const isSale = property.type === 'sale';
+      const dealLabel = isSale ? t('common.sale') : t('common.rent');
+      const priceValue = typeof property.price === 'number' ? property.price : Number(property.price);
+      const formattedPrice = !Number.isNaN(priceValue)
+        ? `${priceValue.toLocaleString('ru-RU')} ${isSale ? '€' : '€/мес'}`
+        : t('property.priceOnRequest');
+
+      acc.push({
         type: 'Feature',
         properties: {
           id: property.id,
           title: property.title,
           type: property.type,
-          price: price,
-          description: `${propType} - ${price}`
+          price: formattedPrice,
+          description: `${dealLabel} • ${formattedPrice}`,
         },
         geometry: {
           type: 'Point',
-          coordinates: [coords.lng, coords.lat]
-        }
-      };
-    }).filter(marker => marker !== null);
-    
-    const geojson = {
+          coordinates: [coords.lng, coords.lat],
+        },
+      });
+
+      return acc;
+    }, []);
+
+    const geojson: MapFeatureCollection = {
       type: 'FeatureCollection',
-      features: markersJson
+      features,
     };
-    
+
     return `
       <!DOCTYPE html>
       <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <link href="https://cdn.maptiler.com/maplibre-gl-js/v2.4.0/maplibre-gl.css" rel="stylesheet" />
-        <script src="https://cdn.maptiler.com/maplibre-gl-js/v2.4.0/maplibre-gl.js"></script>
-        <style>
-          body, html { height: 100%; margin: 0; padding: 0; }
-          #map { width: 100%; height: 100%; }
-          .maplibregl-popup { max-width: 200px; }
-          .maplibregl-popup-content { padding: 10px; border-radius: 5px; }
-          .marker { 
-            width: auto; 
-            height: auto; 
-            cursor: pointer; 
-            border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            background-color: white;
-            padding: 3px 6px;
-            font-family: system-ui, -apple-system, sans-serif;
-            font-size: 12px;
-            font-weight: bold;
-            border-left: 3px solid #1E88E5;
-          }
-          .marker.rent { border-left-color: #4CAF50; }
-          .marker.sale { border-left-color: #1E88E5; }
-        </style>
-      </head>
-      <body>
-        <div id="map"></div>
-        <script>
-          // Инициализация карты
-          const map = new maplibregl.Map({
-            container: 'map',
-            style: 'https://api.maptiler.com/maps/streets/style.json?key=knwOi6Znzzd7UvABCECD',
-            center: [${centerLng}, ${centerLat}],
-            zoom: ${zoom}
-          });
-          
-          // Добавление контролов навигации
-          map.addControl(new maplibregl.NavigationControl());
-          
-          // Добавление маркеров после загрузки карты
-          map.on('load', function() {
-            // JSON данные объектов
-            const geojson = ${JSON.stringify(geojson)};
-            
-            // Создаем маркеры для каждого объекта
-            geojson.features.forEach(function(feature) {
-              // Создаем div элемент для маркера
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+          <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+          <style>
+            html, body { height: 100%; margin: 0; padding: 0; }
+            #map { width: 100%; height: 100%; }
+            .marker {
+              width: auto;
+              height: auto;
+              cursor: pointer;
+              border-radius: 4px;
+              box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+              display: flex;
+              align-items: center;
+              background-color: white;
+              padding: 3px 6px;
+              font-family: system-ui, -apple-system, sans-serif;
+              font-size: 12px;
+              font-weight: bold;
+              border-left: 3px solid #1E88E5;
+            }
+            .marker.rent { border-left-color: #4CAF50; }
+            .marker.sale { border-left-color: #1E88E5; }
+          </style>
+        </head>
+        <body>
+          <div id="map"></div>
+          <script>
+            const map = new maplibregl.Map({
+              container: 'map',
+              style: {
+                version: 8,
+                sources: {
+                  osm: {
+                    type: 'raster',
+                    tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                    tileSize: 256
+                  }
+                },
+                layers: [{ id: 'osm', type: 'raster', source: 'osm' }]
+              },
+              center: [${centerLng}, ${centerLat}],
+              zoom: ${zoom}
+            });
+
+            map.addControl(new maplibregl.NavigationControl());
+
+            const data = ${JSON.stringify(geojson)};
+
+            data.features.forEach((feature) => {
               const el = document.createElement('div');
               el.className = 'marker ' + feature.properties.type;
               el.textContent = feature.properties.price;
-              
-              // Создаем попап с описанием
-              const popup = new maplibregl.Popup({ offset: 15 })
-                .setHTML('<strong>' + feature.properties.title + '</strong><br>' + 
-                       feature.properties.description);
-              
-              // Добавляем маркер на карту
-              const marker = new maplibregl.Marker(el)
+
+              const popup = new maplibregl.Popup({ offset: 12 })
+                .setHTML('<strong>' + feature.properties.title + '</strong><br>' + feature.properties.description);
+
+              el.addEventListener('click', () => {
+                const payload = JSON.stringify({
+                  type: 'marker_click',
+                  id: feature.properties.id,
+                });
+
+                if (window.ReactNativeWebView?.postMessage) {
+                  window.ReactNativeWebView.postMessage(payload);
+                } else if (window.parent) {
+                  window.parent.postMessage(payload, '*');
+                }
+              });
+
+              new maplibregl.Marker(el)
                 .setLngLat(feature.geometry.coordinates)
                 .setPopup(popup)
                 .addTo(map);
-              
-              // Обработчик клика по маркеру
-              el.addEventListener('click', function() {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'marker_click',
-                  id: feature.properties.id
-                }));
-              });
             });
-          });
-        </script>
-      </body>
+          </script>
+        </body>
       </html>
     `;
-  };
+  }, [parseCoordinates, propertiesWithCoords, selectedCity, t]);
+
+  const mapHtml = useMemo(() => generateMapHTML(), [generateMapHTML]);
 
   return (
     <View
@@ -327,16 +355,26 @@ const PropertyMapView: React.FC<PropertyMapViewProps> = ({
                 {t('property.noPropertiesOnMap')}
               </Text>
             </View>
+          ) : isWeb ? (
+            <View style={styles.webMapWrapper}>
+              {/* eslint-disable-next-line react-native/no-inline-styles */}
+              <iframe
+                title="properties-map"
+                srcDoc={mapHtml}
+                style={{ width: '100%', height: '100%', border: '0' }}
+                sandbox="allow-scripts allow-same-origin"
+              />
+            </View>
           ) : (
             <WebView
               style={styles.map}
               originWhitelist={['*']}
-              source={{ html: generateMapHTML() }}
+              source={{ html: mapHtml }}
               onMessage={(event) => {
                 try {
                   const data = JSON.parse(event.nativeEvent.data);
                   if (data.type === 'marker_click') {
-                    const property = propertiesWithCoords.find(p => p.id === data.id);
+                    const property = propertiesWithCoords.find((p) => p.id === data.id);
                     if (property && onPropertySelect) {
                       onPropertySelect(property);
                     }
@@ -402,6 +440,12 @@ const styles = StyleSheet.create({
   noPropertiesText: {
     fontSize: 16,
     textAlign: 'center'
+  },
+  webMapWrapper: {
+    flex: 1,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#E5E7EB',
   }
 });
 
