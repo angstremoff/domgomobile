@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
@@ -27,7 +27,15 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
   const { t } = useTranslation();
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
-  const horizontalPadding = 96;
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const isDesktopWeb = isWeb && width >= 1024;
+  const isTabletWeb = isWeb && width >= 768 && width < 1024;
+  const horizontalPadding = isWeb
+    ? (isDesktopWeb ? 96 : isTabletWeb ? 48 : 24)
+    : width >= 600
+      ? 24
+      : 16;
 
   const [agency, setAgency] = useState<AgencyProfile | null>(null);
   const [loading, setLoading] = useState(true);

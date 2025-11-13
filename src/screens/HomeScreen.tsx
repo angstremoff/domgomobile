@@ -60,6 +60,7 @@ const HomeScreen = ({ navigation }: any) => {
   const propertyCategory = isDealView ? getCategoryForType(propertyType) : 'all';
   const propertyTypeForData: 'all' | DealTab = isDealView ? propertyType : 'all';
   const showQuickFilters = propertyType === 'sale' || propertyType === 'rent';
+  const showFilterActions = propertyType === 'sale' || propertyType === 'rent' || propertyType === 'newBuildings';
   // Локальная база данных для вкладок sale/rent, чтобы не зависеть от глобального properties
   const [typeItems, setTypeItems] = useState<Property[]>([]);
   const { darkMode } = useTheme();
@@ -882,11 +883,13 @@ const HomeScreen = ({ navigation }: any) => {
           styles.filterContainer,
           sharedSectionStyle,
           isWeb ? { marginHorizontal: 0, marginBottom: sectionGapLarge } : null,
+          isWeb ? styles.filterContainerWeb : null,
         ]}
       >
         <TouchableOpacity
           style={[
             styles.filterButton, 
+            isWeb ? styles.filterButtonWeb : null,
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'all' && [styles.activeFilter, { backgroundColor: theme.primary }]
           ]}
@@ -915,6 +918,7 @@ const HomeScreen = ({ navigation }: any) => {
         >
           <Text style={[
             styles.filterText, 
+            isWeb ? styles.filterTextWeb : null,
             { color: theme.text },
             propertyType === 'all' && [styles.activeFilterText, { color: theme.headerText }]
           ]}>
@@ -925,6 +929,7 @@ const HomeScreen = ({ navigation }: any) => {
         <TouchableOpacity
           style={[
             styles.filterButton, 
+            isWeb ? styles.filterButtonWeb : null,
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'sale' && [styles.activeFilter, { backgroundColor: theme.primary }]
           ]}
@@ -960,6 +965,7 @@ const HomeScreen = ({ navigation }: any) => {
         >
           <Text style={[
             styles.filterText, 
+            isWeb ? styles.filterTextWeb : null,
             { color: theme.text },
             propertyType === 'sale' && [styles.activeFilterText, { color: theme.headerText }]
           ]}>
@@ -970,6 +976,7 @@ const HomeScreen = ({ navigation }: any) => {
         <TouchableOpacity
           style={[
             styles.filterButton, 
+            isWeb ? styles.filterButtonWeb : null,
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'rent' && [styles.activeFilter, { backgroundColor: theme.primary }]
           ]}
@@ -1005,6 +1012,7 @@ const HomeScreen = ({ navigation }: any) => {
         >
           <Text style={[
             styles.filterText, 
+            isWeb ? styles.filterTextWeb : null,
             { color: theme.text },
             propertyType === 'rent' && [styles.activeFilterText, { color: theme.headerText }]
           ]}>
@@ -1015,6 +1023,7 @@ const HomeScreen = ({ navigation }: any) => {
         <TouchableOpacity
           style={[
             styles.filterButton, 
+            isWeb ? styles.filterButtonWeb : null,
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'newBuildings' && [styles.activeFilter, { backgroundColor: theme.primary }]
           ]}
@@ -1046,6 +1055,7 @@ const HomeScreen = ({ navigation }: any) => {
         >
           <Text style={[
             styles.filterText, 
+            isWeb ? styles.filterTextWeb : null,
             { color: theme.text },
             propertyType === 'newBuildings' && [styles.activeFilterText, { color: theme.headerText }]
           ]}>
@@ -1056,6 +1066,7 @@ const HomeScreen = ({ navigation }: any) => {
         <TouchableOpacity
           style={[
             styles.filterButton,
+            isWeb ? styles.filterButtonWeb : null,
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'agencies' && [styles.activeFilter, { backgroundColor: theme.primary }]
           ]}
@@ -1065,6 +1076,7 @@ const HomeScreen = ({ navigation }: any) => {
         >
           <Text style={[
             styles.filterText,
+            isWeb ? styles.filterTextWeb : null,
             { color: theme.text },
             propertyType === 'agencies' && [styles.activeFilterText, { color: theme.headerText }]
           ]}>
@@ -1075,65 +1087,67 @@ const HomeScreen = ({ navigation }: any) => {
 
       </View>
       
-      {showQuickFilters && (
+      {showFilterActions && (
         <>
-          <View
-            style={[
-              styles.categorySection,
-              { backgroundColor: theme.background },
-              sharedSectionStyle,
-              isWeb ? { paddingHorizontal: horizontalGutter, marginBottom: sectionGapMedium } : null,
-            ]}
-          >
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              style={[styles.categoryFilterContainer, { zIndex: 10 }]}
-              contentContainerStyle={[
-                styles.categoryFilterContent,
-                isWeb
-                  ? {
-                      paddingHorizontal: isDesktop ? 8 : isTabletWeb ? 6 : 4,
-                      paddingVertical: isDesktop ? 6 : undefined,
-                      gap: isDesktop ? 16 : isTabletWeb ? 14 : 12,
-                    }
-                  : null,
+          {showQuickFilters && (
+            <View
+              style={[
+                styles.categorySection,
+                { backgroundColor: theme.background },
+                sharedSectionStyle,
+                isWeb ? { paddingHorizontal: horizontalGutter, marginBottom: sectionGapMedium } : null,
               ]}
             >
-              {quickFilterOptions.map(option => (
-                <TouchableOpacity
-                  key={option.key}
-                  style={[
-                    styles.propertyTypeCard,
-                    { backgroundColor: theme.card, borderColor: theme.border },
-                    propertyTypeCardAdaptiveStyle,
-                    isWeb && { cursor: 'pointer' },
-                    propertyCategory === option.category && styles.activeCard,
-                  ]}
-                  onPress={() => {
-                    if (propertyType === 'rent' || propertyType === 'sale') {
-                      handleCombinedFilter(propertyType, option.category);
-                    }
-                  }}
-                >
-                  <View style={[
-                    styles.iconContainer,
-                    propertyTypeIconContainerStyle,
-                    isWeb ? { backgroundColor: theme.primary + '15' } : null,
-                  ]}>
-                    {option.renderIcon(quickFilterIconSize, theme.primary)}
-                  </View>
-                  <Text style={[
-                    styles.propertyTypeText,
-                    { color: theme.text },
-                    propertyTypeTextStyle,
-                  ]}>
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                style={[styles.categoryFilterContainer, { zIndex: 10 }]}
+                contentContainerStyle={[
+                  styles.categoryFilterContent,
+                  isWeb
+                    ? {
+                        paddingHorizontal: isDesktop ? 8 : isTabletWeb ? 6 : 4,
+                        paddingVertical: isDesktop ? 6 : undefined,
+                        gap: isDesktop ? 16 : isTabletWeb ? 14 : 12,
+                      }
+                    : null,
+                ]}
+              >
+                {quickFilterOptions.map(option => (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={[
+                      styles.propertyTypeCard,
+                      { backgroundColor: theme.card, borderColor: theme.border },
+                      propertyTypeCardAdaptiveStyle,
+                      isWeb && { cursor: 'pointer' },
+                      propertyCategory === option.category && styles.activeCard,
+                    ]}
+                    onPress={() => {
+                      if (propertyType === 'rent' || propertyType === 'sale') {
+                        handleCombinedFilter(propertyType, option.category);
+                      }
+                    }}
+                  >
+                    <View style={[
+                      styles.iconContainer,
+                      propertyTypeIconContainerStyle,
+                      isWeb ? { backgroundColor: theme.primary + '15' } : null,
+                    ]}>
+                      {option.renderIcon(quickFilterIconSize, theme.primary)}
+                    </View>
+                    <Text style={[
+                      styles.propertyTypeText,
+                      { color: theme.text },
+                      propertyTypeTextStyle,
+                    ]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
 
           <View
             style={[
@@ -1640,28 +1654,43 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     flexDirection: 'row',
+    flexWrap: 'nowrap',
     marginHorizontal: 16,
     marginBottom: 4,
   },
+  filterContainerWeb: {
+    columnGap: 12,
+    rowGap: 0,
+  },
   filterButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginRight: 8,
-    borderRadius: 50,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginRight: 6,
+    borderRadius: 40,
     backgroundColor: 'white',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  filterButtonWeb: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginRight: 12,
+    borderRadius: 48,
+  },
+  filterText: {
+    fontSize: 13,
+    color: '#4B5563',
+    textAlign: 'center',
+  },
+  filterTextWeb: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
   activeFilter: {
     backgroundColor: '#1E40AF',
     borderColor: '#1E40AF',
-  },
-  filterText: {
-    fontSize: 14,
-    color: '#4B5563',
-    textAlign: 'center',
   },
   activeFilterText: {
     color: 'white',
