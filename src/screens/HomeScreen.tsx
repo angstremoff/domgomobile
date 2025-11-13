@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator, Text, ScrollView, TouchableOpacity, Platform, useWindowDimensions, ViewStyle } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, Text, ScrollView, TouchableOpacity, Platform, useWindowDimensions, ViewStyle, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { supabase } from '../lib/supabaseClient';
 import PropertyCard from '../components/PropertyCard';
 import PropertyCardCompact from '../components/PropertyCardCompact';
 import type { Property } from '../contexts/PropertyContext';
@@ -14,6 +15,15 @@ import { applyPropertyFilters } from '../utils/filterHelpers';
 import { Logger } from '../utils/logger';
 
 type DealTab = 'sale' | 'rent' | 'newBuildings';
+type ViewTab = 'all' | DealTab | 'agencies';
+
+interface AgencySummary {
+  id: string;
+  name: string | null;
+  logo_url: string | null;
+  location: string | null;
+  phone: string | null;
+}
 
 const HomeScreen = ({ navigation }: any) => {
   // Вернулись к использованию стандартного компонента PropertyCard
@@ -30,18 +40,13 @@ const HomeScreen = ({ navigation }: any) => {
     getHasMore,
     getPropertiesByType
   } = useProperties();
-  const [propertyType, setPropertyType] = useState<'all' | DealTab>('all');
+  const [propertyType, setPropertyType] = useState<ViewTab>('all');
   const [categoryByType, setCategoryByType] = useState<Record<DealTab, string>>(() => ({
     sale: 'all',
     rent: 'all',
     newBuildings: 'all',
   }));
-  const getCategoryForType = (type: 'all' | DealTab) => {
-    if (type === 'sale' || type === 'rent' || type === 'newBuildings') {
-      return categoryByType[type];
-    }
-    return 'all';
-  };
+  const getCategoryForType = (type: DealTab) => categoryByType[type];
   const setCategoryForType = (type: DealTab, category: string) => {
     setCategoryByType(prev => {
       if (prev[type] === category) {
@@ -50,8 +55,11 @@ const HomeScreen = ({ navigation }: any) => {
       return { ...prev, [type]: category };
     });
   };
-  const currentCategory = getCategoryForType(propertyType);
-  const propertyCategory = currentCategory;
+  const isDealView = propertyType === 'sale' || propertyType === 'rent' || propertyType === 'newBuildings';
+  const isAgencyView = propertyType === 'agencies';
+  const propertyCategory = isDealView ? getCategoryForType(propertyType) : 'all';
+  const propertyTypeForData: 'all' | DealTab = isDealView ? propertyType : 'all';
+  const showQuickFilters = propertyType === 'sale' || propertyType === 'rent';
   // Локальная база данных для вкладок sale/rent, чтобы не зависеть от глобального properties
   const [typeItems, setTypeItems] = useState<Property[]>([]);
   const { darkMode } = useTheme();
@@ -132,6 +140,33 @@ const HomeScreen = ({ navigation }: any) => {
   // Добавляем useRef для предотвращения повторных запросов
   const previousFavoritesLength = React.useRef(0);
   
+  const [agencies, setAgencies] = useState<AgencySummary[]>([]);
+  const [agenciesLoading, setAgenciesLoading] = useState(false);
+  const [agenciesError, setAgenciesError] = useState<string | null>(null);
+
+  const fetchAgencies = useCallback(async () => {
+    try {
+      setAgenciesLoading(true);
+      setAgenciesError(null);
+      const { data, error } = await supabase
+        .from('agency_profiles')
+        .select('id, name, logo_url, location, phone')
+        .order('name', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+
+      setAgencies((data as AgencySummary[]) ?? []);
+    } catch (error) {
+      Logger.error('Ошибка загрузки агентств:', error);
+      setAgencies([]);
+      setAgenciesError(t('agency.loadError', 'Не удалось загрузить агентства'));
+    } finally {
+      setAgenciesLoading(false);
+    }
+  }, [t]);
+
   useEffect(() => {
     // Обновляем только если количество избранных изменилось
     if (!favoritesLoading && favorites && previousFavoritesLength.current !== favorites.length) {
@@ -141,11 +176,20 @@ const HomeScreen = ({ navigation }: any) => {
     }
   }, [favorites, favoritesLoading, refreshProperties]);
 
+  useEffect(() => {
+    if (propertyType === 'agencies' && !agenciesLoading && agencies.length === 0) {
+      fetchAgencies();
+    }
+  }, [propertyType, agencies.length, agenciesLoading, fetchAgencies]);
+
   // Мемоизированная функция для фильтрации объектов недвижимости
   // использует вынесенную логику из filterHelpers.ts
   const applyFilters = useCallback(() => {
+    if (propertyType === 'agencies') {
+      return;
+    }
     // Базовый источник: вкладка "Все" -> global properties; вкладки sale/rent/newBuildings -> локальные typeItems
-    const base = propertyType === 'all' ? properties : typeItems;
+    const base = propertyTypeForData === 'all' ? properties : typeItems;
     if (base.length > 0) {
       // Не применяем пользовательские фильтры на Продажа/Аренда, пока их явно не применили
       const emptyFilters = { propertyTypes: [], price: [], rooms: [], areas: [], features: [] } as any;
@@ -158,13 +202,15 @@ const HomeScreen = ({ navigation }: any) => {
         ((activeFilters.price?.length ?? 0) > 0);
       // ВАЖНО: используем активные фильтры, если есть пользовательские фильтры, выбрана категория,
       // или фильтры были явно применены
+      const isRentView = propertyType === 'rent';
+      const isSaleLikeView = propertyType === 'sale' || propertyType === 'newBuildings';
       const shouldUseActive =
-        hasUserFilters || (propertyCategory !== 'all') ||
-        (propertyType === 'rent' ? filtersAppliedRent : (propertyType === 'sale' || propertyType === 'newBuildings') ? filtersAppliedSale : false);
+        hasUserFilters || (isDealView && propertyCategory !== 'all') ||
+        (isRentView ? filtersAppliedRent : isSaleLikeView ? filtersAppliedSale : false);
       const filtersForApply = shouldUseActive ? activeFilters : emptyFilters;
       const filtered = applyPropertyFilters(
         base,
-        propertyType,
+        propertyTypeForData,
         propertyCategory,
         selectedCity,
         filtersForApply
@@ -477,6 +523,9 @@ const HomeScreen = ({ navigation }: any) => {
   };
 
   const handleOpenFilterModal = () => {
+    if (isAgencyView) {
+      return;
+    }
     // Загружаем текущие фильтры в зависимости от выбранной вкладки
     if (propertyType === 'rent') {
       setTempFilters({...rentFilters});
@@ -499,6 +548,9 @@ const HomeScreen = ({ navigation }: any) => {
   };
 
   const handleApplyFilters = () => {
+    if (isAgencyView) {
+      return;
+    }
     // Закрываем модальное окно
     setFilterModalVisible(false);
 
@@ -524,12 +576,12 @@ const HomeScreen = ({ navigation }: any) => {
     }
 
     // Применяем фильтрацию c учётом выбранного города и баз данных вкладок
-    const base = propertyType === 'all' ? properties : typeItems;
+    const base = propertyTypeForData === 'all' ? properties : typeItems;
     if (base.length > 0) {
       // Используем общий helper, который учитывает selectedCity
       const filtered = applyPropertyFilters(
         base,
-        propertyType,
+        propertyTypeForData,
         categoryToApply,
         selectedCity,
         propertyType === 'sale' || propertyType === 'newBuildings' ? tempFilters : propertyType === 'rent' ? tempFilters : activeFilters
@@ -539,6 +591,9 @@ const HomeScreen = ({ navigation }: any) => {
   };
 
   const areFiltersApplied = () => {
+    if (isAgencyView) {
+      return false;
+    }
     // Проверяем, выбрана ли категория (отличная от 'all')
     if (propertyCategory !== 'all') {
       return true;
@@ -625,15 +680,18 @@ const HomeScreen = ({ navigation }: any) => {
   // RU: Восстанавливаем позицию скролла после догрузки; дожидаемся await loadMoreProperties для стабильности.
   // EN: Restore scroll offset after pagination; await loadMoreProperties for stability.
   const handleLoadMore = async () => {
+    if (isAgencyView) {
+      return;
+    }
     const now = Date.now();
     // Троттлинг быстрых повторных вызовов
     if (now - lastLoadMoreAtRef.current < LOAD_MORE_MIN_INTERVAL) {
       return;
     }
-    if (!loadingMore && getHasMore(propertyType)) {
+    if (!loadingMore && getHasMore(propertyTypeForData)) {
       const currentOffset = scrollOffsetRef.current;
       Logger.debug('Начало загрузки дополнительных объявлений: ', {
-        'Тип': propertyType,
+        'Тип': propertyTypeForData,
         'Текущая позиция прокрутки': currentOffset,
         'Количество объявлений': filteredProperties.length
       });
@@ -643,7 +701,7 @@ const HomeScreen = ({ navigation }: any) => {
       
       setLoadingMore(true);
       try {
-        await loadMoreProperties(propertyType);
+        await loadMoreProperties(propertyTypeForData);
         Logger.debug('Загрузка завершена: ', {
           'Новая позиция прокрутки': scrollOffsetRef.current,
           'Разница': scrollOffsetRef.current - currentOffset,
@@ -678,6 +736,8 @@ const HomeScreen = ({ navigation }: any) => {
       : isWeb
         ? styles.iconContainerSmallWeb
         : null;
+
+  const agencyColumns = isWeb ? (isDesktop ? 3 : isTabletWeb ? 2 : 1) : 1;
 
   const propertyTypeTextStyle = isDesktop
     ? styles.propertyTypeTextWeb
@@ -719,8 +779,8 @@ const HomeScreen = ({ navigation }: any) => {
         ? styles.webButtonIconSmall
         : null;
 
-  const uniformButtonIconSize = isDesktop ? 20 : isTabletWeb ? 18 : isWeb ? 18 : 16;
-  const quickFilterIconSize = isDesktop ? 26 : isTabletWeb ? 22 : isWeb ? 20 : 18;
+  const uniformButtonIconSize = isDesktop ? 18 : isTabletWeb ? 18 : isWeb ? 18 : 16;
+  const quickFilterIconSize = isDesktop ? 22 : isTabletWeb ? 22 : isWeb ? 20 : 18;
 
   const horizontalGutter = isDesktop ? 96 : isTabletWeb ? 48 : isWeb ? 16 : 16;
   const sharedSectionStyle = useMemo(() => {
@@ -735,8 +795,8 @@ const HomeScreen = ({ navigation }: any) => {
       paddingHorizontal: horizontalGutter,
     } satisfies ViewStyle;
   }, [isWeb, horizontalGutter]);
-  const sectionGapLarge = isWeb ? (isDesktop ? 32 : isTabletWeb ? 28 : 24) : 16;
-  const sectionGapMedium = isWeb ? (isDesktop ? 24 : isTabletWeb ? 20 : 18) : 12;
+  const sectionGapLarge = isWeb ? (isDesktop ? 14 : isTabletWeb ? 26 : 22) : 16;
+  const sectionGapMedium = isWeb ? (isDesktop ? 10 : isTabletWeb ? 18 : 16) : 12;
 
   const quickFilterOptions =
     propertyType === 'rent'
@@ -993,10 +1053,29 @@ const HomeScreen = ({ navigation }: any) => {
           </Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            { backgroundColor: theme.card, borderColor: theme.border },
+            propertyType === 'agencies' && [styles.activeFilter, { backgroundColor: theme.primary }]
+          ]}
+          onPress={() => {
+            setPropertyType('agencies');
+          }}
+        >
+          <Text style={[
+            styles.filterText,
+            { color: theme.text },
+            propertyType === 'agencies' && [styles.activeFilterText, { color: theme.headerText }]
+          ]}>
+            {t('common.agencies', 'Агентства')}
+          </Text>
+        </TouchableOpacity>
+
 
       </View>
       
-      {propertyType !== 'all' && (
+      {showQuickFilters && (
         <>
           <View
             style={[
@@ -1015,6 +1094,7 @@ const HomeScreen = ({ navigation }: any) => {
                 isWeb
                   ? {
                       paddingHorizontal: isDesktop ? 8 : isTabletWeb ? 6 : 4,
+                      paddingVertical: isDesktop ? 6 : undefined,
                       gap: isDesktop ? 16 : isTabletWeb ? 14 : 12,
                     }
                   : null,
@@ -1178,15 +1258,6 @@ const HomeScreen = ({ navigation }: any) => {
             </View>
           </View>
 
-          <FilterModal
-            visible={filterModalVisible}
-            filters={tempFilters}
-            onFiltersChange={handleTempFiltersChange}
-            onClose={handleCloseFilterModal}
-            onApply={handleApplyFilters}
-            propertyType={propertyType === 'sale' || propertyType === 'newBuildings' ? 'sale' : 'rent'}
-            darkMode={darkMode}
-          />
         </>
       )}
 
@@ -1195,10 +1266,114 @@ const HomeScreen = ({ navigation }: any) => {
         <View style={{ display: 'none' }} />
       )}
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
+      {showQuickFilters && (() => {
+        const filterModalType: 'sale' | 'rent' = propertyType === 'sale' ? 'sale' : 'rent';
+        return (
+          <FilterModal
+            visible={filterModalVisible}
+            filters={tempFilters}
+            onFiltersChange={handleTempFiltersChange}
+            onClose={handleCloseFilterModal}
+            onApply={handleApplyFilters}
+            propertyType={filterModalType}
+            darkMode={darkMode}
+          />
+        );
+      })()}
+
+      {isAgencyView ? (
+        agenciesLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+          </View>
+        ) : agenciesError ? (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: theme.secondary }]}>{agenciesError}</Text>
+          </View>
+        ) : agencies.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: theme.text }]}>{t('agency.emptyList', 'Агентства пока не добавлены')}</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={agencies}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View
+                style={[
+                  styles.agencyCardWrapper,
+                  isWeb
+                    ? (isDesktop
+                        ? styles.agencyCardWrapperDesktop
+                        : isTabletWeb
+                          ? styles.agencyCardWrapperTablet
+                          : styles.agencyCardWrapperSmallWeb)
+                    : styles.agencyCardWrapperNative
+                ]}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.agencyCard,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                    isWeb ? { cursor: 'pointer' } : null,
+                  ]}
+                  onPress={() => navigation.navigate('Agency', { agencyId: item.id })}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.agencyHeader}>
+                    <View style={[styles.agencyLogoWrapper, { backgroundColor: theme.primary + '1A' }]}>
+                      {item.logo_url ? (
+                        <Image source={{ uri: item.logo_url }} style={styles.agencyLogoImage} resizeMode="cover" />
+                      ) : (
+                        <Ionicons name="business-outline" size={22} color={theme.primary} />
+                      )}
+                    </View>
+                    <View style={styles.agencyTitleBlock}>
+                      <Text style={[styles.agencyName, { color: theme.text }]} numberOfLines={1}>
+                        {item.name || t('agency.unnamed', 'Агентство')}
+                      </Text>
+                      {item.location ? (
+                        <View style={styles.agencyMetaRow}>
+                          <Ionicons name="location-outline" size={14} color={theme.secondary} />
+                          <Text style={[styles.agencyMetaText, { color: theme.secondary }]} numberOfLines={1}>
+                            {item.location}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                  {item.phone ? (
+                    <View style={styles.agencyPhoneRow}>
+                      <Ionicons name="call-outline" size={16} color={theme.primary} />
+                      <Text style={[styles.agencyPhoneText, { color: theme.primary }]}>{item.phone}</Text>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+              </View>
+            )}
+            contentContainerStyle={[
+              styles.listContent,
+              styles.agencyListContent,
+              isWeb ? styles.webListContainer : null,
+              isWeb
+                ? (isDesktop
+                    ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' }
+                    : isTabletWeb
+                      ? { paddingHorizontal: 48, maxWidth: 1280, alignSelf: 'center' }
+                      : { paddingHorizontal: 12, maxWidth: 1280, alignSelf: 'center' })
+                : { paddingHorizontal: 16 },
+            ]}
+            numColumns={agencyColumns}
+            columnWrapperStyle={
+              agencyColumns > 1
+                ? (isWeb
+                    ? styles.webColumnWrapperFull
+                    : { gap: 16, justifyContent: 'flex-start' })
+                : undefined
+            }
+            showsVerticalScrollIndicator={false}
+          />
+        )
       ) : filteredProperties.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={[styles.emptyText, { color: theme.text }]}>{t('property.noPropertiesFound')}</Text>
@@ -1404,13 +1579,13 @@ const styles = StyleSheet.create({
     color: '#4B5563',
   },
   propertyTypeCardWeb: {
-    width: 148,
-    height: 108,
-    paddingVertical: 14,
+    width: 124,
+    height: 96,
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    marginRight: 16,
-    borderRadius: 16,
-    gap: 10,
+    marginRight: 12,
+    borderRadius: 14,
+    gap: 8,
   },
   propertyTypeCardTablet: {
     width: 132,
@@ -1431,10 +1606,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   iconContainerWeb: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginBottom: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginBottom: 8,
   },
   iconContainerTablet: {
     width: 44,
@@ -1449,9 +1624,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   propertyTypeTextWeb: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    lineHeight: 18,
+    lineHeight: 16,
   },
   propertyTypeTextTablet: {
     fontSize: 13,
@@ -1633,7 +1808,7 @@ const styles = StyleSheet.create({
     gap: 8, // Одинаковый отступ между кнопками
   },
   webFilterRowContainer: {
-    gap: 16,
+    gap: 12,
   },
   webFilterRowContainerTablet: {
     gap: 14,
@@ -1663,10 +1838,10 @@ const styles = StyleSheet.create({
     flexShrink: 1, // Позволяет тексту сжиматься
   },
   webUniformButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    minHeight: 52,
-    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minHeight: 46,
+    borderRadius: 14,
   },
   webUniformButtonTablet: {
     paddingVertical: 12,
@@ -1681,9 +1856,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   webUniformButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   webUniformButtonTextTablet: {
     fontSize: 15,
@@ -1699,13 +1874,88 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   webButtonIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   webButtonIconTablet: {
     marginRight: 8,
   },
   webButtonIconSmall: {
     marginRight: 6,
+  },
+  agencyCardWrapper: {
+    marginBottom: 16,
+  },
+  agencyCardWrapperDesktop: {
+    width: 360,
+  },
+  agencyCardWrapperTablet: {
+    width: 320,
+  },
+  agencyCardWrapperSmallWeb: {
+    width: '100%',
+  },
+  agencyCardWrapperNative: {
+    width: '100%',
+    paddingHorizontal: 0,
+  },
+  agencyCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 18,
+    gap: 12,
+  },
+  agencyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  agencyLogoWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  agencyLogoImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  agencyTitleBlock: {
+    flex: 1,
+  },
+  agencyName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  agencyMeta: {
+    fontSize: 13,
+  },
+  agencyMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  agencyMetaText: {
+    fontSize: 13,
+    flexShrink: 1,
+  },
+  agencyPhoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  agencyPhoneText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  agencyListContent: {
+    paddingVertical: 16,
+    rowGap: 24,
   },
 })
 

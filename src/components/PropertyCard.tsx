@@ -258,8 +258,10 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   infoContainerWeb: {
-    // Автовысота на вебе, чтобы убрать лишний «подбородок»
+    // Фиксируем минимальную высоту блока информации на вебе, чтобы все карточки были одинаковыми
     paddingBottom: 8,
+    minHeight: 148,
+    justifyContent: 'space-between',
   },
   price: {
     fontSize: 18,
@@ -292,6 +294,8 @@ const styles = StyleSheet.create({
   details: {
     flexDirection: 'row',
     marginTop: 4,
+    minHeight: 24,
+    alignItems: 'flex-end',
   },
   detailItem: {
     flexDirection: 'row',

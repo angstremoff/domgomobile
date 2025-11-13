@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
 import { Logger } from '../utils/logger';
+import PropertyCard from '../components/PropertyCard';
 
 interface Property {
   id: string;
@@ -23,11 +24,15 @@ interface Property {
 
 const FavoritesScreen = ({ navigation }: any) => {
   const { t } = useTranslation();
-  const { favorites, toggleFavorite, isLoading: favoritesLoading } = useFavorites();
+  const { favorites, isLoading: favoritesLoading } = useFavorites();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
+  const { width } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+  const isDesktop = isWeb && width >= 1024;
+  const isTabletWeb = isWeb && width >= 768 && width < 1024;
 
   useEffect(() => {
     fetchFavoriteProperties();
@@ -65,76 +70,23 @@ const FavoritesScreen = ({ navigation }: any) => {
   };
 
   const renderProperty = ({ item }: { item: Property }) => {
-    const imageUrl = item.images && item.images.length > 0 
-      ? item.images[0] 
-      : 'https://via.placeholder.com/300x200?text=Нет+фото';
-
     return (
-      <TouchableOpacity 
-        style={[styles.propertyCard, { backgroundColor: theme.card }]}
-        onPress={() => handlePropertyPress(item.id)}
+      <View
+        style={[
+          styles.cardWrapper,
+          isWeb && (isDesktop
+            ? { width: 360 }
+            : isTabletWeb
+              ? { width: 320 }
+              : { width: '100%' }),
+        ]}
       >
-        <View style={styles.propertyImageContainer}>
-          <Image 
-            source={{ uri: imageUrl }} 
-            style={styles.propertyImage}
-            resizeMode="cover"
-          />
-          <TouchableOpacity 
-            style={styles.favoriteButton}
-            onPress={() => toggleFavorite(item.id)}
-          >
-            <Ionicons name="heart" size={24} color="#E91E63" />
-          </TouchableOpacity>
-          <View style={[
-            styles.propertyTypeTag,
-            item.type === 'sale' ? styles.saleTag : styles.rentTag
-          ]}>
-            <Text style={styles.propertyTypeText}>
-              {item.type === 'sale' ? t('property.sale') : t('property.rent')}
-            </Text>
-          </View>
-          {item.property_type && (
-            <View style={[
-              styles.propertyKindTag,
-              item.property_type === 'apartment' && styles.apartmentTag,
-              item.property_type === 'house' && styles.houseTag,
-              item.property_type === 'commercial' && styles.commercialTag,
-              item.property_type === 'land' && styles.landTag
-            ]}>
-              <Text style={styles.propertyTypeText}>
-                {t(`property.${item.property_type}`)}
-              </Text>
-            </View>
-          )}
-        </View>
-        
-        <View style={styles.propertyInfo}>
-          <Text style={[styles.propertyPrice, { color: theme.primary }]}>
-            {item.price}€ {item.type === 'rent' ? `/ ${t('property.month')}` : ''}
-          </Text>
-          <Text style={[styles.propertyTitle, { color: theme.text }]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={[styles.propertyLocation, { color: theme.secondary }]}>
-            {item.location}
-          </Text>
-          <View style={styles.propertyDetails}>
-            {item.rooms && (
-              <View style={styles.propertyDetail}>
-                <Ionicons name="bed-outline" size={16} color={theme.secondary} />
-                <Text style={[styles.propertyDetailText, { color: theme.secondary }]}>{item.rooms}</Text>
-              </View>
-            )}
-            {item.area && (
-              <View style={styles.propertyDetail}>
-                <Ionicons name="square-outline" size={16} color={theme.secondary} />
-                <Text style={[styles.propertyDetailText, { color: theme.secondary }]}>{item.area} м²</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
+        <PropertyCard
+          property={item as any}
+          onPress={() => handlePropertyPress(item.id)}
+          darkMode={darkMode}
+        />
+      </View>
     );
   };
 
@@ -164,8 +116,24 @@ const FavoritesScreen = ({ navigation }: any) => {
           data={properties}
           renderItem={renderProperty}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[
+            styles.listContainer,
+            isWeb && {
+              paddingHorizontal: isDesktop ? 96 : isTabletWeb ? 48 : 16,
+              maxWidth: 1280,
+              alignSelf: 'center',
+            },
+          ]}
           showsVerticalScrollIndicator={false}
+          numColumns={isWeb ? (isDesktop ? 3 : isTabletWeb ? 2 : 1) : 1}
+          columnWrapperStyle={
+            isWeb && (isDesktop ? 3 : isTabletWeb ? 2 : 1) > 1
+              ? {
+                  gap: isDesktop ? 24 : 20,
+                  justifyContent: 'flex-start',
+                }
+              : undefined
+          }
         />
       )}
     </View>
@@ -206,99 +174,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  propertyCard: {
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  propertyImageContainer: {
-    position: 'relative',
-    height: 180,
-  },
-  propertyImage: {
-    width: '100%',
-    height: '100%',
-  },
-  favoriteButton: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    padding: 6,
-  },
-  propertyTypeTag: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    backgroundColor: 'rgba(26, 76, 161, 0.9)',
-    borderRadius: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  saleTag: {
-    backgroundColor: '#FF6B6B',
-  },
-  rentTag: {
-    backgroundColor: '#1E40AF',
-  },
-  propertyKindTag: {
-    position: 'absolute',
-    top: 48,
-    left: 12,
-    backgroundColor: 'rgba(26, 76, 161, 0.9)',
-    borderRadius: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  apartmentTag: {
-    backgroundColor: '#3B82F6',
-  },
-  houseTag: {
-    backgroundColor: '#8B9467',
-  },
-  commercialTag: {
-    backgroundColor: '#F59E0B',
-  },
-  landTag: {
-    backgroundColor: '#34C759',
-  },
-  propertyTypeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  propertyInfo: {
-    padding: 12,
-  },
-  propertyPrice: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  propertyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  propertyLocation: {
-    fontSize: 14,
-  },
-  propertyDetails: {
-    flexDirection: 'row',
-    marginTop: 4,
-  },
-  propertyDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  propertyDetailText: {
-    fontSize: 14,
-    marginLeft: 4,
+  cardWrapper: {
+    marginBottom: 24,
+    alignSelf: 'stretch',
   },
 });
 

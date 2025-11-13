@@ -27,6 +27,7 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
   const { t } = useTranslation();
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
+  const horizontalPadding = 96;
 
   const [agency, setAgency] = useState<AgencyProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -146,8 +147,12 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>        
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}
+      contentContainerStyle={[styles.scrollContent]}
+    >
+      <View style={[styles.desktopFrame, { paddingHorizontal: horizontalPadding }]}
+      >
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }, styles.cardWeb]}>        
         {agency.logo_url ? (
           <Image source={{ uri: agency.logo_url }} style={styles.logo} resizeMode="contain" />
         ) : null}
@@ -200,23 +205,25 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
         </View>
       </View>
 
-      {/* Список объявлений агентства */}
-      <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-        {propsLoading ? (
-          <ActivityIndicator size="small" color={theme.primary} />
-        ) : (
-          properties.map((p) => (
-            <OptimizedPropertyCard
-              key={p.id}
-              property={p}
-              darkMode={darkMode}
-              onPress={() => navigation.navigate('PropertyDetails', { propertyId: p.id })}
-            />
-          ))
-        )}
-        {!propsLoading && properties.length === 0 && (
-          <Text style={{ color: theme.secondary, textAlign: 'center', marginTop: 8 }}>{t('common.notFound')}</Text>
-        )}
+        {/* Список объявлений агентства */}
+        <View style={[styles.propertiesSection, styles.propertiesSectionWeb]}>
+          {propsLoading ? (
+            <ActivityIndicator size="small" color={theme.primary} />
+          ) : (
+            properties.map((p) => (
+              <View key={p.id} style={[styles.propertyItem, styles.propertyItemDesktop]}>
+                <OptimizedPropertyCard
+                  property={p}
+                  darkMode={darkMode}
+                  onPress={() => navigation.navigate('PropertyDetails', { propertyId: p.id })}
+                />
+              </View>
+            ))
+          )}
+          {!propsLoading && properties.length === 0 && (
+            <Text style={{ color: theme.secondary, textAlign: 'center', marginTop: 8 }}>{t('common.notFound')}</Text>
+          )}
+        </View>
       </View>
     </ScrollView>
   );
@@ -231,11 +238,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  scrollContent: {
+    paddingBottom: 24,
+  },
+  desktopFrame: {
+    width: '100%',
+    paddingBottom: 24,
+    maxWidth: 1280,
+    alignSelf: 'center',
+  },
   card: {
     margin: 16,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  cardWeb: {
+    marginHorizontal: 0,
+    marginTop: 24,
+    marginBottom: 24,
+    padding: 24,
+    borderRadius: 16,
   },
   logo: {
     width: '100%',
@@ -277,6 +300,19 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  propertiesSection: {
+    paddingBottom: 16,
+    gap: 16,
+  },
+  propertiesSectionWeb: {
+    gap: 24,
+  },
+  propertyItem: {
+    width: '100%',
+  },
+  propertyItemDesktop: {
+    marginBottom: 16,
   },
 });
 
