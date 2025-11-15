@@ -33,7 +33,7 @@ describe('parseDeepLink', () => {
   });
 
   it('parses GitHub pages handler', () => {
-    const url = 'https://angstremoff.github.io/domgomobile/deeplink-handler.html?id=555';
+    const url = 'https://angstremoff.github.io/domgomobile/property.html?id=555';
     const parsed = parseDeepLink(url);
     expect(parsed).toEqual({ type: 'property', propertyId: '555', raw: url });
   });

@@ -6,7 +6,6 @@ export type ParsedDeepLink =
 const PROPERTY_SCHEMES = [
   'domgomobile://property',
   'https://domgo.rs/property/',
-  'https://domgo-deep-links.windsurf.build',
   'https://angstremoff.github.io/domgomobile/deeplink-handler.html',
   'https://angstremoff.github.io/domgomobile/property.html',
 ];
@@ -73,7 +72,6 @@ export function parseDeepLink(url: string): ParsedDeepLink {
 
     // Netlify/GitHub pages handlers
     if (
-      url.includes('domgo-deep-links.windsurf.build') ||
       url.includes('angstremoff.github.io/domgomobile/deeplink-handler.html') ||
       url.includes('angstremoff.github.io/domgomobile/property.html')
     ) {
