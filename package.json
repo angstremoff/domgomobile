@@ -11,7 +11,12 @@
     "postinstall": "patch-package",
     "analyze-bundle": "node scripts/analyze-bundle-size.js",
     "clean-console": "node scripts/replace-console-logs.js",
-    "optimize": "npm dedupe && npm prune && node scripts/analyze-bundle-size.js"
+    "optimize": "npm dedupe && npm prune && node scripts/analyze-bundle-size.js",
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
@@ -58,7 +63,11 @@
     "postinstall-postinstall": "^2.1.0",
     "react-native-dotenv": "^3.4.11",
     "sharp": "^0.34.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "@typescript-eslint/eslint-plugin": "^8.15.0",
+    "@typescript-eslint/parser": "^8.15.0",
+    "eslint": "^9.14.0",
+    "vitest": "^1.6.0"
   },
   "private": true,
   "expo": {

@@ -14,12 +14,12 @@ import {
 import { Logger } from '../utils/logger';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import * as Updates from 'expo-updates';
+import Constants from 'expo-constants';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
 import CustomModal from '../components/CustomModal';
-// Импортируем новый сервис обновлений
-import { checkForUpdates, getCurrentVersion, showUpdateDialog } from '../services/UpdateService';
 // Импортируем новые сервисы для диагностики
 import AppVersionManager from '../services/AppVersionManager';
 import CacheDiagnostics from '../utils/CacheDiagnostics';
@@ -38,6 +38,7 @@ const SettingsScreen = ({ navigation }: any) => {
   const [modalMessage, setModalMessage] = useState('');
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [isDiagnosing, setIsDiagnosing] = useState(false);
+  const currentVersion = Constants.expoConfig?.version || '0.0.0';
 
   const handleLogout = async () => {
     try {
@@ -118,45 +119,31 @@ const SettingsScreen = ({ navigation }: any) => {
     );
   };
 
-  const checkForUpdatesFromGitHub = async () => {
+  const checkForUpdatesFromExpo = async () => {
     try {
       setIsCheckingUpdate(true);
-      
-      const currentVersion = getCurrentVersion();
-      Logger.debug('Начинаем проверку обновлений...');
-      Logger.debug('Текущая версия:', currentVersion);
-      
       showModal(
         t('settings.update.checking') || 'Проверка обновлений', 
-        `Проверка обновлений...\nТекущая версия: ${currentVersion}`
+        t('settings.update.checkingMessage') || 'Проверяем OTA обновления...'
       );
-      
-      // Проверка обновлений через GitHub API
-      const result = await checkForUpdates(
-        true, // Принудительная проверка
-        (latestVersion) => {
-          // Callback для доступного обновления
-          showUpdateDialog(latestVersion, t);
-        },
-        () => {
-          // Callback для случая, когда обновлений нет
-          showModal(
-            t('settings.update.upToDate') || 'Обновлений нет', 
-            t('settings.update.upToDateMessage') || 'У вас установлена последняя версия приложения.'
-          );
-        },
-        (error) => {
-          // Callback для обработки ошибок
-          showModal(
-            t('settings.update.error') || 'Ошибка', 
-            `Ошибка при проверке обновлений: ${error.message || error}`
-          );
-        }
-      );
-      
-      Logger.debug('Результат проверки:', result);
+
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        await Updates.fetchUpdateAsync();
+        showModal(
+          t('settings.update.updateAvailable') || 'Доступно обновление',
+          t('settings.update.updateMessage', { version: update.manifest?.version || '' }) ||
+            'Обновление загружено. Приложение будет перезапущено.'
+        );
+        await Updates.reloadAsync();
+      } else {
+        showModal(
+          t('settings.update.upToDate') || 'Обновлений нет', 
+          t('settings.update.upToDateMessage') || 'У вас установлена последняя версия приложения.'
+        );
+      }
     } catch (error: any) {
-      Logger.error('Ошибка при проверке обновлений:', error);
+      Logger.error('Ошибка при проверке обновлений (Expo):', error);
       showModal(
         t('settings.update.error') || 'Ошибка', 
         `Ошибка при проверке обновлений: ${error?.message || String(error)}`
@@ -234,24 +221,15 @@ const SettingsScreen = ({ navigation }: any) => {
             </TouchableOpacity>
           )}
           
-          {isWebDesktop ? (
-            <View style={styles.settingItem}>
-              <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.version')}</Text>
+          <TouchableOpacity style={styles.settingItem} onPress={checkForUpdatesFromExpo}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.version')}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text style={[styles.settingValue, { color: theme.secondary }]}>
-                {getCurrentVersion()}
+                {currentVersion}
               </Text>
+              {isCheckingUpdate && <ActivityIndicator size="small" color={theme.secondary} style={{ marginLeft: 8 }} />}
             </View>
-          ) : (
-            <TouchableOpacity style={styles.settingItem} onPress={checkForUpdatesFromGitHub}>
-              <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.version')}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={[styles.settingValue, { color: theme.secondary }]}>
-                  {getCurrentVersion()}
-                </Text>
-                {isCheckingUpdate && <ActivityIndicator size="small" color={theme.secondary} style={{ marginLeft: 8 }} />}
-              </View>
-            </TouchableOpacity>
-          )}
+          </TouchableOpacity>
           
           <TouchableOpacity style={styles.settingItem} onPress={() => showModal(t('settings.aboutApp.title'), t('settings.aboutApp.message'))}>
             <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.help')}</Text>
