@@ -6,7 +6,7 @@
 
 **Современное мобильное приложение для поиска и размещения объявлений о недвижимости**
 
-[![Version](https://img.shields.io/badge/version-0.9.2-blue.svg)](./package.json)
+[![Version](https://img.shields.io/badge/version-0.9.3-blue.svg)](./package.json)
 [![React Native](https://img.shields.io/badge/React%20Native-0.76.9-61DAFB.svg)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-52.0.47-000020.svg)](https://expo.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.2-3178C6.svg)](https://www.typescriptlang.org/)
@@ -57,7 +57,7 @@ npm install
 
 # Настройка окружения
 cp .env.example .env
-# Отредактируйте .env файл с вашими ключами
+# Отредактируйте .env файл с вашими ключами (Supabase, Google Maps, Sentry)
 
 # Запуск приложения
 npm start
@@ -147,7 +147,7 @@ npm start
 
 | Параметр | Значение |
 |----------|----------|
-| 📦 Версия | 0.9.2 |
+| 📦 Версия | 0.9.3 |
 | 🚀 Статус | В активной разработке |
 | 📱 Платформы | Android, iOS |
 | 🌍 Языки | Русский, Сербский |

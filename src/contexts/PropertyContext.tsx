@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { propertyService } from '../services/propertyService';
+import { getCacheTimestamp, propertyService } from '../services/propertyService';
 import { Alert } from 'react-native';
 import { supabase } from '../lib/supabaseClient';
 import { Logger } from '../utils/logger';
@@ -155,6 +155,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     rent: 0,
     newBuildings: 0
   });
+  // Следим за глобальной инвалидацией в propertyService
+  const cacheVersionRef = React.useRef<number>(getCacheTimestamp());
   
   // Минимальный интервал между запросами (в миллисекундах)
   const MIN_FETCH_INTERVAL = 300000; // 5 минут = 300 секунд = 300000 мс
@@ -162,8 +164,10 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   const fetchProperties = async () => {
     // Проверяем, идет ли уже запрос или был недавний запрос
     const now = Date.now();
+    const globalCacheVersion = getCacheTimestamp();
+    const fetchedAfterInvalidation = lastFetchTime.current.all >= globalCacheVersion;
     if (requestInProgress.current.all || 
-        (now - lastFetchTime.current.all < MIN_FETCH_INTERVAL && properties.length > 0)) {
+        ((now - lastFetchTime.current.all < MIN_FETCH_INTERVAL && properties.length > 0) && fetchedAfterInvalidation)) {
       Logger.debug('Запрос уже выполняется или данные были недавно загружены, пропускаем');
       return;
     }
@@ -182,6 +186,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         setTotalCount({ ...totalCount, all: (result as any).totalCount || 0, newBuildings: 0 });
         setCurrentPage({ ...currentPage, all: 1 });
         lastFetchTime.current.all = Date.now();
+        cacheVersionRef.current = getCacheTimestamp();
         
         Logger.debug(`Данные успешно загружены из Supabase: ${result.data.length} из ${(result as any).totalCount || 0}`);
       } else {
@@ -326,17 +331,21 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     // Обрабатываем случай, когда запрос уже выполняется
     if (requestInProgress.current[type === 'newBuildings' ? 'sale' : type]) {
       Logger.debug(`Запрос ${type} уже выполняется, возвращаем кэшированные данные`);
-      return typeCache.current[cacheKey];
+      const cached = typeCache.current[cacheKey];
+      const isFresh = cached?.timestamp >= getCacheTimestamp();
+      return isFresh ? cached : { data: [], totalCount: 0, hasMore: false };
     }
     
-    // Используем кэш, если запрос был недавно
+    // Используем кэш, если запрос был недавно и кэш свежее последней инвалидации в сервисе
     const now = Date.now();
     const cachedData = typeCache.current[cacheKey];
+    const globalCacheVersion = getCacheTimestamp();
     
     if (page === 1 && 
         cachedData && 
         cachedData.data && 
         cachedData.data.length > 0 && 
+        cachedData.timestamp >= globalCacheVersion &&
         now - cachedData.timestamp < MIN_FETCH_INTERVAL &&
         // Важно: если просим больший pageSize, чем в кэше, не используем кэш
         pageSize <= (cachedData.pageSize || cachedData.data.length)) {
@@ -365,6 +374,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
             timestamp: Date.now(),
             pageSize
           };
+          cacheVersionRef.current = globalCacheVersion;
         } else {
           setCurrentPage({ ...currentPage, [type]: page });
         }
@@ -372,6 +382,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         setHasMore({ ...hasMore, [type]: (result as any).hasMore || false });
         setTotalCount({ ...totalCount, [type]: (result as any).totalCount || 0 });
         lastFetchTime.current[type === 'newBuildings' ? 'sale' : type] = Date.now();
+        cacheVersionRef.current = getCacheTimestamp();
         
         return {
           data: result.data as Property[],
@@ -483,6 +494,19 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   const invalidateCache = useCallback(async () => {
     // Очищаем кэш в propertyService
     propertyService.clearCache();
+    // Сбрасываем локальные кэши и таймеры
+    cacheVersionRef.current = getCacheTimestamp();
+    lastFetchTime.current = {
+      all: 0,
+      sale: 0,
+      rent: 0,
+      newBuildings: 0
+    };
+    typeCache.current = {
+      sale: { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 },
+      rent: { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 },
+      newBuildings: { data: [], totalCount: 0, hasMore: false, timestamp: 0, pageSize: 0 }
+    };
     
     // Сбрасываем текущее состояние
     setCurrentPage({

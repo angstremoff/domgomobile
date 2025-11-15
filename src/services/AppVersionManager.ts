@@ -71,12 +71,11 @@ class AppVersionManager {
     Logger.debug(`🧹 ПРИНУДИТЕЛЬНАЯ ОЧИСТКА ВСЕХ КЭШЕЙ: ${reason}`);
     
     try {
-      // 1. Очищаем AsyncStorage полностью
-      Logger.debug('1. Очистка AsyncStorage...');
-      const allKeys = await AsyncStorage.getAllKeys();
-      Logger.debug(`Найдено ${allKeys.length} ключей в AsyncStorage`);
-      await AsyncStorage.clear();
-      Logger.debug('✅ AsyncStorage полностью очищен');
+      // 1. Точечно очищаем версионные артефакты, не трогая пользовательские токены/настройки
+      Logger.debug('1. Очистка версионных ключей в AsyncStorage...');
+      await AsyncStorage.removeItem(this.APP_VERSION_KEY);
+      await AsyncStorage.removeItem(this.FORCE_CLEAR_KEY);
+      Logger.debug('✅ Версионные ключи очищены');
       
       // 2. Очищаем FileSystem кэш
       Logger.debug('2. Очистка FileSystem кэша...');
@@ -255,14 +254,7 @@ class AppVersionManager {
         clearReason = `Update ID changed: ${storedVersionInfo.updateId} → ${currentUpdateId}`;
       }
       
-      // 4. Слишком долго не было очистки (больше 3 дней для большей частоты очистки)
-      else if (Date.now() - storedVersionInfo.lastClearTime > 3 * 24 * 60 * 60 * 1000) {
-        shouldClear = true;
-        const daysSinceLastClear = Math.round((Date.now() - storedVersionInfo.lastClearTime) / (24 * 60 * 60 * 1000));
-        clearReason = `Кэш слишком старый: ${daysSinceLastClear} дней с последней очистки`;
-      }
-      
-      // 5. Проверка на коррупцию данных (отсутствие обязательных полей)
+      // 4. Проверка на коррупцию данных (отсутствие обязательных полей)
       else if (!storedVersionInfo.appVersion || !storedVersionInfo.buildVersion || !storedVersionInfo.lastClearTime) {
         shouldClear = true;
         clearReason = `Коррупция данных о версии - отсутствуют обязательные поля`;

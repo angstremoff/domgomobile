@@ -13,6 +13,8 @@ import { propertyCache, apiCache } from '../utils/cacheManager';
 const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'] as const;
 type AllowedImageExtension = typeof ALLOWED_IMAGE_EXTENSIONS[number];
 const MAX_IMAGE_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
+const STORAGE_BUCKET = 'properties';
+const STORAGE_FOLDER = 'property-images';
 
 const ensureAllowedExtension = (ext: string): AllowedImageExtension => {
   const normalized = ext.toLowerCase();
@@ -39,12 +41,19 @@ const extractBase64Payload = (value: string) => {
 const lastDataUpdate = { timestamp: Date.now() };
 
 /**
+ * Возвращает таймштамп последней инвалидации кэша.
+ * Используется для синхронизации внешних кэшей (например, в PropertyContext).
+ */
+export const getCacheTimestamp = () => lastDataUpdate.timestamp;
+
+/**
  * Инвалидирует кэш для обновления данных после изменений
  * @param type - Тип кэша для инвалидации ('all', 'sale', 'rent') или undefined для всех типов
  * @param propertyId - ID объявления для инвалидации конкретного кэша деталей объявления
  */
 export const invalidateCache = (type?: 'all' | 'sale' | 'rent', propertyId?: string) => {
   Logger.debug(`Инвалидация кэша: ${type || 'все'} ${propertyId ? `для объявления ${propertyId}` : ''}`);
+  lastDataUpdate.timestamp = Date.now();
   
   // Если указан ID объявления, инвалидируем кэш через LRU Cache Manager
   if (propertyId) {
@@ -443,19 +452,27 @@ export const propertyService = {
       // Удаляем фотографии из хранилища, если они есть
       if (property.images && property.images.length > 0) {
         try {
-          // Получаем имена файлов из полных URL
+          // Получаем пути файлов с учетом папки (property-images/filename)
           const fileNames = property.images.map((imageUrl: string) => {
-            // Извлекаем имя файла из URL
-            const parts = imageUrl.split('/');
-            return parts[parts.length - 1];
+            // Извлекаем путь после бакета, если есть (public URL) или используем имя файла
+            try {
+              const url = new URL(imageUrl);
+              const segments = url.pathname.split('/').filter(Boolean);
+              const filename = segments[segments.length - 1];
+              return `${STORAGE_FOLDER}/${filename}`;
+            } catch {
+              const parts = imageUrl.split('/');
+              const filename = parts[parts.length - 1];
+              return `${STORAGE_FOLDER}/${filename}`;
+            }
           });
           
           Logger.debug('Удаление файлов из хранилища:', fileNames);
           
-          // Удаляем все файлы из бакета property-images
+          // Удаляем все файлы из бакета с изображениями
           const { error: storageError } = await supabase
             .storage
-            .from('property-images')
+            .from(STORAGE_BUCKET)
             .remove(fileNames);
           
           if (storageError) {
@@ -757,7 +774,7 @@ export const propertyService = {
       Logger.debug('Сжатое изображение URI:', compressed.uri);
 
       const uniqueFileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `property-images/${uniqueFileName}`;
+      const filePath = `${STORAGE_FOLDER}/${uniqueFileName}`;
       Logger.debug('Путь:', filePath);
 
       // Читаем файл как base64 вместо использования fetch
@@ -776,7 +793,7 @@ export const propertyService = {
 
       // Загружаем в Supabase Storage
       const { error } = await supabase.storage
-        .from('properties')
+        .from(STORAGE_BUCKET)
         .upload(filePath, arrayBuffer, {
           contentType: mimeType,
           upsert: true
@@ -788,7 +805,7 @@ export const propertyService = {
       }
       
       const { data } = supabase.storage
-        .from('properties')
+        .from(STORAGE_BUCKET)
         .getPublicUrl(filePath);
       
       Logger.debug('Успешно загружено, URL:', data.publicUrl);
@@ -808,7 +825,7 @@ export const propertyService = {
       // Создаем уникальное имя файла
       const normalizedExt = ensureAllowedExtension(fileExt);
       const uniqueFileName = `${Math.random().toString(36).substring(2)}.${normalizedExt}`;
-      const filePath = `property-images/${uniqueFileName}`;
+      const filePath = `${STORAGE_FOLDER}/${uniqueFileName}`;
 
       Logger.debug('Загрузка изображения base64...');
       Logger.debug('Путь:', filePath);
@@ -832,7 +849,7 @@ export const propertyService = {
 
         // Загружаем в Supabase Storage
         const { error } = await supabase.storage
-          .from('properties')
+          .from(STORAGE_BUCKET)
           .upload(filePath, decoded, {
             contentType: `image/${normalizedExt === 'jpg' ? 'jpeg' : normalizedExt}`,
             upsert: true
@@ -845,7 +862,7 @@ export const propertyService = {
         
         // Получаем публичный URL
         const { data } = supabase.storage
-          .from('properties')
+          .from(STORAGE_BUCKET)
           .getPublicUrl(filePath);
         
         Logger.debug('Успешно загружено, URL:', data.publicUrl);
@@ -869,7 +886,7 @@ export const propertyService = {
       // Генерируем имя файла как в веб-версии
       const fileExt = ensureAllowedExtension(fileName.split('.').pop() || '');
       const uniqueFileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `property-images/${uniqueFileName}`;
+      const filePath = `${STORAGE_FOLDER}/${uniqueFileName}`;
 
       Logger.debug('Загрузка через простой метод...');
       Logger.debug('Путь:', filePath);
@@ -885,7 +902,7 @@ export const propertyService = {
 
       // Загружаем файл напрямую
       const { error } = await supabase.storage
-        .from('properties')
+        .from(STORAGE_BUCKET)
         .upload(filePath, decoded, {
           contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
           upsert: true
@@ -898,7 +915,7 @@ export const propertyService = {
       
       // Получаем публичный URL
       const { data } = supabase.storage
-        .from('properties')
+        .from(STORAGE_BUCKET)
         .getPublicUrl(filePath);
       
       Logger.debug('Успешно загружено, URL:', data.publicUrl);
