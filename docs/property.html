@@ -53,7 +53,7 @@
 </head>
 <body>
   <div class="container">
-    <img src="https://domgo.info/logo192.png" alt="DomGo Logo" class="logo">
+    <img src="https://domgo.rs/favicon.ico" alt="DomGo Logo" class="logo">
     <div id="opening">
       <h1>Открываем объявление...</h1>
       <p>Пытаемся открыть объявление в приложении DomGo</p>
@@ -81,7 +81,7 @@
 
     const appScheme = `domgomobile://property/${propertyId}`;
     const androidIntent = `intent://property/${propertyId}#Intent;scheme=domgomobile;package=com.anonymous.DomGoMobile;end`;
-    const webUrl = `https://domgo.rs/property/${propertyId}`;
+    const webUrl = `https://domgo.rs/?propertyId=${propertyId}`;
 
     document.getElementById('web-link').href = webUrl;
 
@@ -101,25 +101,32 @@
     }
 
     const isAndroid = /android/i.test(navigator.userAgent);
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isMobile = isAndroid || isIOS;
 
-    // Попытка открыть приложение
-    setTimeout(() => {
-      if (isAndroid) {
-        window.location.href = androidIntent;
-      } else {
-        window.location.href = appScheme;
-      }
-    }, 400);
+    // Desktop: отправляем сразу на веб и не показываем скачивание
+    if (!isMobile) {
+      window.location.replace(webUrl);
+    } else {
+      // Попытка открыть приложение
+      setTimeout(() => {
+        if (isAndroid) {
+          window.location.href = androidIntent;
+        } else {
+          window.location.href = appScheme;
+        }
+      }, 400);
+    }
 
     // Если приложение не открылось, показываем CTA
     setTimeout(async () => {
+      if (!isMobile) return;
       const isStillHere = document.hasFocus();
-      if (isStillHere) {
-        document.getElementById('opening').style.display = 'none';
-        document.getElementById('install-prompt').style.display = 'block';
-        const downloadUrl = await getLatestRelease();
-        document.getElementById('download-link').href = downloadUrl;
-      }
+      if (!isStillHere) return;
+      document.getElementById('opening').style.display = 'none';
+      document.getElementById('install-prompt').style.display = 'block';
+      const downloadUrl = await getLatestRelease();
+      document.getElementById('download-link').href = downloadUrl;
     }, 2200);
   </script>
 </body>
