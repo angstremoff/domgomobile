@@ -183,6 +183,11 @@ const HomeScreen = ({ navigation }: any) => {
     }
   }, [propertyType, agencies.length, agenciesLoading, fetchAgencies]);
 
+  // Мемоизированный список отфильтрованных объявлений для оптимизации
+  const memoizedFilteredProperties = useMemo(() => {
+    return filteredProperties;
+  }, [filteredProperties]);
+
   // Мемоизированная функция для фильтрации объектов недвижимости
   // использует вынесенную логику из filterHelpers.ts
   const applyFilters = useCallback(() => {
@@ -878,14 +883,7 @@ const HomeScreen = ({ navigation }: any) => {
               : { paddingHorizontal: 12 })
         : null,
     ]}>
-      <View
-        style={[
-          styles.filterContainer,
-          sharedSectionStyle,
-          isWeb ? { marginHorizontal: 0, marginBottom: sectionGapLarge } : null,
-          isWeb ? styles.filterContainerWeb : null,
-        ]}
-      >
+      <View style={styles.filterContainer}>
         <TouchableOpacity
           style={[
             styles.filterButton, 
@@ -936,8 +934,16 @@ const HomeScreen = ({ navigation }: any) => {
           onPress={async () => {
             setPropertyType('sale');
             setCategoryForType('sale', 'all');
-            // Загружаем фильтры для вкладки "Продажа"
-            setActiveFilters(saleFilters);
+            // Сбрасываем фильтры при переключении на вкладку "Продажа"
+            const resetFilters = {
+              propertyTypes: [],
+              price: [0, 500000],
+              rooms: [],
+              areas: [],
+              features: []
+            };
+            setSaleFilters(resetFilters);
+            setActiveFilters(resetFilters);
             // Фильтры не считаются применёнными до явного действия пользователя
             setFiltersAppliedSale(false);
             
@@ -983,8 +989,16 @@ const HomeScreen = ({ navigation }: any) => {
           onPress={async () => {
             setPropertyType('rent');
             setCategoryForType('rent', 'all');
-            // Загружаем фильтры для вкладки "Аренда"
-            setActiveFilters(rentFilters);
+            // Сбрасываем фильтры при переключении на вкладку "Аренда"
+            const resetFilters = {
+              propertyTypes: [],
+              price: [0, 3000],
+              rooms: [],
+              areas: [],
+              features: []
+            };
+            setRentFilters(resetFilters);
+            setActiveFilters(resetFilters);
             // Фильтры не считаются применёнными до явного действия пользователя
             setFiltersAppliedRent(false);
             
@@ -1030,8 +1044,16 @@ const HomeScreen = ({ navigation }: any) => {
           onPress={async () => {
             setPropertyType('newBuildings');
             setCategoryForType('newBuildings', 'all');
-            // Для новостроек пока дублируем функционал продажи
-            setActiveFilters(saleFilters);
+            // Сбрасываем фильтры при переключении на вкладку "Новостройки"
+            const resetFilters = {
+              propertyTypes: [],
+              price: [0, 500000],
+              rooms: [],
+              areas: [],
+              features: []
+            };
+            setSaleFilters(resetFilters);
+            setActiveFilters(resetFilters);
             setFiltersAppliedSale(false);
             
             try {
@@ -1083,8 +1105,6 @@ const HomeScreen = ({ navigation }: any) => {
             {t('common.agencies', 'Агентства')}
           </Text>
         </TouchableOpacity>
-
-
       </View>
       
       {showFilterActions && (
@@ -1395,7 +1415,7 @@ const HomeScreen = ({ navigation }: any) => {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={filteredProperties}
+          data={memoizedFilteredProperties}
           onContentSizeChange={() => {
             Logger.debug('Изменился размер списка: ', {
               'Количество объявлений в FlatList': filteredProperties.length,
@@ -1413,10 +1433,11 @@ const HomeScreen = ({ navigation }: any) => {
             }
           }}
           keyExtractor={(item) => item.id}
-          initialNumToRender={8}
-          maxToRenderPerBatch={5}
-          windowSize={11}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={21}
           updateCellsBatchingPeriod={50}
+          removeClippedSubviews={Platform.OS === 'android'}
           onScroll={(e) => {
             // Сохраняем позицию прокрутки
             scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
@@ -1654,18 +1675,20 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
-    marginHorizontal: 16,
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
     marginBottom: 4,
+    marginTop: 4,
   },
   filterContainerWeb: {
     columnGap: 12,
     rowGap: 0,
   },
   filterButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     marginRight: 6,
+    marginBottom: 2,
     borderRadius: 40,
     backgroundColor: 'white',
     borderWidth: 1,
@@ -1680,7 +1703,7 @@ const styles = StyleSheet.create({
     borderRadius: 48,
   },
   filterText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#4B5563',
     textAlign: 'center',
   },
@@ -1849,14 +1872,14 @@ const styles = StyleSheet.create({
   uniformButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     backgroundColor: 'white',
     flex: 1, // Все кнопки одинаковой ширины
-    minHeight: 38, // Уменьшенная высота
+    minHeight: 30,
   },
   uniformButtonText: {
     fontSize: 10,
