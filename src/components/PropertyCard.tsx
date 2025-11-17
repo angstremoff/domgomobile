@@ -58,7 +58,11 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
         Platform.OS === 'web' ? styles.imageContainerWeb : styles.imageContainerMobile,
       ]}>
         <Image
-          source={{ uri: property.images?.[0] || 'https://via.placeholder.com/300x200' }}
+          source={{ 
+            uri: property.images?.[0] || 'https://via.placeholder.com/300x200',
+            cache: 'force-cache'
+          }}
+          defaultSource={require('../../assets/placeholder.png')}
           style={[
             styles.image,
             Platform.OS === 'web' && styles.imageWeb,
@@ -66,6 +70,9 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
             isInactive && styles.imageInactive 
           ]}
           resizeMode="cover"
+          onError={(error) => {
+            Logger.error('Ошибка загрузки изображения:', property.id, error.nativeEvent.error);
+          }}
         />
         {isInactive && (
           <View style={styles.statusOverlay}>

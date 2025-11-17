@@ -12,6 +12,7 @@ import AlertProvider from './src/components/AlertProvider';
 import AlertInitializer from './src/components/AlertInitializer';
 import AppNavigator from './src/navigation/AppNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import UpdateNotification from './src/components/UpdateNotification';
 import { logError } from './src/utils/sentry';
 import { Logger } from './src/utils/logger';
 import { supabase } from './src/lib/supabaseClient';
@@ -130,6 +131,10 @@ export default function App() {
   // Функция для проверки и установки обновлений (не запускаем на Web)
   React.useEffect(() => {
     if (Platform.OS === 'web') return; // web: проверка обновлений отключена
+    
+    // Храним ID таймера для очистки
+    let retryTimeoutId: NodeJS.Timeout | null = null;
+    
     // Создаем проверку обновлений в самом начале работы приложения
     async function checkForUpdates() {
       try {
@@ -157,8 +162,8 @@ export default function App() {
           } catch (error) {
             Logger.error('Ошибка при загрузке обновления:', error);
             
-            // Повторная попытка через 5 секунд
-            setTimeout(async () => {
+            // Повторная попытка через 5 секунд с cleanup
+            retryTimeoutId = setTimeout(async () => {
               try {
                 Logger.debug('Повторная попытка загрузки обновления...');
                 await Updates.fetchUpdateAsync();
@@ -184,9 +189,12 @@ export default function App() {
       checkForUpdates();
     }, 60 * 60 * 1000); // Проверяем каждый час
     
-    // Очищаем интервал при уничтожении компонента
+    // Очищаем интервал и таймер при уничтожении компонента
     return () => {
       clearInterval(intervalId);
+      if (retryTimeoutId) {
+        clearTimeout(retryTimeoutId);
+      }
     };
   }, []);
 
@@ -249,6 +257,7 @@ export default function App() {
               <FavoritesProvider>
                 <PropertyProvider>
                   <AppNavigator />
+                  <UpdateNotification />
                   <StatusBar style="auto" />
                 </PropertyProvider>
               </FavoritesProvider>

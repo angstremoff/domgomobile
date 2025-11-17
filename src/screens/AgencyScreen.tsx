@@ -132,7 +132,7 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
   }, [agencyId, agency?.id]);
 
   // Нормализуем возможные альтернативные имена полей из БД (всегда в скоупе)
-  const websiteNorm = agency?.website || (agency as any)?.site || (agency as any)?.site_url || null;
+  const telegramNorm = agency?.website || (agency as any)?.site || (agency as any)?.telegram || (agency as any)?.telegram_url || null;
   const instagramNorm = agency?.instagram || (agency as any)?.instagram_url || null;
   const facebookNorm = agency?.facebook || (agency as any)?.facebook_url || null;
   const emailNorm = agency?.email || (agency as any)?.mail || (agency as any)?.contact_email || null;
@@ -193,9 +193,14 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
             </TouchableOpacity>
           ) : null}
 
-          {websiteNorm ? (
-            <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => Linking.openURL(sanitizeUrl(websiteNorm))}>
-              <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.website')}</Text>
+          {telegramNorm ? (
+            <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => {
+              const url = telegramNorm.startsWith('@') || telegramNorm.startsWith('https://t.me/') 
+                ? (telegramNorm.startsWith('@') ? `https://t.me/${telegramNorm.slice(1)}` : telegramNorm)
+                : `https://t.me/${telegramNorm}`;
+              Linking.openURL(url);
+            }}>
+              <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.telegram', 'Telegram')}</Text>
             </TouchableOpacity>
           ) : null}
 
@@ -311,16 +316,16 @@ const styles = StyleSheet.create({
   },
   propertiesSection: {
     paddingBottom: 16,
-    gap: 16,
+    gap: 8,
   },
   propertiesSectionWeb: {
-    gap: 24,
+    gap: 12,
   },
   propertyItem: {
     width: '100%',
   },
   propertyItemDesktop: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
 });
 
