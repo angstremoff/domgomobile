@@ -16,8 +16,10 @@
 - Текущая версия 0.9.8 (`package.json`, `app.config.js`). Стартовая точка — `index.ts`, который инициализирует Sentry и регистрирует `App.tsx`.
 
 ### OTA и обновление версии (чтобы не забыть)
-- Канал OTA по умолчанию: `production` (задан в `app.config.js -> updates.channel`). Старые билды без канала слушают `default`, поэтому при критических обновлениях публикуем и в `production`, и в `default`.
-- RuntimeVersion: `1.0.4`. OTA работает только если runtimeVersion совпадает с билдом. При нативных изменениях — повышаем runtimeVersion и пересобираем apk/ipa.
+- Канал OTA по умолчанию: `default` (задан в `app.config.js -> updates.channel`). Старые билды без канала тоже слушают `default`; при необходимости продублировать публикацию в `production`.
+- RuntimeVersion: `1.0.4`. OTA работает только если runtimeVersion совпадает с билдом.
+  - Каждый раз проверять нативные ресурсы: Android `android/app/src/main/res/values/strings.xml` (`expo_runtime_version`), iOS `ios/DomGoMobile/Supporting/Expo.plist` (`EXUpdatesRuntimeVersion`).
+  - При нативных изменениях — повышаем runtimeVersion (в `app.config.js`, strings.xml, Expo.plist) и пересобираем apk/ipa.
 - Публикация OTA: `npx eas update --branch production --platform all --non-interactive --message "..."` (и продублировать на `default` при необходимости). Workflow `.github/workflows/eas-update.yml` публикует в production.
 - Android-манифест: `EXPO_UPDATES_CHECK_ON_LAUNCH=ALWAYS`, `EXPO_UPDATES_LAUNCH_WAIT_MS=0`, `EXPO_UPDATE_URL=https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5` — проверка идёт на каждом запуске.
 - UI проверки: `UpdateNotification` в `App.tsx` сразу дергает `Updates.checkForUpdateAsync()` и показывает модал; если уведомление не приходит — или канал другой, или runtimeVersion не совпадает.

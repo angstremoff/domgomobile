@@ -20,7 +20,7 @@ export default ({ config }) => ({
       enabled: true,
       fallbackToCacheTimeout: 0,
       url: 'https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5',
-      channel: 'production'
+      channel: 'default'
     },
     splash: {
       image: './assets/splash-icon.png',
