@@ -15,6 +15,6 @@
     <key>EXUpdatesLogLevel</key>
     <string>debug</string>
     <key>EXUpdatesChannel</key>
-    <string>default</string>
+    <string>production</string>
   </dict>
 </plist>

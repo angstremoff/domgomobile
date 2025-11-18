@@ -55,23 +55,16 @@
 - GitHub: CLI `gh` уже авторизован под `angstremoff` (scopes `repo`, `workflow`), поэтому можно грузить артефакты без переменных окружения. Для перезаливки стабильного APK в релиз используем `gh release upload v<версия> releases/domgo.apk --clobber`; версионированный файл — `releases/DomGo-<версия>.apk`. Если `gh auth status` неактивен, нужен `GITHUB_TOKEN` со scope `repo`.
 
 ## OTA-обновления (Expo Updates)
-- **Автоматическая публикация:** GitHub Actions workflow (`.github/workflows/eas-update.yml`) автоматически публикует OTA-обновления при каждом пуше в ветку `main`.
-- **Компонент UpdateNotification:** (`src/components/UpdateNotification.tsx`) проверяет наличие обновлений при запуске приложения, показывает уведомление внизу экрана с кнопкой "Обновить".
-- **Конфигурация:** 
-  - `app.config.js`: `updates.enabled = true`, `updates.url` указывает на Expo Updates сервер
-  - `runtimeVersion: '1.0.4'` - версия нативного кода (меняется только при изменении нативных зависимостей)
-  - Версия приложения берется из `package.json` и отображается в настройках
-- **GitHub Secrets:** `EXPO_TOKEN` добавлен в репозиторий для автоматической публикации
-- **Процесс обновления:**
-  1. Разработчик пушит изменения в `main`
-  2. GitHub Actions собирает JS-бандл и публикует в Expo
-  3. При следующем запуске приложение проверяет обновления
-  4. Пользователь видит уведомление и может обновиться одним кликом
-  5. Приложение перезапускается с новой версией
-- **Важно:** OTA-обновления работают только для JS-кода. При изменении нативных зависимостей нужно:
-  1. Увеличить `runtimeVersion` в `app.config.js`
-  2. Пересобрать и распространить новый APK
-  3. Опубликовать OTA-обновление для новой runtimeVersion
+- **Автоматическая публикация:** GitHub Actions workflow (`.github/workflows/eas-update.yml`) автоматически публикует OTA при пуше в `main`.
+- **Компонент UpdateNotification:** (`src/components/UpdateNotification.tsx`) проверяет обновления при запуске и показывает модал; в настройках есть кнопка “Проверить OTA/Логи” (канал/runtime/updateUrl/ошибка выводятся в UI).
+- **Каналы:** по умолчанию `production` (`app.config.js -> updates.channel`, `EXUpdatesChannel`). Если нужно поддерживать старые билды без канала — публиковать дубли в `default`.
+- **Runtime:** `1.0.4`. OTA работает только при совпадении runtime.
+  - Проверять нативные ресурсы: Android `android/app/src/main/res/values/strings.xml` (`expo_runtime_version`, `EXPO_UPDATES_RELEASE_CHANNEL=production`), iOS `ios/DomGoMobile/Supporting/Expo.plist` (`EXUpdatesRuntimeVersion`, `EXUpdatesChannel=production`, `EXUpdatesLogLevel=debug`).
+  - При нативных изменениях поднимать runtimeVersion в `app.config.js`, strings.xml, Expo.plist и пересобирать apk/ipa.
+  - Следить за `.env -> APP_VERSION` (иначе в apk попадёт старый `app.config`).
+- **Публикация OTA:** `npx eas update --branch production --platform all --non-interactive --message "..."` и при необходимости дублировать на `default`. URL: `https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5`.
+- **Манифест/конфиг в apk:** проверять `assets/app.config` и `assets/app.manifest` (url, channel, runtimeVersion).
+- **Важно:** OTA только для JS. При изменении нативных зависимостей — повышать runtime, инкрементить `versionCode`, собирать новый apk/ipa и публиковать OTA под новый runtime.
 
 ## Правила разработки
 - Русский язык обязателен в общении, коде, логах и документации; соблюдать `typescript_safety`, `ui_consistency`, `performance_optimization`, `database_consistency` из `RULES.md`.

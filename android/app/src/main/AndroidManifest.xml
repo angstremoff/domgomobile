@@ -19,6 +19,7 @@
     <meta-data android:name="expo.modules.updates.LOG_LEVEL" android:value="DEBUG"/>
     <meta-data android:name="expo.modules.updates.ENABLED" android:value="true"/>
     <meta-data android:name="expo.modules.updates.EXPO_RUNTIME_VERSION" android:value="@string/expo_runtime_version"/>
+    <meta-data android:name="expo.modules.updates.EXPO_UPDATES_RELEASE_CHANNEL" android:value="production"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATE_URL" android:value="https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5"/>
