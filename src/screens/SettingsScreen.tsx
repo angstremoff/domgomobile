@@ -80,7 +80,7 @@ const SettingsScreen = ({ navigation }: any) => {
       const channel =
         (Updates as any).channel ||
         (Updates.manifest as any)?.extra?.expoClient?.channel ||
-        'default';
+        'production';
       const updateUrl = (Updates.manifest as any)?.extra?.expoClient?.updateUrl;
 
       setOtaLog(`Канал: ${channel}\nRuntime: ${runtimeVersion}\nUpdateUrl: ${updateUrl}\nUpdateId: ${updateId}\nПроверяем...`);

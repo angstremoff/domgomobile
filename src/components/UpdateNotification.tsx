@@ -26,7 +26,7 @@ const UpdateNotification = () => {
       const channel =
         (Updates as any).channel ||
         (Updates.manifest as any)?.extra?.expoClient?.channel ||
-        'default';
+        'production';
       const updateUrl = (Updates.manifest as any)?.extra?.expoClient?.updateUrl;
       Logger.info(`[OTA][${tag}] runtimeVersion=${runtimeVersion}, channel=${channel}, updateId=${updateId}, updateUrl=${updateUrl}`);
     } catch (error) {
