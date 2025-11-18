@@ -22,12 +22,12 @@ npx eas-cli build:configure
 
 #### Для production (основной канал):
 ```bash
-npx eas-cli update --branch production --message "Описание обновления"
+npx eas-cli update --branch production --platform all --non-interactive --message "Описание обновления"
 ```
 
 #### Для preview (тестовый канал):
 ```bash
-npx eas-cli update --branch preview --message "Тестовое обновление"
+npx eas-cli update --branch preview --platform all --non-interactive --message "Тестовое обновление"
 ```
 
 ### 4. Проверить статус обновления
@@ -60,12 +60,12 @@ npx eas-cli update:list --branch production
 - **development** - для разработки
 
 ### Версия приложения
-В `package.json` указана версия `0.9.4`
+В `package.json` указана версия `0.9.6`
 - Это версия кода, которую видят пользователи
 - При публикации обновления увеличивайте версию:
   ```bash
-  # В package.json измените version на 0.9.5
-  npx eas-cli update --branch production --message "Update to 0.9.5"
+  # В package.json измените version на 0.9.7
+  npx eas-cli update --branch production --platform all --non-interactive --message "Update to 0.9.7"
   ```
 
 ## Быстрый старт
@@ -76,7 +76,7 @@ npx eas-cli update:list --branch production
 npx eas-cli login
 
 # 2. Опубликовать обновление
-npx eas-cli update --branch production --message "Первое OTA обновление: улучшения UI и исправления"
+npx eas-cli update --branch production --platform all --non-interactive --message "Первое OTA обновление: улучшения UI и исправления"
 
 # 3. Проверить
 npx eas-cli update:list --branch production
@@ -85,14 +85,14 @@ npx eas-cli update:list --branch production
 ### Последующие обновления:
 ```bash
 # 1. Внести изменения в код
-# 2. Увеличить версию в package.json (0.9.4 -> 0.9.5)
+# 2. Увеличить версию в package.json (0.9.6 -> 0.9.7)
 # 3. Закоммитить изменения
 git add .
-git commit -m "Update to 0.9.5"
+git commit -m "Update to 0.9.6"
 git push
 
 # 4. Опубликовать OTA-обновление
-npx eas-cli update --branch production --message "Update to 0.9.5: описание изменений"
+npx eas-cli update --branch production --platform all --non-interactive --message "Update to 0.9.6: описание изменений"
 ```
 
 ## Проверка обновлений

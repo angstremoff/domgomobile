@@ -88,7 +88,7 @@ git push origin main
 
 Автоматически генерируется:
 ```
-Auto-update from GitHub: v0.9.4
+Auto-update from GitHub: v0.9.6
 ```
 
 Если хотите кастомизировать, измените в `.github/workflows/eas-update.yml`:

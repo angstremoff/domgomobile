@@ -43,5 +43,5 @@ jobs:
         working-directory: .
 
       - name: Publish update
-        run: eas update --auto --branch production --message "Auto-update from GitHub: v${{ steps.package-version.outputs.version }}"
+        run: eas update --branch production --platform all --non-interactive --message "Auto-update from GitHub: v${{ steps.package-version.outputs.version }}"
         working-directory: .

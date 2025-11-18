@@ -12,7 +12,16 @@
 
 ## Общее представление
 - DomGoMobile — кросс‑платформенное приложение для поиска и размещения недвижимости (Android/iOS) на React Native 0.76.9 + Expo ~52.0.47 + TypeScript 5.9.2.
-- Текущая версия 0.9.3 (`package.json`, `app.json`). Стартовая точка — `index.ts`, который инициализирует Sentry и регистрирует `App.tsx`.
+- Единая кодовая база обслуживает 4 платформы: web mobile, web desktop, Android и iOS. На отдельных платформах меняются только верстка/доступность элементов; бизнес-логика и общий код остаются общими для всех платформ.
+- Текущая версия 0.9.6 (`package.json`, `app.config.js`). Стартовая точка — `index.ts`, который инициализирует Sentry и регистрирует `App.tsx`.
+
+### Обновление версии (чтобы не забыть)
+- Прямые источники версии: `package.json` (`version`), `app.config.js` (`expo.version`), `android/app/build.gradle` (`versionName`, `versionCode` + комментарии), `package-lock.json` (корень и `packages[""]`).
+- Fallbackы в коде: `src/services/UpdateService.ts` и `src/services/AppVersionManager.ts` (резервные строки версии).
+- Документация/отчеты/бейджи: `README.md` (бейдж + таблица версии), `WIKI.md` (таблица версии), `FINAL_SUMMARY.md`, `OPTIMIZATION_REPORT.md`, `FIXES_REPORT.md`, `CODE_REVIEW_REPORT.md`, `FULL_OPTIMIZATION_COMPLETE.md`, `TESTING_CHECKLIST.md`, `CHANGELOG_*` (новая секция + номер в заголовке), `GITHUB_ACTIONS_SETUP.md` (строка Auto-update), `EXPO_UPDATES_SETUP.md` (примеры), `AUDIT_REPORT.md`.
+- Если меняется версия с нативными правками — увеличить `runtimeVersion` в `app.config.js` и пересобирать нативные артефакты; без нативных изменений runtimeVersion не трогаем.
+- `versionCode` в Gradle всегда инкрементировать при новом релизе.
+- Скрипт `update-version.sh` автоматизирует обновления, но рассчитывает на наличие `app.json`; если его нет — править вручную по списку выше.
 - `App.tsx` оборачивает навигацию в `AuthProvider`, `LanguageProvider`, `ThemeProvider`, `FavoritesProvider`, `PropertyProvider`, `AlertProvider` и `ErrorBoundary`, обеспечивает deep link-и для подтверждения email и переходов на объявления.
 
 ## Технологии и инфраструктура
