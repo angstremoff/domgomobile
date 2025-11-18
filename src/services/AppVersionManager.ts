@@ -35,7 +35,7 @@ class AppVersionManager {
   private getCurrentVersion(): string {
     return (
       (Constants?.expoConfig as any)?.version ||
-      '0.9.8' // Fallback версия из package.json
+      '0.9.9' // Fallback версия из package.json
     );
   }
   

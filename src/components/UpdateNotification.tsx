@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ActivityIndicator, AppState, AppStateStatus } from 'react-native';
 import * as Updates from 'expo-updates';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -9,21 +9,47 @@ import { Logger } from '../utils/logger';
 const UpdateNotification = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const lastCheckRef = useRef<number>(0);
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
 
   useEffect(() => {
-    checkForUpdates();
-  }, []);
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    checkForUpdates('initial');
+    return () => sub.remove();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const checkForUpdates = async () => {
+  const logContext = async (tag: string) => {
+    try {
+      const runtimeVersion = Updates.runtimeVersion;
+      const updateId = Updates.updateId;
+      const channel =
+        (Updates as any).channel ||
+        (Updates.manifest as any)?.extra?.expoClient?.channel ||
+        'default';
+      Logger.info(`[OTA][${tag}] runtimeVersion=${runtimeVersion}, channel=${channel}, updateId=${updateId}`);
+    } catch (error) {
+      Logger.warn(`[OTA][${tag}] не удалось собрать контекст:`, error);
+    }
+  };
+
+  const checkForUpdates = async (reason: string) => {
     try {
       if (__DEV__) {
         Logger.debug('Проверка обновлений отключена в режиме разработки');
         return;
       }
 
+      const now = Date.now();
+      if (now - lastCheckRef.current < 10_000) {
+        Logger.debug(`[OTA][skip] частая проверка (${reason})`);
+        return;
+      }
+      lastCheckRef.current = now;
+
+      await logContext(`check:${reason}`);
       const update = await Updates.checkForUpdateAsync();
+      Logger.info(`[OTA][${reason}] isAvailable=${update.isAvailable} manifest=${!!update.manifest}`);
       if (update.isAvailable) {
         Logger.debug('Доступно обновление!');
         setUpdateAvailable(true);
@@ -33,14 +59,20 @@ const UpdateNotification = () => {
     }
   };
 
+  const handleAppStateChange = (state: AppStateStatus) => {
+    if (state === 'active') {
+      checkForUpdates('app_active');
+    }
+  };
+
   const handleUpdate = async () => {
     try {
       setDownloading(true);
       Logger.debug('Загрузка обновления...');
-      
+
       await Updates.fetchUpdateAsync();
       Logger.debug('Обновление загружено, перезапуск...');
-      
+
       // Перезапускаем приложение с новой версией
       await Updates.reloadAsync();
     } catch (error) {

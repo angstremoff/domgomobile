@@ -81,7 +81,7 @@ npx eas build --platform android
 ### Q: Как обновить версию?
 **A:**
 ```bash
-./update-version.sh 0.9.8
+./update-version.sh 0.9.9
 ```
 
 ## 🐛 Проблемы

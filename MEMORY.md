@@ -15,13 +15,17 @@
 - Единая кодовая база обслуживает 4 платформы: web mobile, web desktop, Android и iOS. На отдельных платформах меняются только верстка/доступность элементов; бизнес-логика и общий код остаются общими для всех платформ.
 - Текущая версия 0.9.8 (`package.json`, `app.config.js`). Стартовая точка — `index.ts`, который инициализирует Sentry и регистрирует `App.tsx`.
 
-### Обновление версии (чтобы не забыть)
+### OTA и обновление версии (чтобы не забыть)
+- Канал OTA по умолчанию: `production` (задан в `app.config.js -> updates.channel`). Старые билды без канала слушают `default`, поэтому при критических обновлениях публикуем и в `production`, и в `default`.
+- RuntimeVersion: `1.0.4`. OTA работает только если runtimeVersion совпадает с билдом. При нативных изменениях — повышаем runtimeVersion и пересобираем apk/ipa.
+- Публикация OTA: `npx eas update --branch production --platform all --non-interactive --message "..."` (и продублировать на `default` при необходимости). Workflow `.github/workflows/eas-update.yml` публикует в production.
+- Android-манифест: `EXPO_UPDATES_CHECK_ON_LAUNCH=ALWAYS`, `EXPO_UPDATES_LAUNCH_WAIT_MS=0`, `EXPO_UPDATE_URL=https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5` — проверка идёт на каждом запуске.
+- UI проверки: `UpdateNotification` в `App.tsx` сразу дергает `Updates.checkForUpdateAsync()` и показывает модал; если уведомление не приходит — или канал другой, или runtimeVersion не совпадает.
 - Прямые источники версии: `package.json` (`version`), `app.config.js` (`expo.version`), `android/app/build.gradle` (`versionName`, `versionCode` + комментарии), `package-lock.json` (корень и `packages[""]`).
-- Fallbackы в коде: `src/services/UpdateService.ts` и `src/services/AppVersionManager.ts` (резервные строки версии).
-- Документация/отчеты/бейджи: `README.md` (бейдж + таблица версии), `WIKI.md` (таблица версии), `FINAL_SUMMARY.md`, `OPTIMIZATION_REPORT.md`, `FIXES_REPORT.md`, `CODE_REVIEW_REPORT.md`, `FULL_OPTIMIZATION_COMPLETE.md`, `TESTING_CHECKLIST.md`, `CHANGELOG_*` (новая секция + номер в заголовке), `GITHUB_ACTIONS_SETUP.md` (строка Auto-update), `EXPO_UPDATES_SETUP.md` (примеры), `AUDIT_REPORT.md`.
-- Если меняется версия с нативными правками — увеличить `runtimeVersion` в `app.config.js` и пересобирать нативные артефакты; без нативных изменений runtimeVersion не трогаем.
-- `versionCode` в Gradle всегда инкрементировать при новом релизе.
-- Скрипт `update-version.sh` автоматизирует обновления, но рассчитывает на наличие `app.json`; если его нет — править вручную по списку выше.
+- Fallbackы в коде: `src/services/UpdateService.ts`, `src/services/AppVersionManager.ts` (резервные строки версии).
+- Документация/отчёты/бейджи: `README.md` (бейдж + таблица версии), `WIKI.md`, `FINAL_SUMMARY.md`, `OPTIMIZATION_REPORT.md`, `FIXES_REPORT.md`, `CODE_REVIEW_REPORT.md`, `FULL_OPTIMIZATION_COMPLETE.md`, `TESTING_CHECKLIST.md`, `CHANGELOG_*`, `GITHUB_ACTIONS_SETUP.md`, `EXPO_UPDATES_SETUP.md`, `AUDIT_REPORT.md`.
+- Если меняются нативные части — повышаем runtimeVersion, инкрементируем `versionCode`, пересобираем apk/ipa; без нативных изменений runtimeVersion не трогаем.
+- `versionCode` в Gradle всегда инкрементируем при новом релизе. `update-version.sh` автоматизирует обновления, но ожидает `app.json`; если его нет — правим вручную.
 - `App.tsx` оборачивает навигацию в `AuthProvider`, `LanguageProvider`, `ThemeProvider`, `FavoritesProvider`, `PropertyProvider`, `AlertProvider` и `ErrorBoundary`, обеспечивает deep link-и для подтверждения email и переходов на объявления.
 
 ## Технологии и инфраструктура
