@@ -33,6 +33,7 @@ const SettingsScreen = ({ navigation }: any) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
+  const [otaLog, setOtaLog] = useState<string>('');
   
   // Показываем актуальную версию из package.json (версия кода)
   // а не версию APK, так как OTA обновления не меняют версию APK
@@ -70,6 +71,41 @@ const SettingsScreen = ({ navigation }: any) => {
     setModalTitle(title);
     setModalMessage(message);
     setModalVisible(true);
+  };
+
+  const handleManualUpdate = async () => {
+    try {
+      const runtimeVersion = Updates.runtimeVersion;
+      const updateId = Updates.updateId;
+      const channel =
+        (Updates as any).channel ||
+        (Updates.manifest as any)?.extra?.expoClient?.channel ||
+        'default';
+      const updateUrl = (Updates.manifest as any)?.extra?.expoClient?.updateUrl;
+
+      setOtaLog(`Канал: ${channel}\nRuntime: ${runtimeVersion}\nUpdateUrl: ${updateUrl}\nUpdateId: ${updateId}\nПроверяем...`);
+
+      const res = await Updates.checkForUpdateAsync();
+      const isAvailable = res?.isAvailable;
+      const manifest = JSON.stringify(res?.manifest ?? {}, null, 2);
+      setOtaLog((prev) => `${prev}\nДоступно: ${isAvailable}\nManifest: ${manifest}`);
+
+      if (isAvailable) {
+        setOtaLog((prev) => `${prev}\nСкачиваем...`);
+        await Updates.fetchUpdateAsync();
+        setOtaLog((prev) => `${prev}\nГотово. Перезапускаем...`);
+        await Updates.reloadAsync();
+      } else {
+        setModalTitle('OTA');
+        setModalMessage('Обновлений нет');
+        setModalVisible(true);
+      }
+    } catch (error: any) {
+      setOtaLog((prev) => `${prev}\nОшибка: ${error?.message || error}`);
+      setModalTitle('OTA');
+      setModalMessage(`Ошибка при проверке/загрузке: ${error?.message || error}`);
+      setModalVisible(true);
+    }
   };
 
   return (
@@ -127,7 +163,21 @@ const SettingsScreen = ({ navigation }: any) => {
             <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.help')}</Text>
             <Ionicons name="chevron-forward" size={20} color={theme.secondary} />
           </TouchableOpacity>
-          
+
+          <TouchableOpacity style={styles.settingItem} onPress={handleManualUpdate}>
+            <Text style={[styles.settingLabel, { color: theme.text }]}>
+              Проверить OTA / Логи
+            </Text>
+            <Ionicons name="refresh" size={20} color={theme.primary} />
+          </TouchableOpacity>
+
+          {otaLog ? (
+            <View style={[styles.otaLogContainer, { borderColor: theme.border }]}>
+              <Text style={[styles.otaLogTitle, { color: theme.text }]}>OTA лог</Text>
+              <Text style={[styles.otaLogText, { color: theme.secondary }]}>{otaLog}</Text>
+            </View>
+          ) : null}
+
           <TouchableOpacity style={styles.settingItem} onPress={() => showModal(t('settings.contactInfo.title'), t('settings.contactInfo.message'))}>
             <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.contactUs')}</Text>
             <Ionicons name="chevron-forward" size={20} color={theme.secondary} />
@@ -229,6 +279,20 @@ const styles = StyleSheet.create({
   versionNote: {
     fontSize: 12,
     marginTop: 2,
+  },
+  otaLogContainer: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+  },
+  otaLogTitle: {
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  otaLogText: {
+    fontSize: 12,
+    lineHeight: 16,
   }
 });
 
