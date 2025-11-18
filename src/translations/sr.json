@@ -38,6 +38,7 @@
     "sale": "Prodaja",
     "rent": "Iznajmljivanje",
     "newBuildings": "Novogradnja",
+    "agencies": "Agencije",
     "reset": "Resetuj",
     "view": "Prikaz",
     "map": "Mapa",
@@ -431,6 +432,8 @@
     "website": "Sajt",
     "instagram": "Instagram",
     "facebook": "Facebook",
-    "email": "Email"
+    "email": "Email",
+    "emptyList": "Još nema agencija",
+    "unnamed": "Agencija bez naziva"
   }
 }

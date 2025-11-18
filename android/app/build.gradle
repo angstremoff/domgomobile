@@ -93,10 +93,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // RU: Увеличиваем versionCode для нового релиза; важно для обновлений.
         // EN: Bump versionCode for the new release; required for updates.
-        // RU: Новый релиз 0.9.6 — увеличиваем версию для Play/инсталляций
-        // EN: New release 0.9.6 — bumping version for installs/updates
-        versionCode 7
-        versionName "0.9.6"
+        // RU: Новый релиз 0.9.7 — увеличиваем версию для Play/инсталляций
+        // EN: New release 0.9.7 — bumping version for installs/updates
+        versionCode 8
+        versionName "0.9.7"
     }
     signingConfigs {
         debug {

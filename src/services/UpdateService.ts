@@ -11,7 +11,7 @@ const LAST_UPDATE_CHECK_KEY = 'last_update_check';
 
 // Получаем текущую версию из Constants или package.json
 export const getCurrentVersion = (): string => {
-  return Constants.expoConfig?.version || '0.9.6'; // Используем версию из package.json как резерв
+  return Constants.expoConfig?.version || '0.9.7'; // Используем версию из package.json как резерв
 };
 
 // Функция для сравнения версий

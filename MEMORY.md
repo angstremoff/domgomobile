@@ -13,7 +13,7 @@
 ## Общее представление
 - DomGoMobile — кросс‑платформенное приложение для поиска и размещения недвижимости (Android/iOS) на React Native 0.76.9 + Expo ~52.0.47 + TypeScript 5.9.2.
 - Единая кодовая база обслуживает 4 платформы: web mobile, web desktop, Android и iOS. На отдельных платформах меняются только верстка/доступность элементов; бизнес-логика и общий код остаются общими для всех платформ.
-- Текущая версия 0.9.6 (`package.json`, `app.config.js`). Стартовая точка — `index.ts`, который инициализирует Sentry и регистрирует `App.tsx`.
+- Текущая версия 0.9.7 (`package.json`, `app.config.js`). Стартовая точка — `index.ts`, который инициализирует Sentry и регистрирует `App.tsx`.
 
 ### Обновление версии (чтобы не забыть)
 - Прямые источники версии: `package.json` (`version`), `app.config.js` (`expo.version`), `android/app/build.gradle` (`versionName`, `versionCode` + комментарии), `package-lock.json` (корень и `packages[""]`).

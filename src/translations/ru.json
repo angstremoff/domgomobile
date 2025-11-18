@@ -48,6 +48,7 @@
     "sale": "Продажа",
     "rent": "Аренда",
     "newBuildings": "Новостройки",
+    "agencies": "Агентства",
     "filters": "Фильтры",
     "view": "Вид",
     "objectsMap": "Карта объектов",
@@ -487,6 +488,8 @@
     "website": "Сайт",
     "instagram": "Instagram",
     "facebook": "Facebook",
-    "email": "Email"
+    "email": "Email",
+    "emptyList": "Агентства пока не добавлены",
+    "unnamed": "Агентство"
   }
 }
