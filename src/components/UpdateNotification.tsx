@@ -27,7 +27,8 @@ const UpdateNotification = () => {
         (Updates as any).channel ||
         (Updates.manifest as any)?.extra?.expoClient?.channel ||
         'default';
-      Logger.info(`[OTA][${tag}] runtimeVersion=${runtimeVersion}, channel=${channel}, updateId=${updateId}`);
+      const updateUrl = (Updates.manifest as any)?.extra?.expoClient?.updateUrl;
+      Logger.info(`[OTA][${tag}] runtimeVersion=${runtimeVersion}, channel=${channel}, updateId=${updateId}, updateUrl=${updateUrl}`);
     } catch (error) {
       Logger.warn(`[OTA][${tag}] не удалось собрать контекст:`, error);
     }
@@ -54,8 +55,13 @@ const UpdateNotification = () => {
         Logger.debug('Доступно обновление!');
         setUpdateAvailable(true);
       }
-    } catch (error) {
-      Logger.error('Ошибка при проверке обновлений:', error);
+    } catch (error: any) {
+      const code = error?.code || error?.message;
+      Logger.error(`Ошибка при проверке обновлений (${reason}):`, {
+        code,
+        message: error?.message,
+        stack: error?.stack,
+      });
     }
   };
 
