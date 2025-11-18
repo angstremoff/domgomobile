@@ -60,12 +60,12 @@ npx eas-cli update:list --branch production
 - **development** - для разработки
 
 ### Версия приложения
-В `package.json` указана версия `0.9.7`
+В `package.json` указана версия `0.9.8`
 - Это версия кода, которую видят пользователи
 - При публикации обновления увеличивайте версию:
   ```bash
-  # В package.json измените version на 0.9.7
-  npx eas-cli update --branch production --platform all --non-interactive --message "Update to 0.9.7"
+  # В package.json измените version на 0.9.8
+  npx eas-cli update --branch production --platform all --non-interactive --message "Update to 0.9.8"
   ```
 
 ## Быстрый старт
@@ -85,14 +85,14 @@ npx eas-cli update:list --branch production
 ### Последующие обновления:
 ```bash
 # 1. Внести изменения в код
-# 2. Увеличить версию в package.json (0.9.7 -> 0.9.8)
+# 2. Увеличить версию в package.json (0.9.8 -> 0.9.9)
 # 3. Закоммитить изменения
 git add .
-git commit -m "Update to 0.9.7"
+git commit -m "Update to 0.9.8"
 git push
 
 # 4. Опубликовать OTA-обновление
-npx eas-cli update --branch production --platform all --non-interactive --message "Update to 0.9.7: описание изменений"
+npx eas-cli update --branch production --platform all --non-interactive --message "Update to 0.9.8: описание изменений"
 ```
 
 ## Проверка обновлений

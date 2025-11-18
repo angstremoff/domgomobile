@@ -1,6 +1,6 @@
 {
   "name": "domgomobile",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "main": "index.ts",
   "scripts": {
     "start": "expo start --dev-client",
