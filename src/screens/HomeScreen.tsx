@@ -1675,7 +1675,7 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
     paddingHorizontal: 16,
     marginBottom: 4,
     marginTop: 4,

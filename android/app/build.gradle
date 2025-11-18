@@ -93,10 +93,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // RU: Увеличиваем versionCode для нового релиза; важно для обновлений.
         // EN: Bump versionCode for the new release; required for updates.
-        // RU: Новый релиз 0.9.4 — увеличиваем версию для Play/инсталляций
-        // EN: New release 0.9.4 — bumping version for installs/updates
-        versionCode 6
-        versionName "0.9.4"
+        // RU: Новый релиз 0.9.6 — увеличиваем версию для Play/инсталляций
+        // EN: New release 0.9.6 — bumping version for installs/updates
+        versionCode 7
+        versionName "0.9.6"
     }
     signingConfigs {
         debug {
@@ -194,5 +194,23 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// Исправляем битый placeholder, который генерирует expo export:embed и валит AAPT2.
+afterEvaluate {
+    tasks.register("fixAssetsPlaceholderRelease") {
+        doLast {
+            def placeholder = file("$buildDir/generated/res/createBundleReleaseJsAndAssets/drawable-mdpi/assets_placeholder.png")
+            def source = file("$projectRoot/assets/icon.png")
+            if (placeholder.exists() && source.exists()) {
+                placeholder.bytes = source.bytes
+                ["xattr", "-c", placeholder.absolutePath].execute().waitForOrKill(2000)
+            }
+        }
+    }
+
+    tasks.matching { it.name == "createBundleReleaseJsAndAssets" }.configureEach {
+        finalizedBy("fixAssetsPlaceholderRelease")
     }
 }
