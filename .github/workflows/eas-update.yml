@@ -35,10 +35,13 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        working-directory: .
 
       - name: Get version from package.json
         id: package-version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+        working-directory: .
 
       - name: Publish update
         run: eas update --auto --branch production --message "Auto-update from GitHub: v${{ steps.package-version.outputs.version }}"
+        working-directory: .
