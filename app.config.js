@@ -19,7 +19,8 @@ export default ({ config }) => ({
     updates: {
       enabled: true,
       fallbackToCacheTimeout: 0,
-      url: 'https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5'
+      url: 'https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5',
+      channel: 'production'
     },
     splash: {
       image: './assets/splash-icon.png',
