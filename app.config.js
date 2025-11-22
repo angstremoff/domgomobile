@@ -6,9 +6,8 @@ const pkg = require('./package.json');
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY || '';
 const APP_VERSION = process.env.APP_VERSION || pkg.version;
 
-export default ({ config }) => ({
-  ...config,
-  expo: {
+export default ({ config }) => {
+  const expoConfig = {
     name: 'DomGoMobile',
     slug: 'DomGoMobile',
     version: APP_VERSION,
@@ -68,5 +67,11 @@ export default ({ config }) => ({
     },
     runtimeVersion: '1.0.4',
     owner: 'angstremoff'
-  }
-});
+  };
+
+  // Import standalone plugin
+  const withAndroidUpdates = require('./plugins/withAndroidUpdates');
+
+  // Apply the plugin
+  return withAndroidUpdates({ ...config, expo: expoConfig });
+};

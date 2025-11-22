@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import Constants from 'expo-constants';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   Switch,
   ScrollView,
   Platform,
@@ -34,7 +35,7 @@ const SettingsScreen = ({ navigation }: any) => {
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
   const [otaLog, setOtaLog] = useState<string>('');
-  
+
   // Показываем актуальную версию из package.json (версия кода)
   // а не версию APK, так как OTA обновления не меняют версию APK
   const codeVersion = packageJson.version;
@@ -77,17 +78,36 @@ const SettingsScreen = ({ navigation }: any) => {
     try {
       const runtimeVersion = Updates.runtimeVersion;
       const updateId = Updates.updateId;
-      const channel =
-        (Updates as any).channel ||
-        (Updates.manifest as any)?.extra?.expoClient?.channel ||
-        'production';
-      const updateUrl = (Updates.manifest as any)?.extra?.expoClient?.updateUrl;
+      const channel = Updates.channel;
+      // @ts-ignore - releaseChannel might exist in older versions or specific configs
+      const releaseChannel = Updates.releaseChannel;
+      const isEmbeddedLaunch = Updates.isEmbeddedLaunch;
+      const checkAutomatically = Updates.checkAutomatically;
 
-      setOtaLog(`Канал: ${channel}\nRuntime: ${runtimeVersion}\nUpdateUrl: ${updateUrl}\nUpdateId: ${updateId}\nПроверяем...`);
+      const updateUrl = (Updates.manifest as any)?.extra?.expoClient?.updateUrl ||
+        (Updates as any)?.manifest?.extra?.expoClient?.updateUrl ||
+        'undefined';
+
+      // Get config from Constants (works in Dev mode too)
+      const configChannel = Constants.expoConfig?.updates?.channel || 'undefined (Constants)';
+      const configUrl = Constants.expoConfig?.updates?.url || 'undefined (Constants)';
+
+      let logMsg = `--- Runtime (Updates) ---\n`;
+      logMsg += `Channel: ${channel}\n`;
+      logMsg += `ReleaseChannel: ${releaseChannel}\n`;
+      logMsg += `UpdateUrl: ${updateUrl}\n`;
+      logMsg += `IsEmbedded: ${isEmbeddedLaunch}\n`;
+      logMsg += `\n--- Config (Constants) ---\n`;
+      logMsg += `Channel: ${configChannel}\n`;
+      logMsg += `URL: ${configUrl}\n`;
+      logMsg += `\nПроверяем...`;
+
+      setOtaLog(logMsg);
 
       const res = await Updates.checkForUpdateAsync();
       const isAvailable = res?.isAvailable;
       const manifest = JSON.stringify(res?.manifest ?? {}, null, 2);
+
       setOtaLog((prev) => `${prev}\nДоступно: ${isAvailable}\nManifest: ${manifest}`);
 
       if (isAvailable) {
@@ -116,9 +136,9 @@ const SettingsScreen = ({ navigation }: any) => {
       <View style={[styles.contentWrapper, isWebDesktop && styles.webContentWrapper]}>
         <Text style={[styles.title, { color: theme.text }]}>{t('settings.title')}</Text>
 
-        <View style={[styles.section, { backgroundColor: theme.card }]}>        
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('settings.notifications')}</Text>
-          
+
           <View style={styles.settingItem}>
             <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.newPropertyNotifications')}</Text>
             <Switch
@@ -133,11 +153,11 @@ const SettingsScreen = ({ navigation }: any) => {
         </View>
 
         {user && (
-          <View style={[styles.section, { backgroundColor: theme.card }]}>        
+          <View style={[styles.section, { backgroundColor: theme.card }]}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('settings.account')}</Text>
-            
+
             <TouchableOpacity
-              style={[styles.logoutButton, { 
+              style={[styles.logoutButton, {
                 backgroundColor: theme.cardBackground,
                 borderWidth: 1,
                 borderColor: theme.border
@@ -149,16 +169,16 @@ const SettingsScreen = ({ navigation }: any) => {
           </View>
         )}
 
-        <View style={[styles.section, { backgroundColor: theme.card }]}>        
+        <View style={[styles.section, { backgroundColor: theme.card }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('settings.about')}</Text>
-          
+
           <View style={styles.settingItem}>
             <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.version')}</Text>
             <Text style={[styles.settingValue, { color: theme.secondary }]}>
               {codeVersion}{updateInfo}
             </Text>
           </View>
-          
+
           <TouchableOpacity style={styles.settingItem} onPress={() => showModal(t('settings.aboutApp.title'), t('settings.aboutApp.message'))}>
             <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.help')}</Text>
             <Ionicons name="chevron-forward" size={20} color={theme.secondary} />

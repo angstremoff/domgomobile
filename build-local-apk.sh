@@ -8,8 +8,8 @@ PROJECT_DIR="/Users/savaleserg/CascadeProjects/DomGoMobile"
 # Путь для выходного APK файла
 OUTPUT_DIR="/Users/savaleserg/Desktop"
 
-# Получаем версию из app.json
-APP_VERSION=$(grep -m 1 '"version":' $PROJECT_DIR/app.json | awk -F: '{ print $2 }' | sed 's/[", ]//g')
+# Получаем версию из package.json
+APP_VERSION=$(grep -m 1 '"version":' $PROJECT_DIR/package.json | awk -F: '{ print $2 }' | sed 's/[", ]//g')
 OUTPUT_FILE="$OUTPUT_DIR/DomGoMobile-v$APP_VERSION-user.apk"
 
 echo "=== Сборка локального APK для DomGoMobile версии $APP_VERSION ==="
