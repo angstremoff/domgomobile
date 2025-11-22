@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
 import {
   View,
@@ -8,7 +9,8 @@ import {
   Switch,
   ScrollView,
   Platform,
-  useWindowDimensions
+  useWindowDimensions,
+  Alert
 } from 'react-native';
 import { Logger } from '../utils/logger';
 import { useTranslation } from 'react-i18next';
@@ -74,57 +76,88 @@ const SettingsScreen = ({ navigation }: any) => {
     setModalVisible(true);
   };
 
+  const copyToClipboard = async () => {
+    await Clipboard.setStringAsync(otaLog);
+    Alert.alert('Скопировано', 'Лог скопирован в буфер обмена');
+  };
+
   const handleManualUpdate = async () => {
     try {
       const runtimeVersion = Updates.runtimeVersion;
       const updateId = Updates.updateId;
       const channel = Updates.channel;
-      // @ts-ignore - releaseChannel might exist in older versions or specific configs
+      // @ts-ignore
       const releaseChannel = Updates.releaseChannel;
       const isEmbeddedLaunch = Updates.isEmbeddedLaunch;
       const checkAutomatically = Updates.checkAutomatically;
+      const emergencyLaunchException = (Updates as any).emergencyLaunchException;
 
       const updateUrl = (Updates.manifest as any)?.extra?.expoClient?.updateUrl ||
         (Updates as any)?.manifest?.extra?.expoClient?.updateUrl ||
         'undefined';
 
-      // Get config from Constants (works in Dev mode too)
+      // Get config from Constants
       const configChannel = Constants.expoConfig?.updates?.channel || 'undefined (Constants)';
       const configUrl = Constants.expoConfig?.updates?.url || 'undefined (Constants)';
+      const configExtra = JSON.stringify(Constants.expoConfig?.extra || {}, null, 2);
 
-      let logMsg = `--- Runtime (Updates) ---\n`;
+      let logMsg = `=== DIAGNOSTIC LOG ===\n`;
+      logMsg += `Date: ${new Date().toISOString()}\n`;
+      logMsg += `\n--- Runtime (Updates Native) ---\n`;
       logMsg += `Channel: ${channel}\n`;
       logMsg += `ReleaseChannel: ${releaseChannel}\n`;
       logMsg += `UpdateUrl: ${updateUrl}\n`;
+      logMsg += `UpdateId: ${updateId}\n`;
+      logMsg += `RuntimeVersion: ${runtimeVersion}\n`;
       logMsg += `IsEmbedded: ${isEmbeddedLaunch}\n`;
-      logMsg += `\n--- Config (Constants) ---\n`;
+      logMsg += `CheckAuto: ${checkAutomatically}\n`;
+      logMsg += `EmergencyException: ${emergencyLaunchException}\n`;
+
+      logMsg += `\n--- Config (Constants JS) ---\n`;
       logMsg += `Channel: ${configChannel}\n`;
       logMsg += `URL: ${configUrl}\n`;
-      logMsg += `\nПроверяем...`;
+      logMsg += `Extra: ${configExtra}\n`;
+
+      logMsg += `\n--- Action ---\n`;
+      logMsg += `Checking for updates...\n`;
 
       setOtaLog(logMsg);
 
-      const res = await Updates.checkForUpdateAsync();
-      const isAvailable = res?.isAvailable;
-      const manifest = JSON.stringify(res?.manifest ?? {}, null, 2);
+      try {
+        const res = await Updates.checkForUpdateAsync();
+        const isAvailable = res?.isAvailable;
+        const manifest = JSON.stringify(res?.manifest ?? {}, null, 2);
 
-      setOtaLog((prev) => `${prev}\nДоступно: ${isAvailable}\nManifest: ${manifest}`);
+        logMsg += `\n--- Result ---\n`;
+        logMsg += `IsAvailable: ${isAvailable}\n`;
+        logMsg += `Manifest: ${manifest}\n`;
+        setOtaLog(logMsg);
 
-      if (isAvailable) {
-        setOtaLog((prev) => `${prev}\nСкачиваем...`);
-        await Updates.fetchUpdateAsync();
-        setOtaLog((prev) => `${prev}\nГотово. Перезапускаем...`);
-        await Updates.reloadAsync();
-      } else {
-        setModalTitle('OTA');
-        setModalMessage('Обновлений нет');
+        if (isAvailable) {
+          logMsg += `\nFetching update...\n`;
+          setOtaLog(logMsg);
+          await Updates.fetchUpdateAsync();
+          logMsg += `\nUpdate fetched. Reloading...\n`;
+          setOtaLog(logMsg);
+          await Updates.reloadAsync();
+        } else {
+          setModalTitle('OTA');
+          setModalMessage('Обновлений нет');
+          setModalVisible(true);
+        }
+      } catch (e: any) {
+        logMsg += `\n--- ERROR ---\n`;
+        logMsg += `Code: ${e.code}\n`;
+        logMsg += `Message: ${e.message}\n`;
+        logMsg += `Stack: ${e.stack}\n`;
+        setOtaLog(logMsg);
+
+        setModalTitle('OTA Error');
+        setModalMessage(e.message);
         setModalVisible(true);
       }
     } catch (error: any) {
-      setOtaLog((prev) => `${prev}\nОшибка: ${error?.message || error}`);
-      setModalTitle('OTA');
-      setModalMessage(`Ошибка при проверке/загрузке: ${error?.message || error}`);
-      setModalVisible(true);
+      setOtaLog((prev) => `${prev}\nCRITICAL ERROR: ${error?.message || error}`);
     }
   };
 
@@ -193,7 +226,12 @@ const SettingsScreen = ({ navigation }: any) => {
 
           {otaLog ? (
             <View style={[styles.otaLogContainer, { borderColor: theme.border }]}>
-              <Text style={[styles.otaLogTitle, { color: theme.text }]}>OTA лог</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={[styles.otaLogTitle, { color: theme.text }]}>OTA лог</Text>
+                <TouchableOpacity onPress={copyToClipboard} style={{ padding: 4 }}>
+                  <Ionicons name="copy-outline" size={18} color={theme.primary} />
+                </TouchableOpacity>
+              </View>
               <Text style={[styles.otaLogText, { color: theme.secondary }]}>{otaLog}</Text>
             </View>
           ) : null}
