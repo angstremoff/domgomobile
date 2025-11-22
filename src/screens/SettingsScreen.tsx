@@ -97,8 +97,9 @@ const SettingsScreen = ({ navigation }: any) => {
         'undefined';
 
       // Get config from Constants
-      const configChannel = Constants.expoConfig?.updates?.channel || 'undefined (Constants)';
-      const configUrl = Constants.expoConfig?.updates?.url || 'undefined (Constants)';
+      const updatesConfig = Constants.expoConfig?.updates as any;
+      const configChannel = updatesConfig?.channel || 'undefined (Constants)';
+      const configUrl = updatesConfig?.url || 'undefined (Constants)';
       const configExtra = JSON.stringify(Constants.expoConfig?.extra || {}, null, 2);
 
       let logMsg = `=== DIAGNOSTIC LOG ===\n`;

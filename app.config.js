@@ -73,5 +73,5 @@ export default ({ config }) => {
   const withAndroidUpdates = require('./plugins/withAndroidUpdates');
 
   // Apply the plugin
-  return withAndroidUpdates({ ...config, expo: expoConfig });
+  return withAndroidUpdates({ ...config, ...expoConfig });
 };

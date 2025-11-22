@@ -34,6 +34,10 @@ class LoggerService {
     }
   }
 
+  info(...args: any[]): void {
+    this.log(...args);
+  }
+
   warn(...args: any[]): void {
     if (this.shouldLog() && !this.config.excludeMethods?.includes('WARN')) {
       console.warn('[WARN]', ...args);

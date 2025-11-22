@@ -1,12 +1,12 @@
-import * as React from 'react';
+
 import { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  PanResponder, 
-  Animated, 
-  LayoutChangeEvent, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  PanResponder,
+  Animated,
+  LayoutChangeEvent,
   TouchableOpacity,
   TouchableWithoutFeedback
 } from 'react-native';
@@ -34,7 +34,7 @@ const RangeSlider = ({
   const [sliderWidth, setSliderWidth] = useState(0);
   const [value, setValue] = useState(initialValue.length === 2 ? initialValue : [minValue, maxValue]);
   const theme = darkMode ? Colors.dark : Colors.light;
-  
+
   const translateMinX = useRef(new Animated.Value(0)).current;
   const translateMaxX = useRef(new Animated.Value(0)).current;
   const offsetMinX = useRef(0);
@@ -55,7 +55,7 @@ const RangeSlider = ({
       lastEmitRef.current = now;
     }
   };
-  
+
   // Обновляем значения при изменении initialValue (полностью блокируем во время жеста)
   useEffect(() => {
     if (isDraggingMin.current || isDraggingMax.current) return;
@@ -73,17 +73,17 @@ const RangeSlider = ({
     if (sliderWidth > 0 && !isDraggingMin.current && !isDraggingMax.current) {
       const minPosition = ((value[0] - minValue) / (maxValue - minValue)) * sliderWidth;
       const maxPosition = ((value[1] - minValue) / (maxValue - minValue)) * sliderWidth;
-      
+
       translateMinX.setValue(minPosition);
       translateMaxX.setValue(maxPosition);
-      
+
       offsetMinX.current = minPosition;
       offsetMaxX.current = maxPosition;
       currentMinAbsRef.current = minPosition;
       currentMaxAbsRef.current = maxPosition;
     }
   }, [sliderWidth, minValue, maxValue, value]);
-  
+
   // Создаем PanResponder для минимального ползунка
   const minPanResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -156,7 +156,7 @@ const RangeSlider = ({
       onValueChange([steppedValue, value[1]]);
     }
   });
-  
+
   // Создаем PanResponder для максимального ползунка
   const maxPanResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -228,11 +228,11 @@ const RangeSlider = ({
     const { locationX } = event.nativeEvent;
     const ratio = locationX / sliderWidth;
     const newValue = minValue + ratio * (maxValue - minValue);
-    
+
     // Определяем, какой ползунок ближе к точке нажатия
     const minDistance = Math.abs(newValue - value[0]);
     const maxDistance = Math.abs(newValue - value[1]);
-    
+
     let steppedValue;
     if (typeof step === 'number') {
       steppedValue = Math.round(newValue / step) * step;
@@ -245,13 +245,13 @@ const RangeSlider = ({
       }
       steppedValue = testValue;
     }
-    
+
     // Обновляем положение ближайшего ползунка
     if (minDistance <= maxDistance) {
       steppedValue = Math.max(minValue, Math.min(value[1], steppedValue));
       setValue([steppedValue, value[1]]);
       onValueChange([steppedValue, value[1]]);
-      
+
       const minPosition = ((steppedValue - minValue) / (maxValue - minValue)) * sliderWidth;
       translateMinX.setValue(minPosition);
       offsetMinX.current = minPosition;
@@ -259,7 +259,7 @@ const RangeSlider = ({
       steppedValue = Math.max(value[0], Math.min(maxValue, steppedValue));
       setValue([value[0], steppedValue]);
       onValueChange([value[0], steppedValue]);
-      
+
       const maxPosition = ((steppedValue - minValue) / (maxValue - minValue)) * sliderWidth;
       translateMaxX.setValue(maxPosition);
       offsetMaxX.current = maxPosition;
@@ -270,14 +270,14 @@ const RangeSlider = ({
   const handleLayout = (event: LayoutChangeEvent) => {
     const { width } = event.nativeEvent.layout;
     setSliderWidth(width);
-    
+
     // Инициализируем позиции ползунков
     const minPosition = ((value[0] - minValue) / (maxValue - minValue)) * width;
     const maxPosition = ((value[1] - minValue) / (maxValue - minValue)) * width;
-    
+
     translateMinX.setValue(minPosition);
     translateMaxX.setValue(maxPosition);
-    
+
     offsetMinX.current = minPosition;
     offsetMaxX.current = maxPosition;
   };
@@ -285,10 +285,10 @@ const RangeSlider = ({
   // Обработчики для кнопок управления ползунками
   const decreaseMin = () => {
     if (value[0] > minValue) {
-      const newValue = typeof step === 'number' 
+      const newValue = typeof step === 'number'
         ? Math.max(minValue, value[0] - step)
         : Math.max(minValue, value[0] - step(value[0]));
-      
+
       setValue([newValue, value[1]]);
       onValueChange([newValue, value[1]]);
     }
@@ -299,7 +299,7 @@ const RangeSlider = ({
       const newValue = typeof step === 'number'
         ? Math.min(value[1], value[0] + step)
         : Math.min(value[1], value[0] + step(value[0]));
-      
+
       setValue([newValue, value[1]]);
       onValueChange([newValue, value[1]]);
     }
@@ -310,7 +310,7 @@ const RangeSlider = ({
       const newValue = typeof step === 'number'
         ? Math.max(value[0], value[1] - step)
         : Math.max(value[0], value[1] - step(value[1]));
-      
+
       setValue([value[0], newValue]);
       onValueChange([value[0], newValue]);
     }
@@ -321,7 +321,7 @@ const RangeSlider = ({
       const newValue = typeof step === 'number'
         ? Math.min(maxValue, value[1] + step)
         : Math.min(maxValue, value[1] + step(value[1]));
-      
+
       setValue([value[0], newValue]);
       onValueChange([value[0], newValue]);
     }
@@ -334,27 +334,27 @@ const RangeSlider = ({
           {formatLabel(value[0])} - {formatLabel(value[1])}
         </Text>
       </View>
-      
+
       {/* Слайдер */}
       <TouchableWithoutFeedback onPress={handleTrackPress}>
-        <View 
-          style={[styles.track, { backgroundColor: theme.border }]} 
+        <View
+          style={[styles.track, { backgroundColor: theme.border }]}
           onLayout={handleLayout}
         >
           <Animated.View
             style={[
               styles.fill,
-              { 
+              {
                 left: translateMinX,
                 width: Animated.subtract(translateMaxX, translateMinX),
-                backgroundColor: theme.primary 
+                backgroundColor: theme.primary
               }
             ]}
           />
           <Animated.View
             style={[
               styles.thumb,
-              { 
+              {
                 transform: [{ translateX: translateMinX }],
                 backgroundColor: theme.primary,
                 zIndex: 10
@@ -367,7 +367,7 @@ const RangeSlider = ({
           <Animated.View
             style={[
               styles.thumb,
-              { 
+              {
                 transform: [{ translateX: translateMaxX }],
                 backgroundColor: theme.primary,
                 zIndex: 10
@@ -379,44 +379,44 @@ const RangeSlider = ({
           </Animated.View>
         </View>
       </TouchableWithoutFeedback>
-      
+
       <View style={styles.minMaxContainer}>
         {/* Минимальное значение с кнопками управления */}
         <View style={styles.valueControlGroup}>
-          <TouchableOpacity 
-            style={[styles.controlButton, { backgroundColor: theme.primary }]} 
+          <TouchableOpacity
+            style={[styles.controlButton, { backgroundColor: theme.primary }]}
             onPress={decreaseMin}
           >
             <Text style={styles.controlButtonText}>-</Text>
           </TouchableOpacity>
-          
+
           <Text style={[styles.controlValue, { color: theme.text }]}>
             {formatLabel(value[0])}
           </Text>
-          
-          <TouchableOpacity 
-            style={[styles.controlButton, { backgroundColor: theme.primary }]} 
+
+          <TouchableOpacity
+            style={[styles.controlButton, { backgroundColor: theme.primary }]}
             onPress={increaseMin}
           >
             <Text style={styles.controlButtonText}>+</Text>
           </TouchableOpacity>
         </View>
-        
+
         {/* Максимальное значение с кнопками управления */}
         <View style={styles.valueControlGroup}>
-          <TouchableOpacity 
-            style={[styles.controlButton, { backgroundColor: theme.primary }]} 
+          <TouchableOpacity
+            style={[styles.controlButton, { backgroundColor: theme.primary }]}
             onPress={decreaseMax}
           >
             <Text style={styles.controlButtonText}>-</Text>
           </TouchableOpacity>
-          
+
           <Text style={[styles.controlValue, { color: theme.text }]}>
             {formatLabel(value[1])}
           </Text>
-          
-          <TouchableOpacity 
-            style={[styles.controlButton, { backgroundColor: theme.primary }]} 
+
+          <TouchableOpacity
+            style={[styles.controlButton, { backgroundColor: theme.primary }]}
             onPress={increaseMax}
           >
             <Text style={styles.controlButtonText}>+</Text>

@@ -4,9 +4,9 @@
 # Автор: Cascade
 
 # Путь к проекту
-PROJECT_DIR="/Users/savaleserg/CascadeProjects/DomGoMobile"
+PROJECT_DIR="$(pwd)"
 # Путь для выходного APK файла
-OUTPUT_DIR="/Users/savaleserg/Desktop"
+OUTPUT_DIR="$HOME/Desktop"
 
 # Получаем версию из package.json
 APP_VERSION=$(grep -m 1 '"version":' $PROJECT_DIR/package.json | awk -F: '{ print $2 }' | sed 's/[", ]//g')

@@ -1,0 +1,47 @@
+{
+  "mcpServers": {
+    "github": {
+      "enabled": true,
+      "description": "GitHub integration for repository management",
+      "scopes": ["repo", "read:org"],
+      "status": "✓ Connected"
+    },
+    "memory": {
+      "enabled": true,
+      "description": "Memory server for context persistence",
+      "maxEntries": 1000,
+      "status": "✓ Connected"
+    },
+    "filesystem": {
+      "enabled": true,
+      "description": "Filesystem server for project analysis",
+      "workspace": "/Users/test/CascadeProjects/domgomobile",
+      "status": "✓ Connected"
+    },
+    "supabase-db": {
+      "enabled": true,
+      "description": "Supabase database integration",
+      "connectionUrl": "https://bondvgkachyjxqxsrcvj.supabase.co",
+      "status": "⚠️ Requires configuration"
+    },
+    "context7-analogue": {
+      "enabled": true,
+      "description": "Custom Context7 analogue for DomGoMobile analysis",
+      "type": "markdown-knowledge-base",
+      "status": "✅ Active",
+      "location": ".claude/context7-analogue.md"
+    },
+    "context7": {
+      "enabled": true,
+      "description": "Context7 MCP server for интеллектуальное управление контекстом DomGoMobile",
+      "baseUrl": "https://api.context7.ai",
+      "apiKey": "ctx7sk-a8a4869b-a594-4dd7-bf21-a523cba7d2a6",
+      "features": [
+        "code-analysis",
+        "documentation-generation",
+        "context-indexing"
+      ],
+      "status": "✅ Active"
+    }
+  }
+}
