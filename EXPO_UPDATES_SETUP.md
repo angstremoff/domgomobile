@@ -1,4 +1,6 @@
-# Настройка Expo OTA Updates для DomGoMobile
+# ⚠️ Expo OTA Updates (архив)
+
+> Начиная с ноября 2025 Expo OTA отключены. Приложение обновляется через Google Play/App Store. Ниже — архивные шаги для истории.
 
 ## Текущая конфигурация
 ✅ Expo Updates уже настроен в `app.config.js`

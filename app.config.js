@@ -16,10 +16,9 @@ export default ({ config }) => {
     userInterfaceStyle: 'light',
     jsEngine: 'hermes',
     updates: {
-      enabled: true,
-      fallbackToCacheTimeout: 0,
-      url: 'https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5',
-      channel: 'production'
+      enabled: false,
+      checkAutomatically: 'ON_ERROR_RECOVERY',
+      fallbackToCacheTimeout: 0
     },
     splash: {
       image: './assets/splash-icon.png',
@@ -69,9 +68,5 @@ export default ({ config }) => {
     owner: 'angstremoff'
   };
 
-  // Import standalone plugin
-  const withAndroidUpdates = require('./plugins/withAndroidUpdates');
-
-  // Apply the plugin
-  return withAndroidUpdates({ ...config, ...expoConfig });
+  return { ...config, ...expoConfig };
 };

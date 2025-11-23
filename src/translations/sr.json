@@ -274,23 +274,13 @@
       "message": "Došlo je do greške prilikom odjavljivanja."
     },
     "update": {
-      "checkForUpdates": "Proveri ažuriranja",
-      "checking": "Provera ažuriranja",
-      "upToDate": "Nema ažuriranja",
-      "upToDateMessage": "Imate najnoviju verziju aplikacije.",
-      "updateAvailable": "Dostupno je ažuriranje",
-      "updateMessage": "Dostupna je nova verzija aplikacije: {version}.",
-      "download": "Preuzmi",
-      "skip": "Preskoči",
-      "error": "Greška",
-      "downloading": "Preuzimanje ažuriranja...",
-      "ready": "Ažuriranje je spremno za instalaciju",
-      "restart": "Ponovo pokrenite za ažuriranje",
-      "updateError": {
-        "title": "Greška pri ažuriranju",
-        "message": "Došlo je do greške prilikom provere ažuriranja. Molimo pokušajte kasnije.",
-        "notSupported": "Funkcija ažuriranja nije podržana u ovoj verziji aplikacije."
-      }
+      "openGooglePlay": "Otvori DomGo u Google Play prodavnici",
+      "openAppStore": "Otvori DomGo u App Store-u",
+      "description": "Posle objavljivanja aplikacija će se ažurirati preko prodavnice aplikacija.",
+      "comingSoonTitle": "Uskoro",
+      "comingSoonMessage": "Linkovi će biti dostupni nakon objavljivanja aplikacije.",
+      "errorTitle": "Greška",
+      "errorMessage": "Nije moguće otvoriti prodavnicu aplikacija. Pokušajte kasnije."
     }
   },
   "favoriteScreen": {

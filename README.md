@@ -119,7 +119,7 @@ npm start
 - EAS Build
 - GitHub Actions
 - Sentry (мониторинг)
-- Expo Updates (OTA)
+- Google Play rollout (manual updates)
 
 </td>
 </tr>

@@ -1,72 +1,56 @@
 # 🧠 Память проекта DomGoMobile
 
-## 🚀 Последние изменения (18 ноября 2025)
-- **OTA-обновления через GitHub Actions:** Настроена автоматическая публикация обновлений при пуше в main
-- **Компонент UpdateNotification:** Автоматическая проверка и уведомление пользователей о доступных обновлениях
-- **Версия в настройках:** Отображается актуальная версия из package.json (не версия APK)
-- **Детали:** См. `EXPO_UPDATES_SETUP.md` и `GITHUB_ACTIONS_SETUP.md`
-- **Статус:** ✅ Workflow настроен, токен добавлен в GitHub Secrets
+## 1. Коммуникация и правила
+- Общение, комментарии и документация **строго на русском языке** (`RULES.md`). Английский запрещён даже в логах.
+- Учитываем весь предыдущий контекст разговора; не задаём вопросы, на которые уже был ответ.
+- Придерживаемся TypeScript без `any`; соблюдаем `typescript_safety`, `ui_consistency`, `performance_optimization`, `database_consistency`.
+- Любые изменения схемы Supabase проходят через миграции + `supabase gen types typescript`.
+- UI: поддерживаем светлую/тёмную тему и систему переводов (`ru`, `sr`).
 
-## Коммуникация и стиль
-- **Всегда** общаемся, пишем комментарии и показываем ход мыслей **исключительно на русском языке** (см. `RULES.md`, `.qoder/rules`); использование английского считается критической ошибкой.
+## 2. Архитектура и стек
+- Платформы: Android, iOS, web (desktop/mobile). React Native 0.76.9 + Expo ~52 + TypeScript 5.9.2 + Hermes. Веб-версия на React Native Web.
+- Старт: `index.ts` инициализирует Sentry и регистрирует `App.tsx`. Навигация (`AppNavigator`) обёрнута в Auth/Language/Theme/Favorites/Property/Alert провайдеры + `ErrorBoundary`.
+- Deep Link-и: `domgomobile://auth/callback`, `domgomobile://property/...`, `domgo.rs/property/...`. Для шаринга используется GitHub Pages `property.html` с fallback (экран «Открываем объявление…» предлагающий Web/Play Store).
 
-## Общее представление
-- DomGoMobile — кросс‑платформенное приложение для поиска и размещения недвижимости (Android/iOS) на React Native 0.76.9 + Expo ~52.0.47 + TypeScript 5.9.2.
-- Единая кодовая база обслуживает 4 платформы: web mobile, web desktop, Android и iOS. На отдельных платформах меняются только верстка/доступность элементов; бизнес-логика и общий код остаются общими для всех платформ.
-- Текущая версия 0.9.8 (`package.json`, `app.config.js`). Стартовая точка — `index.ts`, который инициализирует Sentry и регистрирует `App.tsx`.
+## 3. Основные сервисы и модули
+- `src/services/propertyService.ts`: CRUD объявлений в Supabase, пагинация, retry, загрузка изображений ≤5 МБ (jpg/jpeg/png/webp), работа с Supabase Storage, LRU-кэши `propertyCache`/`apiCache`.
+- `src/contexts/PropertyContext.tsx`: хранение списков (`all/sale/rent/newBuildings`), throttling запросов (≥5 минут), выбор города, инкрементальная загрузка.
+- `AuthContext`/`FavoritesContext`: Supabase Auth + таблица `favorites`. Сессии в AsyncStorage (`autoRefreshToken`, `persistSession` включены).
+- `AppVersionManager`: отслеживает версию приложения/сборки, очищает AsyncStorage/FileSystem/LRU при смене версии. Expo OTA отключены, поэтому перезапуск приложения делается вручную.
+- Observability: `src/utils/sentry.ts` (DSN из `.env`, тег `app.version`) и `src/utils/logger.ts`.
+- Локализация: i18next (`src/translations/{ru,sr}.json`). Любые новые строки добавляем в оба файла.
 
-### OTA и обновление версии (чтобы не забыть)
-- Канал OTA по умолчанию: `default` (задан в `app.config.js -> updates.channel`). Старые билды без канала тоже слушают `default`; при необходимости продублировать публикацию в `production`.
-- RuntimeVersion: `1.0.4`. OTA работает только если runtimeVersion совпадает с билдом.
-  - Каждый раз проверять нативные ресурсы: Android `android/app/src/main/res/values/strings.xml` (`expo_runtime_version`), iOS `ios/DomGoMobile/Supporting/Expo.plist` (`EXUpdatesRuntimeVersion`).
-  - При нативных изменениях — повышаем runtimeVersion (в `app.config.js`, strings.xml, Expo.plist) и пересобираем apk/ipa.
-- Публикация OTA: `npx eas update --branch production --platform all --non-interactive --message "..."` (и продублировать на `default` при необходимости). Workflow `.github/workflows/eas-update.yml` публикует в production.
-- Android-манифест: `EXPO_UPDATES_CHECK_ON_LAUNCH=ALWAYS`, `EXPO_UPDATES_LAUNCH_WAIT_MS=0`, `EXPO_UPDATE_URL=https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5` — проверка идёт на каждом запуске.
-- UI проверки: `UpdateNotification` в `App.tsx` сразу дергает `Updates.checkForUpdateAsync()` и показывает модал; если уведомление не приходит — или канал другой, или runtimeVersion не совпадает.
-- Прямые источники версии: `package.json` (`version`), `app.config.js` (`expo.version`), `android/app/build.gradle` (`versionName`, `versionCode` + комментарии), `package-lock.json` (корень и `packages[""]`).
-- Fallbackы в коде: `src/services/UpdateService.ts`, `src/services/AppVersionManager.ts` (резервные строки версии).
-- Документация/отчёты/бейджи: `README.md` (бейдж + таблица версии), `WIKI.md`, `FINAL_SUMMARY.md`, `OPTIMIZATION_REPORT.md`, `FIXES_REPORT.md`, `CODE_REVIEW_REPORT.md`, `FULL_OPTIMIZATION_COMPLETE.md`, `TESTING_CHECKLIST.md`, `CHANGELOG_*`, `GITHUB_ACTIONS_SETUP.md`, `EXPO_UPDATES_SETUP.md`, `AUDIT_REPORT.md`.
-- Если меняются нативные части — повышаем runtimeVersion, инкрементируем `versionCode`, пересобираем apk/ipa; без нативных изменений runtimeVersion не трогаем.
-- `versionCode` в Gradle всегда инкрементируем при новом релизе. `update-version.sh` автоматизирует обновления, но ожидает `app.json`; если его нет — правим вручную.
-- `App.tsx` оборачивает навигацию в `AuthProvider`, `LanguageProvider`, `ThemeProvider`, `FavoritesProvider`, `PropertyProvider`, `AlertProvider` и `ErrorBoundary`, обеспечивает deep link-и для подтверждения email и переходов на объявления.
+## 4. Данные и Supabase
+- База описана в `DATABASE_SCHEMA.md` + `supabase/export/*`. Таблицы: `users`, `cities`, `properties`, `agency_profiles`, `favorites`.
+- Включён RLS: действия учитывают `user_id`/`agency_id`. Требуемые поля объявлений перечислены в `RULES.md`.
+- После изменения схемы: миграция + `supabase gen types typescript`.
 
-## Технологии и инфраструктура
-- Backend — Supabase (`src/lib/supabaseClient.ts`) с URL `https://bondvgkachyjxqxsrcvj.supabase.co`, хранение сессий через AsyncStorage, `autoRefreshToken` и `persistSession` включены.
-- `AppVersionManager` (`src/services/AppVersionManager.ts`) контролирует версию, очищает AsyncStorage/FileSystem/LRU‑кэши при смене обновления и может принудительно перезапускать приложение через Expo Updates.
-- Observability: `src/utils/sentry.ts` (DSN из `.env`, теги `app.version`), кастомный `Logger`.
-- Локализация через i18next + react-i18next (`src/translations`), доступные языки — `ru` и `sr`, fallback — `ru`.
+## 5. Сборка и релизы
+### 5.1 Скрипты
+- Локальные APK: `build-simple-apk.sh`, `build-local-apk.sh`, `build-dev-apk.sh`, `build-local-user-apk.sh`.
+- Прочие утилиты: `build-apk-eas.sh`, `build-and-upload.sh`, `release-build.sh`, `release.sh`, `create-release.sh`, `easy-build-apk.sh`, `build-simple-apk.sh`, `update-version.sh`, `generate-keystore.sh`, `download-apk.sh`.
+- Выпуск AAB: `./build-release-bundle.sh` (оборачивает `gradlew bundleRelease` и кладёт `~/Desktop/DomGoMobile-<версия>-release.aab`).
+- Релизный APK для локального QA: `android/app/build/outputs/apk/release/app-release.apk`. Установка через `adb install -r`.
 
-## Ключевые доменные модули
-- `src/services/propertyService.ts` — работа с Supabase (пагинация, Retry + timeout, загрузка изображений до 5 МБ форматов jpg/jpeg/png/webp, выгрузка в Supabase Storage, LRU‑кэш `propertyCache`/`apiCache`, инвалидация по `invalidateCache`/`clearCache`).
-- `src/contexts/PropertyContext.tsx` — бизнес‑логика списка объявлений: трекает страницы `all/sale/rent/newBuildings`, ограничивает частоту запросов (минимум 5 минут), процессы догрузки и выбор города, выдаёт данные для UI.
-- `AuthContext` + `FavoritesContext` строятся поверх Supabase Auth и таблицы `favorites`, везде используются провайдеры.
-- `App.tsx` поддерживает глубокие ссылки: `domgomobile://auth/callback`, `domgomobile://property/...`, `domgo.rs/property/...`, Netlify/GitHub Pages обработчик.
-- `src/utils/cacheManager.ts` предоставляет общий LRU и helpers для in-memory кешей списков и API; `AppVersionManager` их очищает.
+### 5.2 Процесс публикации
+- Expo OTA отключены. Каждое обновление публикуется через Google Play/App Store.
+- Минимальные разрешения: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `READ_MEDIA_IMAGES/VIDEO`, `INTERNET`, `VIBRATE`. Чувствительные права (`RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW`, `WRITE_EXTERNAL_STORAGE`) убраны.
+- Настройки -> «Проверить обновления» ведёт в Google Play (`https://play.google.com/store/apps/details?id=com.anonymous.DomGoMobile`). Для iOS добавим ссылку после релиза.
+- Release checklist для Play Console:
+  1. Подготовить `.aab` (см. выше) и включить Play App Signing.
+  2. Опубликовать Privacy Policy (`PRIVACY_POLICY.md`) на публичном URL и указать его в Store Listing.
+  3. Заполнить Data Safety (собираем email, фото/контент объявлений, избранное, логи ошибок/Sentry, геолокацию по запросу пользователя).
+  4. Заполнить раздел App Content → User Generated Content: правила модерации из `RULES.md`, контакты для жалоб.
+  5. Добавить скриншоты ≥1080px, иконку 512×512, описания, контактный e-mail/сайт.
+  6. Пройти Internal testing (получить Pre-launch report) и после проверки выкатывать Production.
+- GitHub CLI `gh` авторизован (user `angstremoff`, scopes `repo`,`workflow`). Команда для перезаливки APK: `gh release upload v<версия> releases/domgo.apk --clobber`.
 
-## Данные и Supabase
-- Полная схема описана в `DATABASE_SCHEMA.md`: таблицы `users`, `cities`, `properties`, `agency_profiles`, `favorites`, их поля, связи и индексы.
-- Экспорт структуры и политик в `supabase/export/{schema.sql,enums.tsv,indexes.tsv,rls_policies.tsv}`. Любые изменения схемы идут через Supabase миграции, затем выполняется `supabase gen types typescript` для обновления `src/lib/database.types`.
-- RLS включён, операции создания/редактирования объявлений учитывают `user_id`/`agency_id`. Обязательные поля объявлений приведены в `RULES.md`.
+## 6. Документация и инструменты
+- README, WIKI (+ `wiki/*.md`), `AUDIT_REPORT.md`, `IMPLEMENTATION_REPORT.md`, `DATABASE_SCHEMA.md`, `OPTIMIZATION_REPORT.md`, `FIXES_REPORT.md`, `CODE_REVIEW_REPORT.md`, `FINAL_SUMMARY.md`, `FULL_OPTIMIZATION_COMPLETE.md`, `TESTING_CHECKLIST.md`.
+- `EXPO_UPDATES_SETUP.md` и `GITHUB_ACTIONS_SETUP.md` помечены как архивные (OTA больше не используются).
+- Для диагностики доступен MCP Context7 (`docs/context7-setup.md`).
 
-## Сборка и DevOps
-- Скрипты APK/EAS: `build-simple-apk.sh`, `build-local-apk.sh`, `build-dev-apk.sh`, `build-apk-eas.sh`, `release-build.sh`, `release.sh`, `create-release.sh`, `easy-build-apk.sh`, `build-and-upload.sh`, `update-version.sh`, `generate-keystore.sh`, `download-apk.sh`.
-- Поддерживающие утилиты: `scripts/analyze-bundle-size.js`, `scripts/replace-console-logs.js`, `scripts/run_android.sh`. Есть инструкции по устранению проблем (`fix-build-issues.md`, `fix-eas-build.sh`, `fix-gradle-build.sh`, `migrate-to-new-mac.sh`).
-- Документация: `README.md`, `WIKI.md` + подробные файлы в `wiki/`, а также `AUDIT_REPORT.md`, `IMPLEMENTATION_REPORT.md`, `DATABASE_SCHEMA.md`, `EXPO_UPDATES_SETUP.md`, `GITHUB_ACTIONS_SETUP.md`.
-- GitHub: CLI `gh` уже авторизован под `angstremoff` (scopes `repo`, `workflow`), поэтому можно грузить артефакты без переменных окружения. Для перезаливки стабильного APK в релиз используем `gh release upload v<версия> releases/domgo.apk --clobber`; версионированный файл — `releases/DomGo-<версия>.apk`. Если `gh auth status` неактивен, нужен `GITHUB_TOKEN` со scope `repo`.
-
-## OTA-обновления (Expo Updates)
-- **Автоматическая публикация:** GitHub Actions workflow (`.github/workflows/eas-update.yml`) автоматически публикует OTA при пуше в `main`.
-- **Компонент UpdateNotification:** (`src/components/UpdateNotification.tsx`) проверяет обновления при запуске и показывает модал; в настройках есть кнопка “Проверить OTA/Логи” (канал/runtime/updateUrl/ошибка выводятся в UI).
-- **Каналы:** по умолчанию `production` (`app.config.js -> updates.channel`, `EXUpdatesChannel`). Если нужно поддерживать старые билды без канала — публиковать дубли в `default`.
-- **Runtime:** `1.0.4`. OTA работает только при совпадении runtime.
-  - Проверять нативные ресурсы: Android `android/app/src/main/res/values/strings.xml` (`expo_runtime_version`, `EXPO_UPDATES_RELEASE_CHANNEL=production`), iOS `ios/DomGoMobile/Supporting/Expo.plist` (`EXUpdatesRuntimeVersion`, `EXUpdatesChannel=production`, `EXUpdatesLogLevel=debug`).
-  - При нативных изменениях поднимать runtimeVersion в `app.config.js`, strings.xml, Expo.plist и пересобирать apk/ipa.
-  - Следить за `.env -> APP_VERSION` (иначе в apk попадёт старый `app.config`).
-- **Публикация OTA:** `npx eas update --branch production --platform all --non-interactive --message "..."` и при необходимости дублировать на `default`. URL: `https://u.expo.dev/313d8153-28aa-426a-a0f3-b580238521e5`.
-- **Манифест/конфиг в apk:** проверять `assets/app.config` и `assets/app.manifest` (url, channel, runtimeVersion).
-- **Важно:** OTA только для JS. При изменении нативных зависимостей — повышать runtime, инкрементить `versionCode`, собирать новый apk/ipa и публиковать OTA под новый runtime.
-
-## Правила разработки
-- Русский язык обязателен в общении, коде, логах и документации; соблюдать `typescript_safety`, `ui_consistency`, `performance_optimization`, `database_consistency` из `RULES.md`.
-- Поддерживать светлую/тёмную темы, кэширование запросов, пагинацию больших списков, не использовать `any`.
-- Для диагностики доступен MCP Context7 (`docs/context7-setup.md`); локальное знание хранится в `MEMORY.md`, расположенном в `/Users/test/CascadeProjects/domgomobile`.
+## 7. Важные напоминания
+- DomGoMobile поддерживает четыре платформы, но бизнес-логика едина; различия только в верстке/UX.
+- При шаринге объявлений используем `https://angstremoff.github.io/domgomobile/property.html?id=<ID>` — страница пытается открыть приложение, если нет — предлагает Web + Google Play.
+- Любые новые задачи, связанные с публикацией, должны учитывать требования Google Play и наличие AAB; APK используется только для локального тестирования.

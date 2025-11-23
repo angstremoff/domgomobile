@@ -1,7 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import * as Updates from 'expo-updates';
-import { Linking, Platform } from 'react-native';
+import { Linking } from 'react-native';
 import AppVersionManager from './src/services/AppVersionManager';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
@@ -12,7 +11,6 @@ import AlertProvider from './src/components/AlertProvider';
 import AlertInitializer from './src/components/AlertInitializer';
 import AppNavigator from './src/navigation/AppNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
-import UpdateNotification from './src/components/UpdateNotification';
 import { logError } from './src/utils/sentry';
 import { Logger } from './src/utils/logger';
 import { supabase } from './src/lib/supabaseClient';
@@ -128,76 +126,6 @@ export default function App() {
     };
   }, []);
   
-  // Функция для проверки и установки обновлений (не запускаем на Web)
-  React.useEffect(() => {
-    if (Platform.OS === 'web') return; // web: проверка обновлений отключена
-    
-    // Храним ID таймера для очистки
-    let retryTimeoutId: NodeJS.Timeout | null = null;
-    
-    // Создаем проверку обновлений в самом начале работы приложения
-    async function checkForUpdates() {
-      try {
-        // В режиме разработки обновления не работают
-        if (__DEV__) {
-          Logger.debug('Обновления отключены в режиме разработки');
-          return;
-        }
-
-        Logger.debug('Проверка обновлений...');
-        
-        // Проверяем наличие обновлений
-        const update = await Updates.checkForUpdateAsync();
-        
-        if (update.isAvailable) {
-          Logger.debug('Доступно обновление, загружаем...');
-          
-          try {
-            // Загружаем обновление
-            await Updates.fetchUpdateAsync();
-            
-            // Перезапускаем приложение с новыми файлами
-            Logger.debug('Обновление загружено, перезапускаем приложение');
-            await Updates.reloadAsync();
-          } catch (error) {
-            Logger.error('Ошибка при загрузке обновления:', error);
-            
-            // Повторная попытка через 5 секунд с cleanup
-            retryTimeoutId = setTimeout(async () => {
-              try {
-                Logger.debug('Повторная попытка загрузки обновления...');
-                await Updates.fetchUpdateAsync();
-                await Updates.reloadAsync();
-              } catch (retryError) {
-                Logger.error('Повторная загрузка не удалась:', retryError);
-              }
-            }, 5000);
-          }
-        } else {
-          Logger.debug('Обновлений не найдено, используем текущую версию');
-        }
-      } catch (e) {
-        Logger.error('Ошибка при проверке обновлений:', e);
-      }
-    }
-    
-    // Запускаем проверку обновлений при запуске приложения
-    checkForUpdates();
-    
-    // Проверяем обновления каждый час, если приложение в фоне
-    const intervalId = setInterval(() => {
-      checkForUpdates();
-    }, 60 * 60 * 1000); // Проверяем каждый час
-    
-    // Очищаем интервал и таймер при уничтожении компонента
-    return () => {
-      clearInterval(intervalId);
-      if (retryTimeoutId) {
-        clearTimeout(retryTimeoutId);
-      }
-    };
-  }, []);
-
   // Обработчик глобальных ошибок в приложении
   React.useEffect(() => {
     // Функция обработки непойманных ошибок
@@ -257,7 +185,6 @@ export default function App() {
               <FavoritesProvider>
                 <PropertyProvider>
                   <AppNavigator />
-                  <UpdateNotification />
                   <StatusBar style="auto" />
                 </PropertyProvider>
               </FavoritesProvider>

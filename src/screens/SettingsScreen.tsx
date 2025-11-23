@@ -1,6 +1,4 @@
-import { useState, useEffect } from 'react';
-import * as Clipboard from 'expo-clipboard';
-import Constants from 'expo-constants';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -10,12 +8,11 @@ import {
   ScrollView,
   Platform,
   useWindowDimensions,
-  Alert
+  Linking
 } from 'react-native';
 import { Logger } from '../utils/logger';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
-import * as Updates from 'expo-updates';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
@@ -36,29 +33,7 @@ const SettingsScreen = ({ navigation }: any) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalMessage, setModalMessage] = useState('');
-  const [otaLog, setOtaLog] = useState<string>('');
-
-  // Показываем актуальную версию из package.json (версия кода)
-  // а не версию APK, так как OTA обновления не меняют версию APK
   const codeVersion = packageJson.version;
-  const [updateInfo, setUpdateInfo] = useState<string>('');
-
-  useEffect(() => {
-    // Получаем информацию об обновлении
-    const getUpdateInfo = async () => {
-      try {
-        if (!__DEV__ && Updates.channel) {
-          const update = await Updates.checkForUpdateAsync();
-          if (update.isAvailable) {
-            setUpdateInfo(' (обновление доступно)');
-          }
-        }
-      } catch (error) {
-        Logger.debug('Не удалось проверить обновление:', error);
-      }
-    };
-    getUpdateInfo();
-  }, []);
 
   const handleLogout = async () => {
     try {
@@ -76,90 +51,25 @@ const SettingsScreen = ({ navigation }: any) => {
     setModalVisible(true);
   };
 
-  const copyToClipboard = async () => {
-    await Clipboard.setStringAsync(otaLog);
-    Alert.alert('Скопировано', 'Лог скопирован в буфер обмена');
-  };
+  const handleStoreUpdate = () => {
+    const playUrl = 'https://play.google.com/store/apps/details?id=com.anonymous.DomGoMobile';
+    const storeUrl = Platform.OS === 'android' ? playUrl : '';
 
-  const handleManualUpdate = async () => {
-    try {
-      const runtimeVersion = Updates.runtimeVersion;
-      const updateId = Updates.updateId;
-      const channel = Updates.channel;
-      // @ts-ignore
-      const releaseChannel = Updates.releaseChannel;
-      const isEmbeddedLaunch = Updates.isEmbeddedLaunch;
-      const checkAutomatically = Updates.checkAutomatically;
-      const emergencyLaunchException = (Updates as any).emergencyLaunchException;
-
-      const updateUrl = (Updates.manifest as any)?.extra?.expoClient?.updateUrl ||
-        (Updates as any)?.manifest?.extra?.expoClient?.updateUrl ||
-        'undefined';
-
-      // Get config from Constants
-      const updatesConfig = Constants.expoConfig?.updates as any;
-      const configChannel = updatesConfig?.channel || 'undefined (Constants)';
-      const configUrl = updatesConfig?.url || 'undefined (Constants)';
-      const configExtra = JSON.stringify(Constants.expoConfig?.extra || {}, null, 2);
-
-      let logMsg = `=== DIAGNOSTIC LOG ===\n`;
-      logMsg += `Date: ${new Date().toISOString()}\n`;
-      logMsg += `\n--- Runtime (Updates Native) ---\n`;
-      logMsg += `Channel: ${channel}\n`;
-      logMsg += `ReleaseChannel: ${releaseChannel}\n`;
-      logMsg += `UpdateUrl: ${updateUrl}\n`;
-      logMsg += `UpdateId: ${updateId}\n`;
-      logMsg += `RuntimeVersion: ${runtimeVersion}\n`;
-      logMsg += `IsEmbedded: ${isEmbeddedLaunch}\n`;
-      logMsg += `CheckAuto: ${checkAutomatically}\n`;
-      logMsg += `EmergencyException: ${emergencyLaunchException}\n`;
-
-      logMsg += `\n--- Config (Constants JS) ---\n`;
-      logMsg += `Channel: ${configChannel}\n`;
-      logMsg += `URL: ${configUrl}\n`;
-      logMsg += `Extra: ${configExtra}\n`;
-
-      logMsg += `\n--- Action ---\n`;
-      logMsg += `Checking for updates...\n`;
-
-      setOtaLog(logMsg);
-
-      try {
-        const res = await Updates.checkForUpdateAsync();
-        const isAvailable = res?.isAvailable;
-        const manifest = JSON.stringify(res?.manifest ?? {}, null, 2);
-
-        logMsg += `\n--- Result ---\n`;
-        logMsg += `IsAvailable: ${isAvailable}\n`;
-        logMsg += `Manifest: ${manifest}\n`;
-        setOtaLog(logMsg);
-
-        if (isAvailable) {
-          logMsg += `\nFetching update...\n`;
-          setOtaLog(logMsg);
-          await Updates.fetchUpdateAsync();
-          logMsg += `\nUpdate fetched. Reloading...\n`;
-          setOtaLog(logMsg);
-          await Updates.reloadAsync();
-        } else {
-          setModalTitle('OTA');
-          setModalMessage('Обновлений нет');
-          setModalVisible(true);
-        }
-      } catch (e: any) {
-        logMsg += `\n--- ERROR ---\n`;
-        logMsg += `Code: ${e.code}\n`;
-        logMsg += `Message: ${e.message}\n`;
-        logMsg += `Stack: ${e.stack}\n`;
-        setOtaLog(logMsg);
-
-        setModalTitle('OTA Error');
-        setModalMessage(e.message);
-        setModalVisible(true);
-      }
-    } catch (error: any) {
-      setOtaLog((prev) => `${prev}\nCRITICAL ERROR: ${error?.message || error}`);
+    if (!storeUrl) {
+      showModal(
+        t('settings.update.comingSoonTitle', 'Скоро'),
+        t('settings.update.comingSoonMessage', 'Ссылки на App Store появятся после публикации.')
+      );
+      return;
     }
+
+    Linking.openURL(storeUrl).catch((error) => {
+      Logger.error('Не удалось открыть магазин:', error);
+      showModal(
+        t('settings.update.errorTitle', 'Ошибка'),
+        t('settings.update.errorMessage', 'Не удалось открыть магазин приложений. Попробуйте обновить вручную.')
+      );
+    });
   };
 
   return (
@@ -209,7 +119,7 @@ const SettingsScreen = ({ navigation }: any) => {
           <View style={styles.settingItem}>
             <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.version')}</Text>
             <Text style={[styles.settingValue, { color: theme.secondary }]}>
-              {codeVersion}{updateInfo}
+              {codeVersion}
             </Text>
           </View>
 
@@ -218,24 +128,17 @@ const SettingsScreen = ({ navigation }: any) => {
             <Ionicons name="chevron-forward" size={20} color={theme.secondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingItem} onPress={handleManualUpdate}>
+          <TouchableOpacity style={styles.settingItem} onPress={handleStoreUpdate}>
             <Text style={[styles.settingLabel, { color: theme.text }]}>
-              Проверить OTA / Логи
+              {Platform.OS === 'android'
+                ? t('settings.update.openGooglePlay', 'Открыть DomGo в Google Play')
+                : t('settings.update.openAppStore', 'Открыть DomGo в App Store')}
             </Text>
-            <Ionicons name="refresh" size={20} color={theme.primary} />
+            <Ionicons name="open-outline" size={20} color={theme.primary} />
           </TouchableOpacity>
-
-          {otaLog ? (
-            <View style={[styles.otaLogContainer, { borderColor: theme.border }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={[styles.otaLogTitle, { color: theme.text }]}>OTA лог</Text>
-                <TouchableOpacity onPress={copyToClipboard} style={{ padding: 4 }}>
-                  <Ionicons name="copy-outline" size={18} color={theme.primary} />
-                </TouchableOpacity>
-              </View>
-              <Text style={[styles.otaLogText, { color: theme.secondary }]}>{otaLog}</Text>
-            </View>
-          ) : null}
+          <Text style={[styles.versionNote, { color: theme.secondary }]}>
+            {t('settings.update.description', 'После публикации новое обновление можно будет установить через магазин приложений.')}
+          </Text>
 
           <TouchableOpacity style={styles.settingItem} onPress={() => showModal(t('settings.contactInfo.title'), t('settings.contactInfo.message'))}>
             <Text style={[styles.settingLabel, { color: theme.text }]}>{t('settings.contactUs')}</Text>

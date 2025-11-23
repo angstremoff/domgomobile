@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import * as Updates from 'expo-updates';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { Logger } from '../utils/logger';
@@ -10,7 +9,6 @@ import { propertyCache, apiCache } from '../utils/cacheManager';
 interface VersionInfo {
   appVersion: string;
   buildVersion: string;
-  updateId?: string;
   lastClearTime: number;
   clearReason: string;
 }
@@ -43,25 +41,17 @@ class AppVersionManager {
    * Получает текущую версию сборки/обновления
    */
   private getBuildVersion(): string {
-    const runtimeVersion = Updates.runtimeVersion;
-    if (typeof runtimeVersion === 'string') {
-      return runtimeVersion;
+    const androidCode = Constants.expoConfig?.android?.versionCode;
+    if (androidCode != null) {
+      return String(androidCode);
     }
-    
-    const expoRuntimeVersion = Constants.expoConfig?.runtimeVersion;
-    if (typeof expoRuntimeVersion === 'string') {
-      return expoRuntimeVersion;
+
+    const iosBuildNumber = Constants.expoConfig?.ios?.buildNumber;
+    if (iosBuildNumber) {
+      return iosBuildNumber;
     }
-    
-    return '1.0.4'; // Fallback версия из app.json
-  }
-  
-  /**
-   * Получает ID текущего обновления Expo
-   */
-  private getUpdateId(): string | undefined {
-    if (Platform.OS === 'web') return undefined;
-    return Updates.updateId || undefined;
+
+    return this.getCurrentVersion();
   }
   
   /**
@@ -132,7 +122,6 @@ class AppVersionManager {
       const versionInfo: VersionInfo = {
         appVersion: this.getCurrentVersion(),
         buildVersion: this.getBuildVersion(),
-        updateId: this.getUpdateId(),
         lastClearTime: Date.now(),
         clearReason: reason
       };
@@ -152,32 +141,16 @@ class AppVersionManager {
    * Принудительный перезапуск приложения после очистки кэшей
    */
   async forceRestart(reason: string = 'Cache cleared'): Promise<void> {
-    Logger.debug(`🔄 ПРИНУДИТЕЛЬНЫЙ ПЕРЕЗАПУСК ПРИЛОЖЕНИЯ: ${reason}`);
+    Logger.debug(`🔄 Запрошен перезапуск приложения: ${reason}`);
     
-    try {
-      if (Platform.OS === 'web') {
-        Logger.debug('Web платформа - перезагрузка страницы');
-        if (typeof window !== 'undefined') {
-          window.location.reload();
-        }
-        return;
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        window.location.reload();
       }
-      
-      // Для React Native используем Updates.reloadAsync()
-      if (Updates.isEnabled) {
-        Logger.debug('Перезапуск через Expo Updates...');
-        await Updates.reloadAsync();
-      } else {
-        Logger.warn('Expo Updates отключен - невозможно перезапустить приложение');
-        // В dev режиме просто логируем
-        if (__DEV__) {
-          Logger.debug('Режим разработки - перезапуск не выполняется');
-        }
-      }
-    } catch (error) {
-      Logger.error('Ошибка при попытке перезапуска приложения:', error);
-      throw error;
+      return;
     }
+    
+    Logger.debug('Expo OTA отключены - попросите пользователя перезапустить приложение вручную');
   }
 
   /**
@@ -210,7 +183,6 @@ class AppVersionManager {
     try {
       const currentVersion = this.getCurrentVersion();
       const currentBuildVersion = this.getBuildVersion();
-      const currentUpdateId = this.getUpdateId();
       
       // Проверяем флаг принудительной очистки
       const forceClearFlag = await AsyncStorage.getItem(this.FORCE_CLEAR_KEY);
@@ -248,13 +220,7 @@ class AppVersionManager {
         clearReason = `Build version changed: ${storedVersionInfo.buildVersion} → ${currentBuildVersion}`;
       }
       
-      // 3. Изменился ID обновления Expo (OTA update)
-      else if (currentUpdateId && storedVersionInfo.updateId !== currentUpdateId) {
-        shouldClear = true;
-        clearReason = `Update ID changed: ${storedVersionInfo.updateId} → ${currentUpdateId}`;
-      }
-      
-      // 4. Проверка на коррупцию данных (отсутствие обязательных полей)
+      // 3. Проверка на коррупцию данных (отсутствие обязательных полей)
       else if (!storedVersionInfo.appVersion || !storedVersionInfo.buildVersion || !storedVersionInfo.lastClearTime) {
         shouldClear = true;
         clearReason = `Коррупция данных о версии - отсутствуют обязательные поля`;
@@ -317,7 +283,6 @@ class AppVersionManager {
     current: {
       appVersion: string;
       buildVersion: string;
-      updateId?: string;
     };
     stored: VersionInfo | null;
     forceClearFlag: boolean;
@@ -329,7 +294,6 @@ class AppVersionManager {
       current: {
         appVersion: this.getCurrentVersion(),
         buildVersion: this.getBuildVersion(),
-        updateId: this.getUpdateId(),
       },
       stored,
       forceClearFlag
