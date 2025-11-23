@@ -53,7 +53,7 @@
 </head>
 <body>
   <div class="container">
-    <img src="https://domgo.rs/favicon.ico" alt="DomGo Logo" class="logo">
+    <img src="https://raw.githubusercontent.com/angstremoff/domgomobile/main/assets/icon.png" alt="DomGo Logo" class="logo" onerror="this.style.display='none'">
     <div id="opening">
       <h1>Открываем объявление...</h1>
       <p>Пытаемся открыть объявление в приложении DomGo</p>
@@ -79,6 +79,11 @@
     const urlParams = new URLSearchParams(window.location.search);
     const propertyId = urlParams.get('id');
 
+    if (!propertyId) {
+      document.getElementById('opening').innerHTML = '<h1>Некорректная ссылка</h1><p>Не удалось определить ID объявления.</p>';
+      throw new Error('Missing propertyId param');
+    }
+
     const appScheme = `domgomobile://property/${propertyId}`;
     const androidIntent = `intent://property/${propertyId}#Intent;scheme=domgomobile;package=com.anonymous.DomGoMobile;end`;
     const webUrl = `https://domgo.rs/?propertyId=${propertyId}`;
@@ -103,31 +108,38 @@
     const isAndroid = /android/i.test(navigator.userAgent);
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isMobile = isAndroid || isIOS;
+    let appProbablyOpened = false;
 
-    // Desktop: отправляем сразу на веб и не показываем скачивание
-    if (!isMobile) {
-      window.location.replace(webUrl);
-    } else {
-      // Попытка открыть приложение
-      setTimeout(() => {
-        if (isAndroid) {
-          window.location.href = androidIntent;
-        } else {
-          window.location.href = appScheme;
-        }
-      }, 400);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        appProbablyOpened = true;
+      }
+    });
+
+    function tryOpenApp() {
+      if (isAndroid) {
+        window.location.href = androidIntent;
+      } else if (isIOS) {
+        window.location.href = appScheme;
+      }
     }
 
-    // Если приложение не открылось, показываем CTA
-    setTimeout(async () => {
-      if (!isMobile) return;
-      const isStillHere = document.hasFocus();
-      if (!isStillHere) return;
+    async function showFallback() {
+      if (appProbablyOpened || !isMobile) return;
       document.getElementById('opening').style.display = 'none';
       document.getElementById('install-prompt').style.display = 'block';
       const downloadUrl = await getLatestRelease();
       document.getElementById('download-link').href = downloadUrl;
-    }, 2200);
+    }
+
+    if (!isMobile) {
+      window.location.replace(webUrl);
+    } else {
+      setTimeout(() => {
+        tryOpenApp();
+        setTimeout(showFallback, 2000);
+      }, 300);
+    }
   </script>
 </body>
 </html>
