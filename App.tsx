@@ -1,5 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Linking } from 'react-native';
 import AppVersionManager from './src/services/AppVersionManager';
 import { AuthProvider } from './src/contexts/AuthContext';
@@ -23,31 +24,31 @@ export default function App() {
     const initializeApp = async () => {
       try {
         Logger.debug('🚀 НАЧАЛО ИНИЦИАЛИЗАЦИИ ПРИЛОЖЕНИЯ...');
-        
+
         // Получаем диагностическую информацию до очистки
         const diagnosticInfo = await AppVersionManager.getDiagnosticInfo();
         Logger.debug('🔍 ИНФОРМАЦИЯ О ВЕРСИЯХ:');
         Logger.debug('  - Текущая версия:', diagnosticInfo.current);
         Logger.debug('  - Сохранённая версия:', diagnosticInfo.stored);
-        
+
         // Проверяем и очищаем кэш при необходимости
         const wasCleared = await AppVersionManager.checkAndClearIfNeeded();
-        
+
         if (wasCleared) {
           Logger.debug('🧹 Кэш был очищен из-за изменения версии или других условий');
-          
+
           // Получаем обновлённую информацию после очистки
           const updatedInfo = await AppVersionManager.getVersionInfo();
           Logger.debug('🔄 Обновлённая информация о версии:', updatedInfo);
         } else {
           Logger.debug('✅ Кэш не требует очистки');
         }
-        
+
         Logger.debug('✨ ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ЗАВЕРШЕНА УСПЕШНО!');
-        
+
       } catch (error) {
         Logger.error('❌ КРИТИЧЕСКАЯ ОШИБКА при инициализации приложения:', error);
-        
+
         // При критической ошибке пытаемся очистить кэш для восстановления
         try {
           await AppVersionManager.forceClearAll(`Критическая ошибка инициализации: ${error}`);
@@ -57,7 +58,7 @@ export default function App() {
         }
       }
     };
-    
+
     initializeApp();
   }, []);
 
@@ -68,7 +69,7 @@ export default function App() {
       const url = event.url;
       Logger.debug('Получена ссылка:', url);
       const parsed = parseDeepLink(url);
-      
+
       if (parsed.type === 'auth') {
         Logger.debug('Обработка подтверждения email');
         const { error } = await supabase.auth.setSession({
@@ -89,15 +90,15 @@ export default function App() {
         Logger.debug('Открываем объявление по ID:', propertyId);
         // @ts-ignore
         globalThis.pendingPropertyNavigation = propertyId;
-        
+
         // @ts-ignore
         if (globalThis.navigationRef && globalThis.navigationRef.current) {
           Logger.debug('Прямая навигация к экрану деталей объявления, ID:', propertyId);
           try {
             // @ts-ignore
-            globalThis.navigationRef.current.navigate('PropertyDetails', { 
-              propertyId: propertyId, 
-              id: propertyId 
+            globalThis.navigationRef.current.navigate('PropertyDetails', {
+              propertyId: propertyId,
+              id: propertyId
             });
             Logger.debug('Навигация к экрану PropertyDetails с ID:', propertyId);
           } catch (error) {
@@ -109,23 +110,23 @@ export default function App() {
 
       Logger.debug('Неизвестный deeplink, пропускаем');
     };
-    
+
     // Подписываемся на событие открытия приложения по ссылке
     const subscription = Linking.addEventListener('url', handleDeepLink);
-    
+
     // Проверяем, не было ли приложение открыто по ссылке
     Linking.getInitialURL().then(url => {
       if (url) {
         handleDeepLink({ url });
       }
     });
-    
+
     return () => {
       // Отписываемся при размонтировании компонента
       subscription.remove();
     };
   }, []);
-  
+
   // Обработчик глобальных ошибок в приложении
   React.useEffect(() => {
     // Функция обработки непойманных ошибок
@@ -149,14 +150,14 @@ export default function App() {
     ErrorUtils.setGlobalHandler((error, isFatal) => {
       // Логируем ошибку и передаем её в Sentry
       handleError(error);
-    
+
       // Затем вызываем стандартный обработчик
       errorHandler(error, isFatal);
     });
 
     // Подписываемся на необработанные обещания
     const rejectionTracking = require('promise/setimmediate/rejection-tracking');
-    
+
     if (rejectionTracking) {
       rejectionTracking.enable({
         allRejections: true,
@@ -167,7 +168,7 @@ export default function App() {
     return () => {
       // Восстанавливаем исходный обработчик
       ErrorUtils.setGlobalHandler(errorHandler);
-      
+
       // Отключаем отслеживание обещаний
       if (rejectionTracking) {
         rejectionTracking.disable();
@@ -177,21 +178,23 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <LanguageProvider>
-        <ThemeProvider>
-          <AlertProvider>
-            <AlertInitializer />
-            <AuthProvider>
-              <FavoritesProvider>
-                <PropertyProvider>
-                  <AppNavigator />
-                  <StatusBar style="auto" />
-                </PropertyProvider>
-              </FavoritesProvider>
-            </AuthProvider>
-          </AlertProvider>
-        </ThemeProvider>
-      </LanguageProvider>
+      <SafeAreaProvider>
+        <LanguageProvider>
+          <ThemeProvider>
+            <AlertProvider>
+              <AlertInitializer />
+              <AuthProvider>
+                <FavoritesProvider>
+                  <PropertyProvider>
+                    <AppNavigator />
+                    <StatusBar style="auto" />
+                  </PropertyProvider>
+                </FavoritesProvider>
+              </AuthProvider>
+            </AlertProvider>
+          </ThemeProvider>
+        </LanguageProvider>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

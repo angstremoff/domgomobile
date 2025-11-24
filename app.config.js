@@ -27,7 +27,8 @@ export default ({ config }) => {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.anonymous.DomGoMobile'
+      bundleIdentifier: 'com.anonymous.DomGoMobile',
+      buildNumber: '4'
     },
     android: {
       allowBackup: false,
@@ -36,6 +37,7 @@ export default ({ config }) => {
         backgroundColor: '#ffffff'
       },
       package: 'domgo.rs',
+      versionCode: 4,
       config: {
         googleMaps: {
           apiKey: GOOGLE_MAPS_API_KEY

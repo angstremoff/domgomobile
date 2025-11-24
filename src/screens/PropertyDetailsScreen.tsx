@@ -134,38 +134,38 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
       setActiveImageIndex(index);
     }
   };
-  
+
   // Функция поделиться объявлением
   const handleShare = async () => {
     if (!property) return;
-    
+
     try {
       // URL нашего обработчика deep links на GitHub Pages
       // Он проверит наличие приложения и предложит установить его, если не установлено
       const deeplinkHandlerUrl = `https://angstremoff.github.io/domgomobile/property.html?id=${property.id}`;
-      
+
       // Формируем текст для шаринга в зависимости от выбранного языка
       let moreDetailsText = t('property.moreDetailsInApp', 'Подробнее в приложении DomGo');
-      
+
       // Получаем переведенное название города, если есть
       const cityName = property.city?.name || '';
       // Перевод названия города
       const translatedCityName = cityName ? t(`cities.${cityName}`, cityName) : '';
-      
+
       // Формируем текст для шаринга (без площади и комнат)
       // Добавляем переведенное название города вместо property.location
       const messageText = `${property.title}\n${property.price}${property.currency || '€'}\n${translatedCityName}\n\n${moreDetailsText}: ${deeplinkHandlerUrl}`;
-      
+
       // Вызываем системный диалог шаринга
       await Share.share({
         message: messageText,
         // На iOS можно также указать заголовок и URL
-        ...(Platform.OS === 'ios' ? { 
+        ...(Platform.OS === 'ios' ? {
           title: t('property.shareTitle', 'Поделиться объявлением'),
-          url: deeplinkHandlerUrl 
+          url: deeplinkHandlerUrl
         } : {})
       });
-      
+
       Logger.debug('Поделились объявлением:', property.id);
     } catch (error) {
       Logger.error('Ошибка при шаринге:', error);
@@ -345,19 +345,19 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const handleWebViewMessage = (event: any) => {
     try {
       const data = event.nativeEvent.data;
-      
+
       if (data.startsWith('log:')) {
         // Это логи для отладки
         Logger.debug('Лог из WebView:', data.substring(4));
         return;
       }
-      
+
       Logger.debug('Получено сообщение от WebView:', data);
-      
+
       if (data === 'ready') {
         // WebView готов, отправляем координаты
         Logger.debug('WebView готов, отправляем координаты');
-        
+
         // Добавляем небольшую задержку перед отправкой координат
         setTimeout(() => {
           sendCoordinatesToMap();
@@ -384,7 +384,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         setMapLoading(false);
         return;
       }
-      
+
       webViewRef.current.postMessage(JSON.stringify({ coords: propertyCoords }));
     } catch (error) {
       Logger.error('Ошибка отправки координат:', error);
@@ -409,7 +409,8 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   }
 
   // Определяем отображаемые тексты для типа недвижимости и типа сделки
-  const propertyTypeText = property.property_type ? t(`property.${property.property_type.toLowerCase()}`) : '';
+  // Используем filters. для типа недвижимости, чтобы соответствовать PropertyCard
+  const propertyTypeText = property.property_type ? t(`filters.${property.property_type}`) : '';
   const dealTypeText = property.type === 'rent' ? t('property.rent') : t('property.sale');
 
   // Формируем полный адрес
@@ -418,12 +419,18 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const translatedCityName = cityName ? t(`cities.${cityName}`, cityName) : '';
   const streetName = property.location || '';
   const fullAddress = translatedCityName && streetName ? `${translatedCityName}, ${streetName}` : translatedCityName || streetName;
-  
+
+  const formattedPrice = useMemo(() => {
+    const priceValue = typeof property.price === 'number' ? property.price : Number(property.price);
+    const priceLabel = Number.isFinite(priceValue) ? priceValue.toLocaleString() : property.price;
+    return priceLabel;
+  }, [property.price]);
+
   // Отладочный вывод для всего объекта
   Logger.debug('Детали объявления:', JSON.stringify({
     id: property.id,
     title: property.title,
-    status: property.status, 
+    status: property.status,
     type: property.type,
     property_type: property.property_type
   }, null, 2));
@@ -449,17 +456,17 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               // Отладочный вывод для проверки статуса
               const isInactive = property?.status === 'sold' || property?.status === 'rented';
               Logger.debug(`Детали объявления: айди=${property.id}, статус=${property.status}, неактивно=${isInactive}`);
-            
+
               return (
-                <TouchableOpacity 
-                  onPress={() => { setActiveImageIndex(index); setIsViewerVisible(true); }} 
+                <TouchableOpacity
+                  onPress={() => { setActiveImageIndex(index); setIsViewerVisible(true); }}
                   activeOpacity={0.9}
                   style={{ width: carouselWidth, height: carouselHeight }}
                 >
                   <Image
                     source={{ uri: item }}
                     style={[
-                      styles.propertyImage, 
+                      styles.propertyImage,
                       isInactive && styles.imageInactive // Применяем стиль неактивности
                     ]}
                     resizeMode="cover"
@@ -480,59 +487,68 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               index,
             })}
           />
-          
+
           {/* Тэги типа объявления */}
           <View style={styles.tagContainer}>
-            <View style={[styles.typeTag, { backgroundColor: '#4CAF50' }]}>
+            <View style={[
+              styles.typeTag,
+              property.type === 'sale' ? styles.saleTag : styles.rentTag
+            ]}>
               <Text style={styles.typeTagText}>{dealTypeText}</Text>
             </View>
-            
+
             {propertyTypeText && (
-              <View style={[styles.propertyTypeTag, { backgroundColor: '#2196F3' }]}>
+              <View style={[
+                styles.propertyTypeTag,
+                property.property_type === 'apartment' && styles.apartmentTag,
+                property.property_type === 'house' && styles.houseTag,
+                property.property_type === 'commercial' && styles.commercialTag,
+                property.property_type === 'land' && styles.landTag
+              ]}>
                 <Text style={styles.typeTagText}>{propertyTypeText}</Text>
               </View>
             )}
           </View>
-          
+
           {/* Индикаторы пагинации */}
           {(property.images || []).length > 1 && (
             <View style={styles.dotsContainer}>
               {(property.images || []).map((_, index) => (
-                <View 
-                  key={index} 
+                <View
+                  key={index}
                   style={[
-                    styles.dot, 
+                    styles.dot,
                     activeImageIndex === index ? styles.activeDot : null
-                  ]} 
+                  ]}
                 />
               ))}
             </View>
           )}
-          
+
           {/* Кнопка избранного */}
-          <TouchableOpacity 
-            style={styles.favoriteButton} 
+          <TouchableOpacity
+            style={styles.favoriteButton}
             onPress={() => toggleFavorite(property.id)}
           >
-            <Ionicons 
-              name={isFavorite(property.id) ? "heart" : "heart-outline"} 
-              size={24} 
-              color={isFavorite(property.id) ? "#E91E63" : "#FFFFFF"} 
+            <Ionicons
+              name={isFavorite(property.id) ? "heart" : "heart-outline"}
+              size={24}
+              color={isFavorite(property.id) ? "#E91E63" : "#FFFFFF"}
             />
           </TouchableOpacity>
         </View>
-        
+
         {/* Основная информация о объекте */}
         <View style={[styles.detailsContainer, { backgroundColor: theme.card }, isDesktopWeb && styles.webDetailsContainer]}>
           {/* Цена и заголовок */}
           <Text style={[styles.price, { color: theme.primary }]}>
-            {property.price}€{property.type === 'rent' ? ` / ${t('property.month')}` : ''}
+            {formattedPrice}€{property.type === 'rent' ? ` / ${t('property.month')}` : ''}
           </Text>
-          
+
           <Text style={[styles.title, { color: theme.text }]}>
             {property.title}
           </Text>
-          
+
           {/* Адрес */}
           <View style={styles.locationContainer}>
             <Ionicons name="location-outline" size={14} color={theme.secondary} />
@@ -540,7 +556,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               {fullAddress}
             </Text>
           </View>
-          
+
           {/* Характеристики */}
           <View style={styles.statsRow}>
             {property.area && (
@@ -551,14 +567,14 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
                 </Text>
               </View>
             )}
-            
+
             {property.rooms && property.property_type !== 'land' && (
               <View style={styles.statItem}>
                 <Ionicons name="bed-outline" size={18} color={theme.primary} />
                 <Text style={[styles.statValue, { color: theme.text }]}>{property.rooms} {t('property.rooms')}</Text>
               </View>
             )}
-            
+
             {property.type && (
               <View style={styles.statItem}>
                 <Ionicons name="home-outline" size={18} color={theme.primary} />
@@ -566,19 +582,19 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               </View>
             )}
           </View>
-          
+
           {/* Описание */}
           <View style={styles.sectionContainer}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('property.description')}</Text>
             <Text style={[styles.description, { color: theme.text }]}>{property.description}</Text>
           </View>
-          
+
           {/* Карта */}
           {propertyCoords && (
             <View style={styles.sectionContainer}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('property.location')}</Text>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.mapToggleButton, Platform.OS === 'web' && styles.buttonInlineWeb, { backgroundColor: theme.primary }]}
                 onPress={() => setShowMap(!showMap)}
               >
@@ -587,7 +603,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
                   {showMap ? t('property.hideMap') : t('property.showMap')}
                 </Text>
               </TouchableOpacity>
-              
+
               {showMap && (
                 <View style={styles.mapContainer}>
                   {isWebPlatform && webFallbackHTML ? (
@@ -622,11 +638,11 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               )}
             </View>
           )}
-          
+
           {/* Информация о контакте */}
           <View style={styles.sectionContainer}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>{t('property.contact')}</Text>
-            
+
             {/* Строка с именем контакта и кнопкой/номером */}
             <View style={styles.contactRow}>
               {/* Имя контакта - слева */}
@@ -635,14 +651,14 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
                 if (agencyId) {
                   return (
                     <TouchableOpacity onPress={() => navigation.navigate('Agency', { agencyId })}>
-                      <Text style={[styles.contactName, { color: theme.text }]}> 
+                      <Text style={[styles.contactName, { color: theme.text }]}>
                         {property.user?.name}
                       </Text>
                     </TouchableOpacity>
                   );
                 }
                 return (
-                  <Text style={[styles.contactName, { color: theme.text }]}> 
+                  <Text style={[styles.contactName, { color: theme.text }]}>
                     {property.user?.name}
                   </Text>
                 );
@@ -651,7 +667,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
               {/* Кнопка показать номер или сам номер - справа */}
               {(property.user?.phone || property.contact?.phone) && (
                 !showPhoneNumber ? (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.phoneButton, Platform.OS === 'web' && styles.buttonInlineWeb, { backgroundColor: theme.primary }]}
                     onPress={() => setShowPhoneNumber(true)}
                   >
@@ -659,10 +675,10 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
                     <Text style={styles.buttonText}>{t('property.showPhone')}</Text>
                   </TouchableOpacity>
                 ) : (
-                  <View style={[styles.phoneButton, Platform.OS === 'web' && styles.buttonInlineWeb, { backgroundColor: theme.primary }]}> 
+                  <View style={[styles.phoneButton, Platform.OS === 'web' && styles.buttonInlineWeb, { backgroundColor: theme.primary }]}>
                     <View style={styles.phoneNumberBlock}
                     >
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.iconButton}
                         onPress={() => Linking.openURL(`tel:${property.user?.phone || property.contact?.phone}`)}
                       >
@@ -684,7 +700,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
             </View>
 
             {/* Кнопка поделиться */}
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.shareButton, Platform.OS === 'web' && styles.buttonInlineWeb, { backgroundColor: theme.primary }]}
               onPress={handleShare}
             >
@@ -695,11 +711,11 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
 
         </View>
       </ScrollView>
-      
+
       {/* Просмотрщик изображений */}
-      <ImageViewer 
-        images={property.images || []} 
-        visible={isViewerVisible} 
+      <ImageViewer
+        images={property.images || []}
+        visible={isViewerVisible}
         initialIndex={activeImageIndex}
         onClose={() => setIsViewerVisible(false)}
         darkMode={darkMode}
@@ -736,7 +752,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textAlign: 'center',
   },
-  imageInactive: { 
+  imageInactive: {
     opacity: 0.6,
   },
   container: {
@@ -790,6 +806,24 @@ const styles = StyleSheet.create({
   propertyTypeTag: {
     padding: 6,
     borderRadius: 4,
+  },
+  saleTag: {
+    backgroundColor: '#FF6B6B',
+  },
+  rentTag: {
+    backgroundColor: '#1E40AF',
+  },
+  apartmentTag: {
+    backgroundColor: '#3B82F6',
+  },
+  houseTag: {
+    backgroundColor: '#8B9467',
+  },
+  commercialTag: {
+    backgroundColor: '#F59E0B',
+  },
+  landTag: {
+    backgroundColor: '#34C759',
   },
   typeTagText: {
     color: '#FFFFFF',

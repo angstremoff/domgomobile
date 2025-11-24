@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -72,9 +73,9 @@ const MainStack = () => {
           )
         ),
         headerRight: Platform.OS === 'web' ? undefined : () => (
-          <HeaderControls 
-            darkMode={darkMode} 
-            toggleDarkMode={toggleDarkMode} 
+          <HeaderControls
+            darkMode={darkMode}
+            toggleDarkMode={toggleDarkMode}
             selectedCity={selectedCity}
             onCitySelect={setSelectedCity}
             isHomeScreen={true}
@@ -82,15 +83,15 @@ const MainStack = () => {
         ),
       }}
     >
-      <Stack.Screen 
-        name="MainTabs" 
-        component={MainTabs} 
-        options={{ headerShown: false }} 
+      <Stack.Screen
+        name="MainTabs"
+        component={MainTabs}
+        options={{ headerShown: false }}
       />
-      <Stack.Screen 
-        name="Agency" 
-        component={AgencyScreen} 
-        options={{ 
+      <Stack.Screen
+        name="Agency"
+        component={AgencyScreen}
+        options={{
           title: t('agency.title', 'Агентство'),
           headerShown: true,
           presentation: 'card',
@@ -111,15 +112,15 @@ const MainStack = () => {
           headerRight: Platform.OS === 'web' ? undefined : () => (
             <HeaderControls darkMode={darkMode} toggleDarkMode={toggleDarkMode} isHomeScreen={false} />
           ),
-        }} 
+        }}
       />
-      <Stack.Screen 
-        name="PropertyDetails" 
-        component={PropertyDetailsScreen} 
-        options={{ 
+      <Stack.Screen
+        name="PropertyDetails"
+        component={PropertyDetailsScreen}
+        options={{
           title: t('property.details'),
           headerShown: true,
-          presentation: 'card', 
+          presentation: 'card',
           animationTypeForReplace: 'push',
           animation: 'slide_from_right',
           headerTitle: () => (
@@ -137,12 +138,12 @@ const MainStack = () => {
           headerRight: Platform.OS === 'web' ? undefined : () => (
             <HeaderControls darkMode={darkMode} toggleDarkMode={toggleDarkMode} isHomeScreen={false} />
           ),
-        }} 
+        }}
       />
-      <Stack.Screen 
-        name="MyProperties" 
-        component={MyPropertiesScreen} 
-        options={{ 
+      <Stack.Screen
+        name="MyProperties"
+        component={MyPropertiesScreen}
+        options={{
           title: t('profile.myProperties'),
           headerShown: true,
           headerTitle: () => (
@@ -160,12 +161,12 @@ const MainStack = () => {
           headerRight: Platform.OS === 'web' ? undefined : () => (
             <HeaderControls darkMode={darkMode} toggleDarkMode={toggleDarkMode} isHomeScreen={false} />
           ),
-        }} 
+        }}
       />
-      <Stack.Screen 
-        name="EditProperty" 
-        component={EditPropertyScreen} 
-        options={{ 
+      <Stack.Screen
+        name="EditProperty"
+        component={EditPropertyScreen}
+        options={{
           title: t('property.editProperty'),
           headerShown: true,
           headerTitle: () => (
@@ -183,32 +184,32 @@ const MainStack = () => {
           headerRight: Platform.OS === 'web' ? undefined : () => (
             <HeaderControls darkMode={darkMode} toggleDarkMode={toggleDarkMode} isHomeScreen={false} />
           ),
-        }} 
+        }}
       />
-      <Stack.Screen 
-        name="Login" 
-        component={LoginScreen} 
-        options={{ title: t('auth.login') }} 
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ title: t('auth.login') }}
       />
-      <Stack.Screen 
-        name="Register" 
-        component={RegisterScreen} 
-        options={{ title: t('auth.register') }} 
+      <Stack.Screen
+        name="Register"
+        component={RegisterScreen}
+        options={{ title: t('auth.register') }}
       />
-      <Stack.Screen 
-        name="AddProperty" 
-        component={AddPropertyScreen} 
-        options={{ title: t('property.add') }} 
+      <Stack.Screen
+        name="AddProperty"
+        component={AddPropertyScreen}
+        options={{ title: t('property.add') }}
       />
-      <Stack.Screen 
-        name="Settings" 
-        component={SettingsScreen} 
-        options={{ title: t('settings.title') }} 
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ title: t('settings.title') }}
       />
-      <Stack.Screen 
-        name="Map" 
-        component={MapScreen} 
-        options={{ title: t('common.map') }} 
+      <Stack.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ title: t('common.map') }}
       />
     </Stack.Navigator>
   );
@@ -220,6 +221,7 @@ const MainTabs = () => {
   const { darkMode, toggleDarkMode } = useTheme();
   const { selectedCity, setSelectedCity } = useProperties();
   const theme = darkMode ? Colors.dark : Colors.light;
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -229,9 +231,9 @@ const MainTabs = () => {
         tabBarStyle: {
           backgroundColor: theme.background,
           borderTopColor: theme.border,
-          paddingBottom: 15,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 15,
           paddingTop: 5,
-          height: 60,
+          height: 60 + (insets.bottom > 0 ? insets.bottom - 10 : 0), // Adjust height based on insets
           ...(Platform.OS === 'web' ? { paddingHorizontal: 64 } : {}),
         },
         headerStyle: {
@@ -243,9 +245,9 @@ const MainTabs = () => {
         },
       }}
     >
-      <Tab.Screen 
-        name="Home" 
-        component={HomeScreen} 
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
         options={{
           title: 'DomGo.rs',
           tabBarLabel: t('navigation.home'),
@@ -267,9 +269,9 @@ const MainTabs = () => {
             )
           ),
           headerRight: Platform.OS === 'web' ? undefined : () => (
-            <HeaderControls 
-              darkMode={darkMode} 
-              toggleDarkMode={toggleDarkMode} 
+            <HeaderControls
+              darkMode={darkMode}
+              toggleDarkMode={toggleDarkMode}
               selectedCity={selectedCity}
               onCitySelect={setSelectedCity}
               isHomeScreen={true}
@@ -277,9 +279,9 @@ const MainTabs = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="Favorites" 
-        component={FavoritesScreen} 
+      <Tab.Screen
+        name="Favorites"
+        component={FavoritesScreen}
         options={{
           title: t('navigation.favorites'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
@@ -300,9 +302,9 @@ const MainTabs = () => {
             )
           ),
           headerRight: Platform.OS === 'web' ? undefined : () => (
-            <HeaderControls 
-              darkMode={darkMode} 
-              toggleDarkMode={toggleDarkMode} 
+            <HeaderControls
+              darkMode={darkMode}
+              toggleDarkMode={toggleDarkMode}
               selectedCity={selectedCity}
               onCitySelect={setSelectedCity}
               isHomeScreen={false}
@@ -310,9 +312,9 @@ const MainTabs = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="AddProperty" 
-        component={AddPropertyScreen} 
+      <Tab.Screen
+        name="AddProperty"
+        component={AddPropertyScreen}
         options={{
           title: t('navigation.add'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
@@ -333,9 +335,9 @@ const MainTabs = () => {
             )
           ),
           headerRight: Platform.OS === 'web' ? undefined : () => (
-            <HeaderControls 
-              darkMode={darkMode} 
-              toggleDarkMode={toggleDarkMode} 
+            <HeaderControls
+              darkMode={darkMode}
+              toggleDarkMode={toggleDarkMode}
               selectedCity={selectedCity}
               onCitySelect={setSelectedCity}
               isHomeScreen={false}
@@ -343,8 +345,8 @@ const MainTabs = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileScreen}
         options={{
           title: t('navigation.profile'),
@@ -366,9 +368,9 @@ const MainTabs = () => {
             )
           ),
           headerRight: Platform.OS === 'web' ? undefined : () => (
-            <HeaderControls 
-              darkMode={darkMode} 
-              toggleDarkMode={toggleDarkMode} 
+            <HeaderControls
+              darkMode={darkMode}
+              toggleDarkMode={toggleDarkMode}
               selectedCity={selectedCity}
               onCitySelect={setSelectedCity}
               isHomeScreen={false}
@@ -376,8 +378,8 @@ const MainTabs = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="Settings" 
+      <Tab.Screen
+        name="Settings"
         component={SettingsScreen}
         options={{
           title: t('navigation.settings'),
@@ -399,9 +401,9 @@ const MainTabs = () => {
             )
           ),
           headerRight: Platform.OS === 'web' ? undefined : () => (
-            <HeaderControls 
-              darkMode={darkMode} 
-              toggleDarkMode={toggleDarkMode} 
+            <HeaderControls
+              darkMode={darkMode}
+              toggleDarkMode={toggleDarkMode}
               selectedCity={selectedCity}
               onCitySelect={setSelectedCity}
               isHomeScreen={false}
@@ -417,7 +419,7 @@ const AppNavigator = () => {
   const { } = useAuth(); // Используем пустую деструктуризацию, так как user не используется
   const { darkMode } = useTheme();
   const { fetchPropertyById } = useProperties();
-  
+
   // Выбор темы для навигации в зависимости от настроек
   const navigationTheme = darkMode ? {
     ...DarkTheme,
@@ -432,7 +434,7 @@ const AppNavigator = () => {
       background: Colors.light.background,
     },
   };
-  
+
   // Обработка глубоких ссылок на объявления
   React.useEffect(() => {
     // Проверяем, есть ли ID объявления для открытия (установленный обработчиком глубоких ссылок)
@@ -443,7 +445,7 @@ const AppNavigator = () => {
         // @ts-ignore - Игнорируем ошибку для глобальных переменных
         const propertyId = globalThis.pendingPropertyNavigation;
         Logger.debug('Обнаружена отложенная навигация к объявлению, ID:', propertyId);
-        
+
         try {
           // Загружаем данные объявления по ID
           const propertyData = await fetchPropertyById(propertyId);
@@ -454,10 +456,10 @@ const AppNavigator = () => {
                 // @ts-ignore - Игнорируем ошибку для метода navigate
                 // Навигация с передачей id и предзагруженных данных объявления 
                 // Важно: передаем как propertyId, так и id
-                navigationRef.current.navigate('PropertyDetails', { 
-                  propertyId: propertyId, 
-                  id: propertyId, 
-                  property: propertyData 
+                navigationRef.current.navigate('PropertyDetails', {
+                  propertyId: propertyId,
+                  id: propertyId,
+                  property: propertyData
                 });
                 Logger.debug('Выполнена отложенная навигация к экрану деталей объявления');
                 // Очищаем переменные после использования
@@ -471,12 +473,12 @@ const AppNavigator = () => {
           globalThis.pendingPropertyNavigation = null;
         }
       }
-      
+
       // Проверяем старый механизм propertyDeepLinkId
       // @ts-ignore - Игнорируем ошибку для глобальных переменных
       else if (globalThis.propertyDeepLinkId) {
         Logger.debug('Открываем объявление из ссылки, ID:', globalThis.propertyDeepLinkId);
-        
+
         // Загружаем данные объявления по ID
         try {
           const propertyData = await fetchPropertyById(globalThis.propertyDeepLinkId);
@@ -487,10 +489,10 @@ const AppNavigator = () => {
                 // @ts-ignore - Игнорируем ошибку для метода navigate
                 // Навигация с передачей id и предзагруженных данных объявления
                 // Важно: передаем как propertyId, так и id
-                navigationRef.current.navigate('PropertyDetails', { 
-                  propertyId: globalThis.propertyDeepLinkId, 
-                  id: globalThis.propertyDeepLinkId, 
-                  property: propertyData 
+                navigationRef.current.navigate('PropertyDetails', {
+                  propertyId: globalThis.propertyDeepLinkId,
+                  id: globalThis.propertyDeepLinkId,
+                  property: propertyData
                 });
                 // Очищаем глобальный ID после использования
                 // @ts-ignore - Игнорируем ошибку для глобальных переменных
@@ -504,10 +506,10 @@ const AppNavigator = () => {
         }
       }
     };
-    
+
     checkDeepLink();
   }, [fetchPropertyById]);
-  
+
   // Создаем реф для доступа к навигационному контейнеру извне
   // Делаем его глобально доступным для использования в App.tsx
   const navigationRef = React.useRef(null);
