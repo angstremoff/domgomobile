@@ -91,8 +91,8 @@ android {
         applicationId 'domgo.rs'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.0.0"
+        versionCode 4
+        versionName "1.0.1"
     }
     signingConfigs {
         debug {
@@ -102,12 +102,10 @@ android {
             keyPassword 'android'
         }
         release {
-            if (System.getenv('CI_KEYSTORE_FILE')) {
-                storeFile file(System.getenv('CI_KEYSTORE_FILE'))
-                storePassword System.getenv('CI_KEYSTORE_PASSWORD')
-                keyAlias System.getenv('CI_KEY_ALIAS')
-                keyPassword System.getenv('CI_KEY_PASSWORD')
-            }
+            storeFile file('release.keystore')
+            storePassword System.getenv('RELEASE_KEYSTORE_PASSWORD') ?: 'domgo2024release'
+            keyAlias System.getenv('RELEASE_KEY_ALIAS') ?: 'domgo-release'
+            keyPassword System.getenv('RELEASE_KEY_PASSWORD') ?: 'domgo2024release'
         }
     }
     buildTypes {
