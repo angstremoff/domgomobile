@@ -1,55 +1,53 @@
-name: Сборка Android
+name: Build Android AAB
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
-      # 1. Клонируем репозиторий
-      - name: Скачиваем код
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      # 2. Настраиваем Node.js
-      - name: Настройка Node.js
-        uses: actions/setup-node@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
       
-      # 3. Устанавливаем зависимости
-      - name: Установка зависимостей
-        run: npm ci --legacy-peer-deps
-
-      # 4. Настраиваем Java
-      - name: Настройка Java
-        uses: actions/setup-java@v3
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
-      # 5. Создаем keystore для подписи APK
-      - name: Настройка подписи APK
+      
+      - name: Decode keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-          echo "MYAPP_UPLOAD_STORE_FILE=upload-keystore.jks" >> android/gradle.properties
-          echo "MYAPP_UPLOAD_KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> android/gradle.properties
-          echo "MYAPP_UPLOAD_STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> android/gradle.properties
-          echo "MYAPP_UPLOAD_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> android/gradle.properties
-
-      # 6. Собираем APK
-      - name: Сборка APK
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/release.keystore
+      
+      - name: Run Expo prebuild
+        run: npx expo prebuild --platform android --no-install
+      
+      - name: Build AAB
+        env:
+          CI_KEYSTORE_FILE: release.keystore
+          CI_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          CI_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          CI_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
-          ls -la app/build/outputs/apk/release/
-          
-      # 7. Сохраняем APK в base64 для ручного скачивания
-      - name: Кодируем APK в base64
-        run: |
-          echo "APK успешно собран!"
-          echo "Размер APK: $(du -h android/app/build/outputs/apk/release/app-release.apk | cut -f1)"
-          echo "MD5: $(md5sum android/app/build/outputs/apk/release/app-release.apk | cut -d' ' -f1)"
+          ./gradlew bundleRelease
+      
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: domgo-rs-release
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
