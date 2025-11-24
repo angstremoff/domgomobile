@@ -35,7 +35,7 @@ export default ({ config }) => {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#ffffff'
       },
-      package: 'com.anonymous.DomGoMobile',
+      package: 'domgo.rs',
       config: {
         googleMaps: {
           apiKey: GOOGLE_MAPS_API_KEY

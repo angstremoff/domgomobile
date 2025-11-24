@@ -1,4 +1,4 @@
-package com.anonymous.DomGoMobile
+package domgo.rs
 
 import android.os.Build
 import android.os.Bundle
