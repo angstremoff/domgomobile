@@ -52,7 +52,7 @@ const SettingsScreen = ({ navigation }: any) => {
   };
 
   const handleStoreUpdate = () => {
-    const playUrl = 'https://play.google.com/store/apps/details?id=com.anonymous.DomGoMobile';
+    const playUrl = 'https://play.google.com/store/apps/details?id=domgo.rs';
     const storeUrl = Platform.OS === 'android' ? playUrl : '';
 
     if (!storeUrl) {
