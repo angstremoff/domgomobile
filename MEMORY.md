@@ -62,4 +62,4 @@
 - Runtime остаётся фиксированным: `app.config.js` → `runtimeVersion` (не менять без миграции обновлений), сейчас 1.0.4.
 - Fallback версии в коде: `src/services/AppVersionManager.ts` хранит запасное значение (держать в актуальной версии приложения).
 - Сборка AAB: `./build-release-bundle.sh` (использует версию из package.json, кладёт на Desktop `DomGoMobile-<версия>-release.aab`). Перед запуском убедиться, что `release.keystore` актуальный.
-- Keystore release: `android/app/release.keystore` (пароли: `RELEASE_KEYSTORE_PASSWORD=domgo2024release`, `RELEASE_KEY_ALIAS=domgo-release`, `RELEASE_KEY_PASSWORD=domgo2024release`). Можно задавать через env при сборке.
+- Keystore release: `android/app/release.keystore` (секреты берём из 1Password/секретного хранилища; в сборке использовать env: `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`).
