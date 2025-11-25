@@ -147,9 +147,9 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     if (!property) return;
 
     try {
-      // URL нашего обработчика deep links на GitHub Pages
+      // Каноническая ссылка на наш обработчик deep links на домене domgo.rs
       // Он проверит наличие приложения и предложит установить его, если не установлено
-      const deeplinkHandlerUrl = `https://angstremoff.github.io/domgomobile/property.html?id=${property.id}`;
+      const deeplinkHandlerUrl = `https://domgo.rs/property.html?id=${property.id}`;
 
       // Формируем текст для шаринга в зависимости от выбранного языка
       let moreDetailsText = t('property.moreDetailsInApp', 'Подробнее в приложении DomGo');

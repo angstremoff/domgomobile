@@ -85,7 +85,8 @@
     }
 
     const appScheme = `domgomobile://property/${propertyId}`;
-    const androidIntent = `intent://property/${propertyId}#Intent;scheme=domgomobile;package=com.anonymous.DomGoMobile;end`;
+    // Указываем актуальный packageId домена приложения, чтобы Android корректно находил установленный клиент
+    const androidIntent = `intent://property/${propertyId}#Intent;scheme=domgomobile;package=domgo.rs;end`;
     const webUrl = `https://domgo.rs/?propertyId=${propertyId}`;
 
     document.getElementById('web-link').href = webUrl;

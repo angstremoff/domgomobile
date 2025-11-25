@@ -32,10 +32,16 @@ describe('parseDeepLink', () => {
     expect(parsed).toEqual({ type: 'property', propertyId: '789', raw: url });
   });
 
-  it('parses GitHub pages handler', () => {
-    const url = 'https://angstremoff.github.io/domgomobile/property.html?id=555';
+  it('parses domgo.rs handler page', () => {
+    const url = 'https://domgo.rs/property.html?id=555';
     const parsed = parseDeepLink(url);
     expect(parsed).toEqual({ type: 'property', propertyId: '555', raw: url });
+  });
+
+  it('parses legacy GitHub pages handler', () => {
+    const url = 'https://angstremoff.github.io/domgomobile/property.html?id=777';
+    const parsed = parseDeepLink(url);
+    expect(parsed).toEqual({ type: 'property', propertyId: '777', raw: url });
   });
 
   it('returns unknown for unsupported link', () => {

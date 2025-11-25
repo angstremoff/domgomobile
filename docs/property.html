@@ -80,7 +80,8 @@
     const propertyId = urlParams.get('id');
 
     const appScheme = `domgomobile://property/${propertyId}`;
-    const androidIntent = `intent://property/${propertyId}#Intent;scheme=domgomobile;package=com.anonymous.DomGoMobile;end`;
+    // Используем актуальный packageId приложения
+    const androidIntent = `intent://property/${propertyId}#Intent;scheme=domgomobile;package=domgo.rs;end`;
     const webUrl = `https://domgo.rs/?propertyId=${propertyId}`;
 
     document.getElementById('web-link').href = webUrl;

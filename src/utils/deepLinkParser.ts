@@ -5,9 +5,10 @@ export type ParsedDeepLink =
 
 const PROPERTY_SCHEMES = [
   'domgomobile://property',
+  'https://domgo.rs/property.html',
   'https://domgo.rs/property/',
-  'https://angstremoff.github.io/domgomobile/deeplink-handler.html',
   'https://angstremoff.github.io/domgomobile/property.html',
+  'https://angstremoff.github.io/domgomobile/deeplink-handler.html',
 ];
 
 /**
@@ -70,8 +71,9 @@ export function parseDeepLink(url: string): ParsedDeepLink {
       }
     }
 
-    // Netlify/GitHub pages handlers
+    // Обработчики на нашем домене и GitHub Pages
     if (
+      url.includes('domgo.rs/property.html') ||
       url.includes('angstremoff.github.io/domgomobile/deeplink-handler.html') ||
       url.includes('angstremoff.github.io/domgomobile/property.html')
     ) {
