@@ -63,3 +63,6 @@
 - Fallback версии в коде: `src/services/AppVersionManager.ts` хранит запасное значение (держать в актуальной версии приложения).
 - Сборка AAB: `./build-release-bundle.sh` (использует версию из package.json, кладёт на Desktop `DomGoMobile-<версия>-release.aab`). Перед запуском убедиться, что `release.keystore` актуальный.
 - Keystore release: `android/app/release.keystore` (секреты берём из 1Password/секретного хранилища; в сборке использовать env: `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`).
+
+### 8.1 Секреты и безопасность
+- Не храним пароли, ключи, токены и base64-контент в публичных файлах репозитория. Все чувствительные данные кладём в секретные хранилища (1Password, GitHub Secrets) и передаём в сборку через переменные окружения.
