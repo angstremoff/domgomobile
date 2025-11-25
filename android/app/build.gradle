@@ -92,7 +92,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 4
-        versionName "1.0.1"
+        versionName "0.9.9"
     }
     signingConfigs {
         debug {
@@ -113,6 +113,8 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
+            // Caution! In production, you need to generate your own keystore file.
+            // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.release
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
@@ -130,29 +132,6 @@ android {
     }
 }
 
-def replacePlaceholder = {
-    def generated = file("$buildDir/generated/res/createBundleReleaseJsAndAssets/drawable-mdpi/assets_placeholder.png")
-    if (generated.exists()) {
-        println("Replacing corrupted assets_placeholder.png with app/assets/placeholder.png")
-        copy {
-            from(new File(rootProject.projectDir, "assets/placeholder.png"))
-            into(generated.parentFile)
-            rename { "assets_placeholder.png" }
-        }
-    }
-}
-
-afterEvaluate {
-    def fixAssetsTask = tasks.register("fixAssetsPlaceholder") {
-        doLast { replacePlaceholder() }
-    }
-    tasks.matching { it.name == "createBundleReleaseJsAndAssets" }.configureEach {
-        doLast { replacePlaceholder() }
-    }
-    tasks.matching { it.name == "mergeReleaseResources" }.configureEach {
-        dependsOn(fixAssetsTask)
-    }
-}
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
 // Accepts values in comma delimited lists, example:
 // android.packagingOptions.pickFirsts=/LICENSE,**/picasa.ini
