@@ -1,6 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as NavigationBar from 'expo-navigation-bar';
 import { Logger } from '../utils/logger';
+import Colors from '../constants/colors';
 
 interface ThemeContextType {
   darkMode: boolean;
@@ -35,6 +38,24 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     loadThemePreference();
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const applyNavigationBarTheme = async () => {
+      const backgroundColor = darkMode ? Colors.dark.background : Colors.light.background;
+      const buttonStyle: 'light' | 'dark' = darkMode ? 'light' : 'dark';
+
+      try {
+        await NavigationBar.setBackgroundColorAsync(backgroundColor);
+        await NavigationBar.setButtonStyleAsync(buttonStyle);
+      } catch (error) {
+        Logger.warn('Не удалось применить цвета системной панели навигации:', error);
+      }
+    };
+
+    applyNavigationBarTheme();
+  }, [darkMode]);
 
   const toggleDarkMode = async () => {
     try {
