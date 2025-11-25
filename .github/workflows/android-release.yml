@@ -1,7 +1,7 @@
 name: Build Android Release
 
 on:
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+  workflow_dispatch
 
 jobs:
   build:
@@ -34,6 +34,35 @@ jobs:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
+
+      - name: Fix Signing Config
+        run: |
+          cat >> android/app/build.gradle.patch << 'EOF'
+          --- a/android/app/build.gradle
+          +++ b/android/app/build.gradle
+          @@ -100,6 +100,12 @@
+                       keyAlias 'androiddebugkey'
+                       keyPassword 'android'
+                   }
+          +        release {
+          +            storeFile file('release.keystore')
+          +            storePassword System.getenv('RELEASE_KEYSTORE_PASSWORD') ?: 'domgo2024release'
+          +            keyAlias System.getenv('RELEASE_KEY_ALIAS') ?: 'domgo-release'
+          +            keyPassword System.getenv('RELEASE_KEY_PASSWORD') ?: 'domgo2024release'
+          +        }
+               }
+               buildTypes {
+                   debug {
+          @@ -109,7 +115,7 @@
+                       // Caution! In production, you need to generate your own keystore file.
+                       // see https://reactnative.dev/docs/signed-apk-android.
+          -            signingConfig signingConfigs.debug
+          +            signingConfig signingConfigs.release
+                       shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
+                       minifyEnabled enableProguardInReleaseBuilds
+                       proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+          EOF
+          patch -p1 < android/app/build.gradle.patch
 
       - name: Build Android Bundle (AAB)
         working-directory: android
