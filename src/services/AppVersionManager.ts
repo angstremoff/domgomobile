@@ -6,6 +6,10 @@ import { Logger } from '../utils/logger';
 import { propertyService } from './propertyService';
 import { propertyCache, apiCache } from '../utils/cacheManager';
 
+// Импортируем версию из package.json, чтобы исключить ручные несоответствия
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pkg = require('../../package.json');
+
 interface VersionInfo {
   appVersion: string;
   buildVersion: string;
@@ -33,7 +37,7 @@ class AppVersionManager {
   private getCurrentVersion(): string {
     return (
       (Constants?.expoConfig as any)?.version ||
-      '1.0.2' // Fallback версия из package.json
+      pkg.version
     );
   }
   

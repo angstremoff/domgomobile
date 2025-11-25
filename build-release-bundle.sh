@@ -9,6 +9,7 @@ DESKTOP_AAB="$HOME/Desktop/DomGoMobile-$(node -p "require('./package.json').vers
 echo "▶️  Сборка Android App Bundle (release)…"
 export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}"
 export ANDROID_HOME="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+export NODE_ENV="production"
 
 cd "$ANDROID_DIR"
 ./gradlew bundleRelease
