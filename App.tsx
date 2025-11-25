@@ -95,6 +95,22 @@ export default function App() {
         globalThis.propertyDeepLinkId = propertyId;
         // @ts-ignore
         globalThis.pendingPropertyNavigation = propertyId;
+
+        // Если навигация уже инициализирована (приложение активное), пробуем перейти сразу
+        // Запасной механизм через состояние останется, если навигатор ещё не готов
+        // @ts-ignore
+        if (globalThis.navigationRef && globalThis.navigationRef.current) {
+          try {
+            // @ts-ignore
+            globalThis.navigationRef.current.navigate('PropertyDetails', {
+              propertyId,
+              id: propertyId
+            });
+            Logger.debug('Мгновенная навигация к объявлению выполнена');
+          } catch (error) {
+            Logger.warn('Не удалось сразу перейти по deep link, сработает отложенная навигация:', error);
+          }
+        }
         return;
       }
 
