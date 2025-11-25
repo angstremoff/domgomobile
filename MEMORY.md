@@ -54,3 +54,12 @@
 - DomGoMobile поддерживает четыре платформы, но бизнес-логика едина; различия только в верстке/UX.
 - При шаринге объявлений используем `https://angstremoff.github.io/domgomobile/property.html?id=<ID>` — страница пытается открыть приложение, если нет — предлагает Web + Google Play.
 - Любые новые задачи, связанные с публикацией, должны учитывать требования Google Play и наличие AAB; APK используется только для локального тестирования.
+
+## 8. Обновление версий и сборки
+- Версия приложения (отображается в настройках и в store): `package.json` → `version`, синхронизирована с `package-lock.json` (поле `version` в корне и в корневом пакете).
+- Android: `android/app/build.gradle` → `defaultConfig.versionCode` (целое, растёт) и `versionName` (строка, совпадает с версией приложения).
+- iOS: `app.config.js` → `ios.buildNumber` (строка) и `version` берётся из `APP_VERSION`/`package.json` (настроено через `APP_VERSION` env или pkg.version).
+- Runtime остаётся фиксированным: `app.config.js` → `runtimeVersion` (не менять без миграции обновлений), сейчас 1.0.4.
+- Fallback версии в коде: `src/services/AppVersionManager.ts` хранит запасное значение (держать в актуальной версии приложения).
+- Сборка AAB: `./build-release-bundle.sh` (использует версию из package.json, кладёт на Desktop `DomGoMobile-<версия>-release.aab`). Перед запуском убедиться, что `release.keystore` актуальный.
+- Keystore release: `android/app/release.keystore` (пароли: `RELEASE_KEYSTORE_PASSWORD=domgo2024release`, `RELEASE_KEY_ALIAS=domgo-release`, `RELEASE_KEY_PASSWORD=domgo2024release`). Можно задавать через env при сборке.

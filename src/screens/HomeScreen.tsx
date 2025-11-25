@@ -17,6 +17,14 @@ import { Logger } from '../utils/logger';
 type DealTab = 'sale' | 'rent' | 'newBuildings';
 type ViewTab = 'all' | DealTab | 'agencies';
 
+type DealFilters = {
+  propertyTypes: string[];
+  price: number[];
+  rooms: string[];
+  areas: number[];
+  features: string[];
+};
+
 interface AgencySummary {
   id: string;
   name: string | null;
@@ -77,13 +85,7 @@ const HomeScreen = ({ navigation }: any) => {
   // EN: Throttle onEndReached to avoid frequent triggers that cause scroll jumps.
 
   // Состояние для фильтров аренды
-  const [rentFilters, setRentFilters] = useState<{
-    propertyTypes: string[];
-    price: number[];
-    rooms: string[];
-    areas: string[];
-    features: string[];
-  }>({
+  const [rentFilters, setRentFilters] = useState<DealFilters>({
     propertyTypes: [],
     price: [0, 3000],
     rooms: [],
@@ -92,13 +94,7 @@ const HomeScreen = ({ navigation }: any) => {
   });
 
   // Состояние для фильтров продажи
-  const [saleFilters, setSaleFilters] = useState<{
-    propertyTypes: string[];
-    price: number[];
-    rooms: string[];
-    areas: string[];
-    features: string[];
-  }>({
+  const [saleFilters, setSaleFilters] = useState<DealFilters>({
     propertyTypes: [],
     price: [0, 500000],
     rooms: [],
@@ -107,13 +103,7 @@ const HomeScreen = ({ navigation }: any) => {
   });
 
   // Активные фильтры в зависимости от выбранной вкладки
-  const [activeFilters, setActiveFilters] = useState<{
-    propertyTypes: string[];
-    price: number[];
-    rooms: string[];
-    areas: string[];
-    features: string[];
-  }>({
+  const [activeFilters, setActiveFilters] = useState<DealFilters>({
     propertyTypes: [],
     price: [0, 3000],
     rooms: [],
@@ -123,13 +113,7 @@ const HomeScreen = ({ navigation }: any) => {
 
   // Состояние для модального окна фильтров
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [tempFilters, setTempFilters] = useState<{
-    propertyTypes: string[];
-    price: number[];
-    rooms: string[];
-    areas: string[];
-    features: string[];
-  }>({
+  const [tempFilters, setTempFilters] = useState<DealFilters>({
     propertyTypes: [],
     price: [0, 3000],
     rooms: [],
@@ -518,13 +502,7 @@ const HomeScreen = ({ navigation }: any) => {
     }
   };
 
-  const handleTempFiltersChange = (newFilters: {
-    propertyTypes: string[];
-    price: number[];
-    rooms: string[];
-    areas: string[];
-    features: string[];
-  }) => {
+  const handleTempFiltersChange = (newFilters: DealFilters) => {
     setTempFilters(newFilters);
   };
 
@@ -553,7 +531,7 @@ const HomeScreen = ({ navigation }: any) => {
     setFilterModalVisible(false);
   };
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = (appliedFilters: DealFilters) => {
     if (isAgencyView) {
       return;
     }
@@ -562,20 +540,22 @@ const HomeScreen = ({ navigation }: any) => {
 
     // Вычисляем категорию немедленно, чтобы избежать гонки состояния
     const categoryToApply =
-      tempFilters.propertyTypes && tempFilters.propertyTypes.length === 1
-        ? tempFilters.propertyTypes[0]
+      appliedFilters.propertyTypes && appliedFilters.propertyTypes.length === 1
+        ? appliedFilters.propertyTypes[0]
         : 'all';
+
+    setTempFilters(appliedFilters);
 
     // Обновляем активные фильтры в зависимости от выбранной вкладки
     if (propertyType === 'sale' || propertyType === 'newBuildings') {
-      setSaleFilters(tempFilters);
-      setActiveFilters(tempFilters);
+      setSaleFilters(appliedFilters);
+      setActiveFilters(appliedFilters);
       setFiltersAppliedSale(true);
       // Синхронизация с быстрыми фильтрами
       setCategoryForType(propertyType, categoryToApply);
     } else if (propertyType === 'rent') {
-      setRentFilters(tempFilters);
-      setActiveFilters(tempFilters);
+      setRentFilters(appliedFilters);
+      setActiveFilters(appliedFilters);
       setFiltersAppliedRent(true);
       // Синхронизация с быстрыми фильтрами
       setCategoryForType('rent', categoryToApply);
@@ -590,7 +570,7 @@ const HomeScreen = ({ navigation }: any) => {
         propertyTypeForData,
         categoryToApply,
         selectedCity,
-        propertyType === 'sale' || propertyType === 'newBuildings' ? tempFilters : propertyType === 'rent' ? tempFilters : activeFilters
+        propertyType === 'sale' || propertyType === 'newBuildings' ? appliedFilters : propertyType === 'rent' ? appliedFilters : activeFilters
       );
       setFilteredProperties(filtered);
     }
@@ -1301,7 +1281,7 @@ const HomeScreen = ({ navigation }: any) => {
       )}
 
       {showQuickFilters && (() => {
-        const filterModalType: 'sale' | 'rent' = propertyType === 'sale' ? 'sale' : 'rent';
+        const filterModalType: DealTab = propertyType === 'sale' ? 'sale' : 'rent';
         return (
           <FilterModal
             visible={filterModalVisible}

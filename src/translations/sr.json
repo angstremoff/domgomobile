@@ -24,6 +24,8 @@
     "share": "Podeli",
     "save_changes": "Sačuvaj promene",
     "select": "Izaberi",
+    "from": "Od",
+    "to": "Do",
     "all": "Sve",
     "allTypes": "Svi tipovi",
     "personalInfo": "Lični podaci",
@@ -78,7 +80,8 @@
     "add": "Dodaj oglas",
     "addNew": "Dodaj oglas",
     "sell": "Prodaj",
-    "rent": "Izdaj",
+    "sale": "Prodaja",
+    "rent": "Iznajmljivanje",
     "area": "Površina",
     "sotkas": "ari",
     "shareTitle": "Podeli oglas",
@@ -177,13 +180,13 @@
       "addError": "Greška prilikom objavljivanja oglasa",
       "updateSuccess": "Oglas je uspešno ažuriran",
       "deleteSuccess": "Oglas je uspešno obrisan"
+    },
+    "status": {
+      "active": "Aktivno",
+      "sold": "Prodato",
+      "rented": "Izdato",
+      "backToActive": "Aktivno"
     }
-  },
-  "status": {
-    "active": "Aktivno",
-    "sold": "Prodato",
-    "rented": "Izdato",
-    "backToActive": "Aktivno"
   },
   "squareMeters": "m²",
   "addProperty": {
@@ -398,7 +401,13 @@
     "elevator": "Lift",
     "furniture": "Nameštaj",
     "applyFilters": "Primeni filtere",
-    "resetFilters": "Resetuj filtere"
+    "resetFilters": "Resetuj filtere",
+    "validation": {
+      "priceRange": "Cena mora biti između {{min}} i {{max}}",
+      "areaRange": "Površina mora biti između {{min}} i {{max}}",
+      "minGreaterThanMax": "Minimalna vrednost ne može biti veća od maksimalne",
+      "invalidNumber": "Unesite ispravan broj"
+    }
   },
   "features": {
     "parking": "Parking",
@@ -414,8 +423,7 @@
     "petFriendly": "Dozvoljeni ljubimci",
     "fireplace": "Kamin",
     "furnished": "Namešteno"
-  }
-  ,
+  },
   "agency": {
     "title": "Agencija",
     "call": "Pozovi",

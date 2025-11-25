@@ -1,26 +1,72 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import React, { useEffect, useState } from 'react';
+import {
+  Modal,
   ScrollView,
-  Modal
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import Checkbox from './Checkbox';
-import RangeSlider from './RangeSlider';
+import RangeInput from './RangeInput';
 import Colors from '../constants/colors';
 import { useTheme } from '../contexts/ThemeContext';
+
+type DealType = 'sale' | 'rent' | 'newBuildings';
+
+type FiltersPayload = {
+  propertyTypes: string[];
+  rooms: string[];
+  price: number[];
+  areas: number[];
+  features: string[];
+};
+
+type DraftFilters = {
+  propertyTypes: string[];
+  rooms: string[];
+  price: [string, string];
+  area: [string, string];
+  features: string[];
+};
+
+const AREA_BOUNDS = { min: 0, max: 500 } as const;
+
+const toRangeStrings = (
+  range: number[] | undefined,
+  fallback: [number, number]
+): [string, string] => {
+  if (!Array.isArray(range) || range.length !== 2) {
+    return [String(fallback[0]), String(fallback[1])];
+  }
+
+  const [rawMin, rawMax] = range;
+  return [
+    rawMin === undefined || rawMin === null ? '' : String(rawMin),
+    rawMax === undefined || rawMax === null ? '' : String(rawMax)
+  ];
+};
+
+const parseNumberOrNull = (value: string): number | null => {
+  if (!value) {
+    return null;
+  }
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
 
 interface FilterModalProps {
   visible: boolean;
   onClose: () => void;
-  onApply: (filters: any) => void;
-  filters?: any;
-  onFiltersChange: (filters: any) => void;
-  propertyType: 'sale' | 'rent';
+  onApply: (filters: FiltersPayload) => void;
+  filters?: FiltersPayload;
+  onFiltersChange: (filters: FiltersPayload) => void;
+  propertyType: DealType;
   darkMode?: boolean;
 }
 
@@ -28,7 +74,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
   visible,
   onClose,
   onApply,
-  filters = {},
+  filters,
   onFiltersChange,
   propertyType,
   darkMode = false
@@ -38,106 +84,130 @@ const FilterModal: React.FC<FilterModalProps> = ({
   const isDarkMode = darkMode || contextDarkMode;
   const theme = isDarkMode ? Colors.dark : Colors.light;
 
-  // Границы цены по типу сделки
-  const getPriceBounds = () => propertyType === 'rent'
-    ? { min: 100, max: 3000 }
-    : { min: 10000, max: 500000 };
+  const getPriceBounds = () =>
+    propertyType === 'rent'
+      ? { min: 0, max: 3000 }
+      : { min: 0, max: 500000 };
 
-  const normalizeRange = (range: number[] | undefined, min: number, max: number): [number, number] => {
-    const src = (Array.isArray(range) && range.length === 2) ? range as number[] : [min, max];
-    const a = Math.max(min, Math.min(max, src[0] ?? min));
-    const b = Math.max(min, Math.min(max, src[1] ?? max));
-    return a <= b ? [a, b] : [b, a];
+  const buildInitialState = (): DraftFilters => {
+    const { min, max } = getPriceBounds();
+    return {
+      propertyTypes: filters?.propertyTypes ?? [],
+      rooms: filters?.rooms ?? [],
+      price: toRangeStrings(filters?.price, [min, max]),
+      area: toRangeStrings(filters?.areas, [AREA_BOUNDS.min, AREA_BOUNDS.max]),
+      features: filters?.features ?? [],
+    };
   };
 
-  const [localFilters, setLocalFilters] = useState({
-    propertyType: filters.propertyTypes || [],
-    rooms: filters.rooms || [],
-    price: normalizeRange(filters.price, getPriceBounds().min, getPriceBounds().max),
-    area: filters.areas || [10, 500],
-    features: filters.features || [],
-  });
+  const [localFilters, setLocalFilters] = useState<DraftFilters>(buildInitialState);
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const [areaError, setAreaError] = useState<string | null>(null);
 
   useEffect(() => {
-    const { min, max } = getPriceBounds();
-    setLocalFilters({
-      propertyType: filters.propertyTypes || [],
-      rooms: filters.rooms || [],
-      price: normalizeRange(filters.price, min, max),
-      area: filters.areas || [10, 500],
-      features: filters.features || [],
-    });
-  }, [filters, visible, propertyType]);
-
-  const updateFilters = (newFilters: any) => {
-    setLocalFilters(newFilters);
-    onFiltersChange({
-      propertyTypes: newFilters.propertyType,
-      rooms: newFilters.rooms,
-      price: newFilters.price,
-      areas: newFilters.area,
-      features: newFilters.features
-    });
-  };
+    if (!visible) {
+      return;
+    }
+    setLocalFilters(buildInitialState());
+    setPriceError(null);
+    setAreaError(null);
+  }, [visible, propertyType]);
 
   const handlePropertyTypeChange = (type: string) => {
-    const updatedTypes = localFilters.propertyType.includes(type)
-      ? localFilters.propertyType.filter((t: string) => t !== type)
-      : [...localFilters.propertyType, type];
-    
-    updateFilters({
-      ...localFilters,
-      propertyType: updatedTypes
+    setLocalFilters(prev => {
+      const updatedTypes = prev.propertyTypes.includes(type)
+        ? prev.propertyTypes.filter(t => t !== type)
+        : [...prev.propertyTypes, type];
+      return { ...prev, propertyTypes: updatedTypes };
     });
   };
 
   const handleRoomChange = (room: string) => {
-    const updatedRooms = localFilters.rooms.includes(room)
-      ? localFilters.rooms.filter((r: string) => r !== room)
-      : [...localFilters.rooms, room];
-    
-    updateFilters({
-      ...localFilters,
-      rooms: updatedRooms
+    setLocalFilters(prev => {
+      const updatedRooms = prev.rooms.includes(room)
+        ? prev.rooms.filter(r => r !== room)
+        : [...prev.rooms, room];
+      return { ...prev, rooms: updatedRooms };
     });
   };
 
   const handleFeatureChange = (feature: string) => {
-    const updatedFeatures = localFilters.features.includes(feature)
-      ? localFilters.features.filter((f: string) => f !== feature)
-      : [...localFilters.features, feature];
-    
-    updateFilters({
-      ...localFilters,
-      features: updatedFeatures
+    setLocalFilters(prev => {
+      const updated = prev.features.includes(feature)
+        ? prev.features.filter(f => f !== feature)
+        : [...prev.features, feature];
+      return { ...prev, features: updated };
     });
   };
 
-  const handlePriceChange = (values: number[]) => {
-    updateFilters({
-      ...localFilters,
-      price: values
-    });
+  const handlePriceChange = (values: [string, string]) => {
+    setPriceError(null);
+    setLocalFilters(prev => ({ ...prev, price: values }));
   };
 
-  const handleAreaChange = (values: number[]) => {
-    updateFilters({
-      ...localFilters,
-      area: values
-    });
+  const handleAreaChange = (values: [string, string]) => {
+    setAreaError(null);
+    setLocalFilters(prev => ({ ...prev, area: values }));
   };
 
-  const getPriceStep = (value: number): number => {
-    if (propertyType === 'sale') {
-      if (value < 50000) return 1000;
-      if (value < 100000) return 5000;
-      return 10000;
-    } else {
-      // Для аренды
-      if (value < 500) return 50;
-      if (value < 1000) return 100;
-      return 500;
+  const validateRange = (
+    range: [string, string],
+    bounds: { min: number; max: number },
+    type: 'price' | 'area'
+  ): { range: number[]; error?: string } => {
+    const min = parseNumberOrNull(range[0]);
+    const max = parseNumberOrNull(range[1]);
+
+    if ((range[0] && min === null) || (range[1] && max === null)) {
+      return { range: [], error: t('filters.validation.invalidNumber') };
     }
+
+    if (min === null && max === null) {
+      return { range: [] };
+    }
+
+    const clamp = (value: number) => Math.min(bounds.max, Math.max(bounds.min, value));
+
+    const normalizedMin = clamp(min ?? bounds.min);
+    const normalizedMax = clamp(max ?? bounds.max);
+
+    const finalMin = normalizedMin > normalizedMax ? normalizedMax : normalizedMin;
+    const finalMax = normalizedMin > normalizedMax ? normalizedMin : normalizedMax;
+
+    return { range: [finalMin, finalMax] };
+  };
+
+  const handleApplyPress = () => {
+    const priceValidation = validateRange(localFilters.price, getPriceBounds(), 'price');
+    const areaValidation = validateRange(localFilters.area, AREA_BOUNDS, 'area');
+
+    setPriceError(priceValidation.error ?? null);
+    setAreaError(areaValidation.error ?? null);
+
+    if (priceValidation.error || areaValidation.error) {
+      return;
+    }
+
+    const normalizedFilters: FiltersPayload = {
+      propertyTypes: localFilters.propertyTypes,
+      rooms: localFilters.rooms,
+      price: priceValidation.range,
+      areas: areaValidation.range,
+      features: localFilters.features
+    };
+
+    setLocalFilters(prev => ({
+      ...prev,
+      price: normalizedFilters.price.length === 2
+        ? [String(normalizedFilters.price[0]), String(normalizedFilters.price[1])]
+        : ['', ''],
+      area: normalizedFilters.areas.length === 2
+        ? [String(normalizedFilters.areas[0]), String(normalizedFilters.areas[1])]
+        : ['', '']
+    }));
+
+    onFiltersChange(normalizedFilters);
+    onApply(normalizedFilters);
   };
 
   const getPropertyTypes = () => [
@@ -161,9 +231,6 @@ const FilterModal: React.FC<FilterModalProps> = ({
     { id: 'furnished', label: t('filters.furniture') }
   ];
 
-  const formatPrice = (value: number) => `${value} €`;
-  const formatArea = (value: number) => `${value} m²`;
-
   return (
     <Modal
       visible={visible}
@@ -178,7 +245,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
           </TouchableOpacity>
           <Text style={[styles.title, { color: theme.text }]}>{t('filters.title')}</Text>
         </View>
-        
+
         <ScrollView style={styles.content}>
           {/* Тип недвижимости */}
           <View style={styles.section}>
@@ -189,7 +256,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
               {getPropertyTypes().map(type => (
                 <View key={type.id} style={styles.propertyTypeItem}>
                   <Checkbox
-                    checked={localFilters.propertyType.includes(type.id)}
+                    checked={localFilters.propertyTypes.includes(type.id)}
                     onPress={() => handlePropertyTypeChange(type.id)}
                     darkMode={isDarkMode}
                   />
@@ -200,7 +267,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
               ))}
             </View>
           </View>
-          
+
           {/* Комнаты */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -248,39 +315,45 @@ const FilterModal: React.FC<FilterModalProps> = ({
               <View style={styles.roomItem} />
             </View>
           </View>
-          
+
           {/* Цена */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
               {propertyType === 'rent' ? t('filters.pricePerMonth') : t('filters.price')}
             </Text>
-            <RangeSlider
-              minValue={propertyType === 'rent' ? 100 : 10000}
-              maxValue={propertyType === 'rent' ? 3000 : 500000}
-              step={getPriceStep}
-              initialValue={localFilters.price}
-              onValueChange={handlePriceChange}
-              darkMode={isDarkMode}
-              formatLabel={formatPrice}
-            />
+          <RangeInput
+            value={localFilters.price}
+            onChange={handlePriceChange}
+            darkMode={isDarkMode}
+            suffix="€"
+            minPlaceholder={t('common.from')}
+            maxPlaceholder={t('common.to')}
+            hasError={!!priceError}
+          />
+            {priceError && (
+              <Text style={[styles.errorText, { color: theme.error }]}>{priceError}</Text>
+            )}
           </View>
-          
+
           {/* Площадь */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
               {t('filters.area')}
             </Text>
-            <RangeSlider
-              minValue={10}
-              maxValue={500}
-              step={10}
-              initialValue={localFilters.area}
-              onValueChange={handleAreaChange}
-              darkMode={isDarkMode}
-              formatLabel={formatArea}
-            />
+          <RangeInput
+            value={localFilters.area}
+            onChange={handleAreaChange}
+            darkMode={isDarkMode}
+            suffix="m²"
+            minPlaceholder={t('common.from')}
+            maxPlaceholder={t('common.to')}
+            hasError={!!areaError}
+          />
+            {areaError && (
+              <Text style={[styles.errorText, { color: theme.error }]}>{areaError}</Text>
+            )}
           </View>
-          
+
           {/* Особенности */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
@@ -316,11 +389,11 @@ const FilterModal: React.FC<FilterModalProps> = ({
             </View>
           </View>
         </ScrollView>
-        
+
         <View style={[styles.footer, { borderTopColor: theme.border }]}>
           <TouchableOpacity
             style={[styles.applyButton, { backgroundColor: theme.primary }]}
-            onPress={() => onApply(localFilters)}
+            onPress={handleApplyPress}
           >
             <Text style={[styles.applyButtonText, { color: 'white' }]}>
               {t('filters.applyFilters')}
@@ -418,6 +491,10 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  errorText: {
+    marginTop: 6,
+    fontSize: 12,
   },
 });
 

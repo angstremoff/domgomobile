@@ -23,7 +23,9 @@ type RouteParams = {
 
 const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navigation: any }) => {
   // Получаем ID объявления из параметров навигации
-  const { propertyId } = route.params;
+  // Поддерживаем оба варианта: propertyId и id для совместимости
+  const { propertyId, property: paramProperty, id } = route.params;
+  const actualPropertyId = propertyId || id;
   const { t } = useTranslation();
   const { toggleFavorite, isFavorite } = useFavorites();
   const { darkMode } = useTheme();
@@ -91,18 +93,23 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   // Проверяем, есть ли объявление в контексте, если нет - загружаем с сервера
   useEffect(() => {
     // Если при переходе были переданы данные объявления — отобразим их сразу
-    const paramProp = route.params?.property;
-    if (paramProp) {
-      Logger.debug(`Используем данные объявления из параметров. ID: ${paramProp.id}, статус: ${paramProp.status}`);
-      setProperty(paramProp);
+    if (paramProperty) {
+      Logger.debug(`Используем данные объявления из параметров. ID: ${paramProperty.id}, статус: ${paramProperty.status}`);
+      setProperty(paramProperty);
     }
 
     // Всегда готовим функцию загрузки актуальных данных по ID
     const fetchProperty = async () => {
+      if (!actualPropertyId) {
+        Logger.error('Нет ID объявления для загрузки');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
-        Logger.debug('Загружаем данные объявления по ID:', propertyId);
-        const data = await propertyService.getPropertyById(propertyId);
+        Logger.debug('Загружаем данные объявления по ID:', actualPropertyId);
+        const data = await propertyService.getPropertyById(actualPropertyId);
         if (data) {
           Logger.debug('Актуальные данные объявления получены, есть agency?:', !!data?.agency?.id);
           setProperty(data);
@@ -119,10 +126,10 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     // 1) есть ID
     // 2) либо нет объекта в параметрах,
     // 3) либо у переданного объекта нет agency.id (нужно подтянуть свежие связи из БД)
-    if (propertyId && (!paramProp || !paramProp.agency?.id)) {
+    if (actualPropertyId && (!paramProperty || !paramProperty.agency?.id)) {
       fetchProperty();
     }
-  }, [propertyId, route.params?.property]);
+  }, [actualPropertyId, paramProperty]);
 
   // Обработка событий изображений и избранного происходит через обработчики событий в JSX
 
@@ -341,6 +348,26 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     `;
   }, [propertyCoords]);
 
+  // Отправка координат в WebView - ДОЛЖЕН БЫТЬ ПЕРЕД handleWebViewMessage
+  const sendCoordinatesToMap = useCallback(() => {
+    if (!webViewRef.current || !property) {
+      return;
+    }
+
+    try {
+      if (!propertyCoords) {
+        Logger.error('Нет корректных координат для объявления');
+        setMapLoading(false);
+        return;
+      }
+
+      webViewRef.current.postMessage(JSON.stringify({ coords: propertyCoords }));
+    } catch (error) {
+      Logger.error('Ошибка отправки координат:', error);
+      setMapLoading(false);
+    }
+  }, [propertyCoords, property]);
+
   // Обработчик сообщений от WebView
   const handleWebViewMessage = (event: any) => {
     try {
@@ -372,25 +399,15 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     }
   };
 
-  // Отправка координат в WebView
-  const sendCoordinatesToMap = useCallback(() => {
-    if (!webViewRef.current || !property) {
-      return;
-    }
+  // Вычисляем форматированную цену ПЕРЕД ранними возвратами
+  const formattedPrice = useMemo(() => {
+    if (!property) return '';
+    const priceValue = typeof property.price === 'number' ? property.price : Number(property.price);
+    const priceLabel = Number.isFinite(priceValue) ? priceValue.toLocaleString() : property.price;
+    return priceLabel;
+  }, [property]);
 
-    try {
-      if (!propertyCoords) {
-        Logger.error('Нет корректных координат для объявления');
-        setMapLoading(false);
-        return;
-      }
-
-      webViewRef.current.postMessage(JSON.stringify({ coords: propertyCoords }));
-    } catch (error) {
-      Logger.error('Ошибка отправки координат:', error);
-      setMapLoading(false);
-    }
-  }, [propertyCoords]);
+  // РАННИЕ ВОЗВРАТЫ ДОЛЖНЫ БЫТЬ ПОСЛЕ ВСЕХ ХУКОВ
 
   if (loading) {
     return (
@@ -419,12 +436,6 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const translatedCityName = cityName ? t(`cities.${cityName}`, cityName) : '';
   const streetName = property.location || '';
   const fullAddress = translatedCityName && streetName ? `${translatedCityName}, ${streetName}` : translatedCityName || streetName;
-
-  const formattedPrice = useMemo(() => {
-    const priceValue = typeof property.price === 'number' ? property.price : Number(property.price);
-    const priceLabel = Number.isFinite(priceValue) ? priceValue.toLocaleString() : property.price;
-    return priceLabel;
-  }, [property.price]);
 
   // Отладочный вывод для всего объекта
   Logger.debug('Детали объявления:', JSON.stringify({

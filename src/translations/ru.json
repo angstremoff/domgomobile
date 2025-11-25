@@ -18,6 +18,8 @@
     "apply": "Применить",
     "next": "Далее",
     "prev": "Назад",
+    "from": "От",
+    "to": "До",
     "all": "Все",
     "allTypes": "Все типы",
     "settings": "Настройки",
@@ -420,7 +422,13 @@
     "elevator": "Лифт",
     "furniture": "Мебель",
     "applyFilters": "Применить фильтры",
-    "resetFilters": "Сбросить фильтры"
+    "resetFilters": "Сбросить фильтры",
+    "validation": {
+      "priceRange": "Цена должна быть в диапазоне от {{min}} до {{max}}",
+      "areaRange": "Площадь должна быть в диапазоне от {{min}} до {{max}}",
+      "minGreaterThanMax": "Минимальное значение не может быть больше максимального",
+      "invalidNumber": "Введите корректное число"
+    }
   },
   "features": {
     "parking": "Парковка",
