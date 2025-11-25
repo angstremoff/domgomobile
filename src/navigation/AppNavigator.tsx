@@ -36,6 +36,11 @@ import MyPropertiesScreen from '../screens/MyPropertiesScreen';
 import EditPropertyScreen from '../screens/EditPropertyScreen';
 import AgencyScreen from '../screens/AgencyScreen';
 
+type AppNavigatorProps = {
+  pendingPropertyId: string | null;
+  clearPendingPropertyId: () => void;
+};
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<RootStackParamList>();
 
@@ -415,7 +420,7 @@ const MainTabs = () => {
   );
 };
 
-const AppNavigator = () => {
+const AppNavigator = ({ pendingPropertyId, clearPendingPropertyId }: AppNavigatorProps) => {
   const { } = useAuth(); // Используем пустую деструктуризацию, так как user не используется
   const { darkMode } = useTheme();
   const { fetchPropertyById } = useProperties();
@@ -435,87 +440,82 @@ const AppNavigator = () => {
     },
   };
 
-  // Обработка глубоких ссылок на объявления
-  React.useEffect(() => {
-    // Проверяем, есть ли ID объявления для открытия (установленный обработчиком глубоких ссылок)
-    const checkDeepLink = async () => {
-      // Проверяем наличие отложенной навигации (установленной в App.tsx)
-      // @ts-ignore - Игнорируем ошибку для глобальных переменных
-      if (globalThis.pendingPropertyNavigation) {
-        // @ts-ignore - Игнорируем ошибку для глобальных переменных
-        const propertyId = globalThis.pendingPropertyNavigation;
-        Logger.debug('Обнаружена отложенная навигация к объявлению, ID:', propertyId);
-
-        try {
-          // Загружаем данные объявления по ID
-          const propertyData = await fetchPropertyById(propertyId);
-          if (propertyData) {
-            // Выполняем навигацию к экрану деталей объявления
-            setTimeout(() => {
-              if (navigationRef.current) {
-                // @ts-ignore - Игнорируем ошибку для метода navigate
-                // Навигация с передачей id и предзагруженных данных объявления 
-                // Важно: передаем как propertyId, так и id
-                navigationRef.current.navigate('PropertyDetails', {
-                  propertyId: propertyId,
-                  id: propertyId,
-                  property: propertyData
-                });
-                Logger.debug('Выполнена отложенная навигация к экрану деталей объявления');
-                // Очищаем переменные после использования
-                // @ts-ignore - Игнорируем ошибку для глобальных переменных
-                globalThis.pendingPropertyNavigation = null;
-              }
-            }, 500);
-          }
-        } catch (error) {
-          Logger.error('Ошибка при загрузке объявления по ID:', error);
-          globalThis.pendingPropertyNavigation = null;
-        }
-      }
-
-      // Проверяем старый механизм propertyDeepLinkId
-      // @ts-ignore - Игнорируем ошибку для глобальных переменных
-      else if (globalThis.propertyDeepLinkId) {
-        Logger.debug('Открываем объявление из ссылки, ID:', globalThis.propertyDeepLinkId);
-
-        // Загружаем данные объявления по ID
-        try {
-          const propertyData = await fetchPropertyById(globalThis.propertyDeepLinkId);
-          if (propertyData) {
-            // Таймер нужен, чтобы дать навигатору время на инициализацию
-            setTimeout(() => {
-              if (navigationRef.current) {
-                // @ts-ignore - Игнорируем ошибку для метода navigate
-                // Навигация с передачей id и предзагруженных данных объявления
-                // Важно: передаем как propertyId, так и id
-                navigationRef.current.navigate('PropertyDetails', {
-                  propertyId: globalThis.propertyDeepLinkId,
-                  id: globalThis.propertyDeepLinkId,
-                  property: propertyData
-                });
-                // Очищаем глобальный ID после использования
-                // @ts-ignore - Игнорируем ошибку для глобальных переменных
-                globalThis.propertyDeepLinkId = null;
-              }
-            }, 500);
-          }
-        } catch (error) {
-          Logger.error('Ошибка при загрузке объявления по ссылке:', error);
-          globalThis.propertyDeepLinkId = null;
-        }
-      }
-    };
-
-    checkDeepLink();
-  }, [fetchPropertyById]);
-
   // Создаем реф для доступа к навигационному контейнеру извне
   // Делаем его глобально доступным для использования в App.tsx
   const navigationRef = React.useRef(null);
   // Устанавливаем глобальный доступ к navigationRef
   // @ts-ignore - Игнорируем ошибку для глобальных переменных
   globalThis.navigationRef = navigationRef;
+
+  // Обработка глубоких ссылок на объявления
+  const navigateToPendingProperty = React.useCallback(async (propertyId: string) => {
+    Logger.debug('Обнаружена ссылка на объявление, готовим навигацию. ID:', propertyId);
+    try {
+      const propertyData = await fetchPropertyById(propertyId);
+
+      if (!propertyData) {
+        Logger.debug('Объявление не найдено по deep link, ID:', propertyId);
+        clearPendingPropertyId();
+        // @ts-ignore
+        globalThis.pendingPropertyNavigation = null;
+        // @ts-ignore
+        globalThis.propertyDeepLinkId = null;
+        return;
+      }
+
+      let attempts = 0;
+      const tryNavigate = () => {
+        attempts += 1;
+
+        if (!navigationRef.current) {
+          if (attempts < 10) {
+            Logger.debug('Навигация ещё не готова, повторяем попытку...');
+            setTimeout(tryNavigate, 200);
+          } else {
+            Logger.error('Не удалось открыть объявление: навигация не инициализировалась');
+            clearPendingPropertyId();
+          }
+          return;
+        }
+
+        // @ts-ignore - Игнорируем ошибку для метода navigate
+        navigationRef.current.navigate('PropertyDetails', {
+          propertyId,
+          id: propertyId,
+          property: propertyData
+        });
+        Logger.debug('Отложенная навигация к объявлению выполнена');
+        clearPendingPropertyId();
+        // @ts-ignore
+        globalThis.pendingPropertyNavigation = null;
+        // @ts-ignore
+        globalThis.propertyDeepLinkId = null;
+      };
+
+      // Даем навигации инициализироваться перед переходом
+      setTimeout(tryNavigate, 300);
+    } catch (error) {
+      Logger.error('Ошибка при загрузке объявления по deep link:', error);
+      clearPendingPropertyId();
+      // @ts-ignore
+      globalThis.pendingPropertyNavigation = null;
+      // @ts-ignore
+      globalThis.propertyDeepLinkId = null;
+    }
+  }, [clearPendingPropertyId, fetchPropertyById]);
+
+  React.useEffect(() => {
+    // Используем state из App + глобальные флаги как запасной вариант
+    // @ts-ignore
+    const fallbackId = globalThis.pendingPropertyNavigation || globalThis.propertyDeepLinkId;
+    const targetId = pendingPropertyId || fallbackId;
+
+    if (!targetId) {
+      return;
+    }
+
+    navigateToPendingProperty(targetId);
+  }, [navigateToPendingProperty, pendingPropertyId]);
 
   return (
     <NavigationContainer

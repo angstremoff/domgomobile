@@ -19,6 +19,9 @@ import { parseDeepLink } from './src/utils/deepLinkParser';
 import './src/translations';
 
 export default function App() {
+  const [pendingPropertyId, setPendingPropertyId] = React.useState<string | null>(null);
+  const clearPendingPropertyId = React.useCallback(() => setPendingPropertyId(null), []);
+
   // Улучшенная система управления версиями и кэшированием
   React.useEffect(() => {
     const initializeApp = async () => {
@@ -86,25 +89,12 @@ export default function App() {
 
       if (parsed.type === 'property') {
         const propertyId = parsed.propertyId;
-        globalThis.propertyDeepLinkId = propertyId;
         Logger.debug('Открываем объявление по ID:', propertyId);
+        setPendingPropertyId(propertyId);
+        // @ts-ignore — оставляем глобальные флаги для обратной совместимости в других местах
+        globalThis.propertyDeepLinkId = propertyId;
         // @ts-ignore
         globalThis.pendingPropertyNavigation = propertyId;
-
-        // @ts-ignore
-        if (globalThis.navigationRef && globalThis.navigationRef.current) {
-          Logger.debug('Прямая навигация к экрану деталей объявления, ID:', propertyId);
-          try {
-            // @ts-ignore
-            globalThis.navigationRef.current.navigate('PropertyDetails', {
-              propertyId: propertyId,
-              id: propertyId
-            });
-            Logger.debug('Навигация к экрану PropertyDetails с ID:', propertyId);
-          } catch (error) {
-            Logger.error('Ошибка при прямой навигации:', error);
-          }
-        }
         return;
       }
 
@@ -186,7 +176,10 @@ export default function App() {
               <AuthProvider>
                 <FavoritesProvider>
                   <PropertyProvider>
-                    <AppNavigator />
+                    <AppNavigator
+                      pendingPropertyId={pendingPropertyId}
+                      clearPendingPropertyId={clearPendingPropertyId}
+                    />
                     <StatusBar style="auto" />
                   </PropertyProvider>
                 </FavoritesProvider>
