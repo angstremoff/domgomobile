@@ -450,58 +450,49 @@ const AppNavigator = ({ pendingPropertyId, clearPendingPropertyId }: AppNavigato
   // Обработка глубоких ссылок на объявления
   const navigateToPendingProperty = React.useCallback(async (propertyId: string) => {
     Logger.debug('Обнаружена ссылка на объявление, готовим навигацию. ID:', propertyId);
-    try {
-      const propertyData = await fetchPropertyById(propertyId);
+    let propertyData: any = null;
 
-      if (!propertyData) {
-        Logger.debug('Объявление не найдено по deep link, ID:', propertyId);
-        clearPendingPropertyId();
-        // @ts-ignore
-        globalThis.pendingPropertyNavigation = null;
-        // @ts-ignore
-        globalThis.propertyDeepLinkId = null;
+    try {
+      propertyData = await fetchPropertyById(propertyId);
+    } catch (error) {
+      Logger.error('Ошибка при загрузке объявления по deep link, продолжим с отложенной загрузкой на экране:', error);
+    }
+
+    let attempts = 0;
+    const tryNavigate = () => {
+      attempts += 1;
+
+      if (!navigationRef.current) {
+        if (attempts < 15) {
+          Logger.debug('Навигация ещё не готова, повторяем попытку...');
+          setTimeout(tryNavigate, 200);
+        } else {
+          Logger.error('Не удалось открыть объявление: навигация не инициализировалась');
+          clearPendingPropertyId();
+          // @ts-ignore
+          globalThis.pendingPropertyNavigation = null;
+          // @ts-ignore
+          globalThis.propertyDeepLinkId = null;
+        }
         return;
       }
 
-      let attempts = 0;
-      const tryNavigate = () => {
-        attempts += 1;
-
-        if (!navigationRef.current) {
-          if (attempts < 10) {
-            Logger.debug('Навигация ещё не готова, повторяем попытку...');
-            setTimeout(tryNavigate, 200);
-          } else {
-            Logger.error('Не удалось открыть объявление: навигация не инициализировалась');
-            clearPendingPropertyId();
-          }
-          return;
-        }
-
-        // @ts-ignore - Игнорируем ошибку для метода navigate
-        navigationRef.current.navigate('PropertyDetails', {
-          propertyId,
-          id: propertyId,
-          property: propertyData
-        });
-        Logger.debug('Отложенная навигация к объявлению выполнена');
-        clearPendingPropertyId();
-        // @ts-ignore
-        globalThis.pendingPropertyNavigation = null;
-        // @ts-ignore
-        globalThis.propertyDeepLinkId = null;
-      };
-
-      // Даем навигации инициализироваться перед переходом
-      setTimeout(tryNavigate, 300);
-    } catch (error) {
-      Logger.error('Ошибка при загрузке объявления по deep link:', error);
+      // @ts-ignore - Игнорируем ошибку для метода navigate
+      navigationRef.current.navigate('PropertyDetails', {
+        propertyId,
+        id: propertyId,
+        ...(propertyData ? { property: propertyData } : {})
+      });
+      Logger.debug('Отложенная навигация к объявлению выполнена');
       clearPendingPropertyId();
       // @ts-ignore
       globalThis.pendingPropertyNavigation = null;
       // @ts-ignore
       globalThis.propertyDeepLinkId = null;
-    }
+    };
+
+    // Даем навигации инициализироваться перед переходом
+    setTimeout(tryNavigate, 300);
   }, [clearPendingPropertyId, fetchPropertyById]);
 
   React.useEffect(() => {
