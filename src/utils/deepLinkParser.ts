@@ -1,6 +1,7 @@
 export type ParsedDeepLink =
   | { type: 'auth'; accessToken: string; refreshToken: string; raw: string }
   | { type: 'property'; propertyId: string; raw: string }
+  | { type: 'agency'; agencyId: string; raw: string }
   | { type: 'unknown'; raw: string };
 
 const PROPERTY_SCHEMES = [
@@ -9,6 +10,12 @@ const PROPERTY_SCHEMES = [
   'https://domgo.rs/property/',
   'https://angstremoff.github.io/domgomobile/property.html',
   'https://angstremoff.github.io/domgomobile/deeplink-handler.html',
+];
+
+const AGENCY_SCHEMES = [
+  'domgomobile://agency',
+  'https://domgo.rs/agency.html',
+  'https://domgo.rs/agency/',
 ];
 
 /**
@@ -94,6 +101,53 @@ export function parseDeepLink(url: string): ParsedDeepLink {
     const propertyId = tryParsePropertyId();
     if (propertyId) {
       return { type: 'property', propertyId, raw };
+    }
+  }
+
+  // Agency deeplinks
+  const tryParseAgencyId = (): string | null => {
+    let urlObj: URL | null = null;
+    try {
+      urlObj = new URL(url);
+    } catch {
+      /* ignore */
+    }
+
+    if (url.startsWith('domgomobile://agency')) {
+      if (url.startsWith('domgomobile://agency/')) {
+        if (urlObj?.pathname) {
+          const parts = urlObj.pathname.split('/').filter(Boolean);
+          if (parts.length > 0) return parts[parts.length - 1];
+        }
+        const manual = url.split('domgomobile://agency/')[1];
+        if (manual?.trim()) return manual.trim();
+      } else if (urlObj?.searchParams) {
+        const qId = urlObj.searchParams.get('id');
+        if (qId) return qId;
+      }
+    }
+
+    if (url.includes('domgo.rs/agency/')) {
+      if (urlObj?.pathname) {
+        const parts = urlObj.pathname.split('/');
+        const idx = parts.indexOf('agency') + 1;
+        if (idx > 0 && idx < parts.length) return parts[idx];
+      }
+    }
+
+    if (url.includes('domgo.rs/agency.html') && urlObj?.searchParams) {
+      const id = urlObj.searchParams.get('id');
+      if (id) return id;
+    }
+
+    return null;
+  };
+
+  const matchesAgencyHost = AGENCY_SCHEMES.some((pattern) => url.startsWith(pattern) || url.includes(pattern));
+  if (matchesAgencyHost) {
+    const agencyId = tryParseAgencyId();
+    if (agencyId) {
+      return { type: 'agency', agencyId, raw };
     }
   }
 

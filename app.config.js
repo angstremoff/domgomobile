@@ -55,6 +55,18 @@ export default ({ config }) => {
             }
           ],
           category: ['BROWSABLE', 'DEFAULT']
+        },
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [
+            {
+              scheme: 'domgomobile',
+              host: 'agency',
+              pathPrefix: '/'
+            }
+          ],
+          category: ['BROWSABLE', 'DEFAULT']
         }
       ]
     },

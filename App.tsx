@@ -21,6 +21,8 @@ import './src/translations';
 export default function App() {
   const [pendingPropertyId, setPendingPropertyId] = React.useState<string | null>(null);
   const clearPendingPropertyId = React.useCallback(() => setPendingPropertyId(null), []);
+  const [pendingAgencyId, setPendingAgencyId] = React.useState<string | null>(null);
+  const clearPendingAgencyId = React.useCallback(() => setPendingAgencyId(null), []);
 
   // Улучшенная система управления версиями и кэшированием
   React.useEffect(() => {
@@ -114,6 +116,27 @@ export default function App() {
         return;
       }
 
+      if (parsed.type === 'agency') {
+        const agencyId = parsed.agencyId;
+        Logger.debug('Открываем агентство по ID:', agencyId);
+        setPendingAgencyId(agencyId);
+        // @ts-ignore
+        globalThis.pendingAgencyNavigation = agencyId;
+
+        // Если навигация готова — пробуем перейти сразу
+        // @ts-ignore
+        if (globalThis.navigationRef && globalThis.navigationRef.current) {
+          try {
+            // @ts-ignore
+            globalThis.navigationRef.current.navigate('Agency', { agencyId });
+            Logger.debug('Мгновенная навигация к агентству выполнена');
+          } catch (error) {
+            Logger.warn('Не удалось сразу перейти по deep link агентства, сработает отложенная навигация:', error);
+          }
+        }
+        return;
+      }
+
       Logger.debug('Неизвестный deeplink, пропускаем');
     };
 
@@ -195,6 +218,8 @@ export default function App() {
                     <AppNavigator
                       pendingPropertyId={pendingPropertyId}
                       clearPendingPropertyId={clearPendingPropertyId}
+                      pendingAgencyId={pendingAgencyId}
+                      clearPendingAgencyId={clearPendingAgencyId}
                     />
                     <StatusBar style="auto" />
                   </PropertyProvider>

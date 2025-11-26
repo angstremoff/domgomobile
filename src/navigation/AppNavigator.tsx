@@ -39,6 +39,8 @@ import AgencyScreen from '../screens/AgencyScreen';
 type AppNavigatorProps = {
   pendingPropertyId: string | null;
   clearPendingPropertyId: () => void;
+  pendingAgencyId?: string | null;
+  clearPendingAgencyId?: () => void;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -255,6 +257,8 @@ const MainTabs = () => {
         component={HomeScreen}
         options={{
           title: 'DomGo.rs',
+          headerTitleAlign: Platform.OS === 'ios' ? 'left' : undefined,
+          headerRightContainerStyle: Platform.OS === 'ios' ? { paddingRight: 8 } : undefined,
           tabBarLabel: t('navigation.home'),
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
             <Ionicons name="home" color={color} size={size} />
@@ -280,6 +284,7 @@ const MainTabs = () => {
               selectedCity={selectedCity}
               onCitySelect={setSelectedCity}
               isHomeScreen={true}
+              containerStyle={Platform.OS === 'ios' ? { marginLeft: 8 } : undefined}
             />
           ),
         }}
@@ -420,7 +425,7 @@ const MainTabs = () => {
   );
 };
 
-const AppNavigator = ({ pendingPropertyId, clearPendingPropertyId }: AppNavigatorProps) => {
+const AppNavigator = ({ pendingPropertyId, clearPendingPropertyId, pendingAgencyId, clearPendingAgencyId }: AppNavigatorProps) => {
   const { } = useAuth(); // Используем пустую деструктуризацию, так как user не используется
   const { darkMode } = useTheme();
   const { fetchPropertyById } = useProperties();
@@ -507,6 +512,31 @@ const AppNavigator = ({ pendingPropertyId, clearPendingPropertyId }: AppNavigato
 
     navigateToPendingProperty(targetId);
   }, [navigateToPendingProperty, pendingPropertyId]);
+
+  React.useEffect(() => {
+    // Обработка отложенного перехода к агентству
+    // @ts-ignore
+    const fallbackAgencyId = globalThis.pendingAgencyNavigation;
+    const targetAgencyId = pendingAgencyId || fallbackAgencyId;
+
+    if (!targetAgencyId) return;
+
+    const tryNavigateAgency = () => {
+      // @ts-ignore
+      if (navigationRef?.current) {
+        // @ts-ignore
+        navigationRef.current.navigate('Agency', { agencyId: targetAgencyId });
+        Logger.debug('Отложенная навигация к агентству выполнена');
+        clearPendingAgencyId?.();
+        // @ts-ignore
+        globalThis.pendingAgencyNavigation = null;
+      } else {
+        setTimeout(tryNavigateAgency, 200);
+      }
+    };
+
+    tryNavigateAgency();
+  }, [pendingAgencyId, clearPendingAgencyId]);
 
   return (
     <NavigationContainer
