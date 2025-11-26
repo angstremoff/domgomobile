@@ -60,8 +60,8 @@
 - Репозиторий `angstremoff/domgors` (локально `/Users/test/CascadeProjects/domgors`) — старый сайт на проде для домена domgo.rs: содержит статические страницы (`public/property.html`, `public/agency.html` и др.), конфиги деплоя (render.yaml, netlify/vercel, htaccess), фронт-код (src, package.json), supabase/sql вспомогательные скрипты. Любые новые публичные страницы для домgo.rs добавляем туда.
 
 ## 8. Обновление версий и сборки
- - Версия приложения (отображается в настройках и в store): `package.json` → `version`, синхронизирована с `package-lock.json` (поле `version` в корне и в корневом пакете). Текущая: 1.0.6.
- - Android: `android/app/build.gradle` → `defaultConfig.versionCode` (целое, растёт) и `versionName` (строка, совпадает с версией приложения). Текущее: code 10 / name 1.0.6.
+- Версия приложения (отображается в настройках и в store): `package.json` → `version`, синхронизирована с `package-lock.json` (поле `version` в корне и в корневом пакете). Текущая: 1.0.7.
+- Android: `android/app/build.gradle` → `defaultConfig.versionCode` (целое, растёт) и `versionName` (строка, совпадает с версией приложения). Текущее: code 11 / name 1.0.7.
  - iOS: `app.config.js` → `ios.buildNumber` (строка) и `version` берётся из `APP_VERSION`/`package.json` (настроено через `APP_VERSION` env или pkg.version). Текущее: buildNumber 10.
 - Runtime остаётся фиксированным: `app.config.js` → `runtimeVersion` (не менять без миграции обновлений), сейчас 1.0.4.
 - Fallback версии в коде: `src/services/AppVersionManager.ts` хранит запасное значение (держать в актуальной версии приложения).
