@@ -54,11 +54,15 @@
 - DomGoMobile поддерживает четыре платформы, но бизнес-логика едина; различия только в верстке/UX.
 - При шаринге объявлений используем `https://domgo.rs/property.html?id=<ID>` (домен направлен на GitHub Pages) — страница пытается открыть приложение, если нет — предлагает Web + Google Play.
 - Любые новые задачи, связанные с публикацией, должны учитывать требования Google Play и наличие AAB; APK используется только для локального тестирования.
+- iOS нюансы: симулятор не умеет `tel:` — в PropertyDetails показываем алерт и копируем номер в буфер; фильтры имеют safe-area паддинг и расширенный hitSlop для кнопки закрытия; заголовок DomGo.rs на iOS выровнен влево, а блок выбора города сдвинут для предотвращения наложения.
+- Supabase агенты: `agency_profiles.user_id` 1:1 к `users.id`, `properties.agency_id` → `agency_profiles.id`. Есть триггер на `agency_profiles` (after insert/update) для заполнения `agency_id` у объявлений по `user_id`, и триггер на `properties` (before insert/update user_id) для автоподстановки `agency_id`. Разовая синхронизация: `update properties p set agency_id = ap.id from agency_profiles ap where p.user_id = ap.user_id and p.agency_id is null`.
+- Статика для домена domgo.rs живёт в отдельном репо `angstremoff/domgors` (Render / GitHub Pages). `property.html`/deeplink-handler там; для новых страниц (например, agency.html) добавляем в этот репозиторий, чтобы ссылки вида `https://domgo.rs/...` работали.
+- Репозиторий `angstremoff/domgors` (локально `/Users/test/CascadeProjects/domgors`) — старый сайт на проде для домена domgo.rs: содержит статические страницы (`public/property.html`, `public/agency.html` и др.), конфиги деплоя (render.yaml, netlify/vercel, htaccess), фронт-код (src, package.json), supabase/sql вспомогательные скрипты. Любые новые публичные страницы для домgo.rs добавляем туда.
 
 ## 8. Обновление версий и сборки
-- Версия приложения (отображается в настройках и в store): `package.json` → `version`, синхронизирована с `package-lock.json` (поле `version` в корне и в корневом пакете). Текущая: 1.0.5.
-- Android: `android/app/build.gradle` → `defaultConfig.versionCode` (целое, растёт) и `versionName` (строка, совпадает с версией приложения). Текущее: code 9 / name 1.0.5.
-- iOS: `app.config.js` → `ios.buildNumber` (строка) и `version` берётся из `APP_VERSION`/`package.json` (настроено через `APP_VERSION` env или pkg.version). Текущее: buildNumber 9.
+ - Версия приложения (отображается в настройках и в store): `package.json` → `version`, синхронизирована с `package-lock.json` (поле `version` в корне и в корневом пакете). Текущая: 1.0.6.
+ - Android: `android/app/build.gradle` → `defaultConfig.versionCode` (целое, растёт) и `versionName` (строка, совпадает с версией приложения). Текущее: code 10 / name 1.0.6.
+ - iOS: `app.config.js` → `ios.buildNumber` (строка) и `version` берётся из `APP_VERSION`/`package.json` (настроено через `APP_VERSION` env или pkg.version). Текущее: buildNumber 10.
 - Runtime остаётся фиксированным: `app.config.js` → `runtimeVersion` (не менять без миграции обновлений), сейчас 1.0.4.
 - Fallback версии в коде: `src/services/AppVersionManager.ts` хранит запасное значение (держать в актуальной версии приложения).
 - Сборка AAB: `./build-release-bundle.sh` (использует версию из package.json, кладёт на Desktop `DomGoMobile-<версия>-release.aab`). Перед запуском убедиться, что `release.keystore` актуальный.

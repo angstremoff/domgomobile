@@ -31,6 +31,8 @@ interface AgencySummary {
   logo_url: string | null;
   location: string | null;
   phone: string | null;
+  city_id?: number | null;
+  city?: { id: number; name: string } | null;
 }
 
 const HomeScreen = ({ navigation }: any) => {
@@ -135,7 +137,7 @@ const HomeScreen = ({ navigation }: any) => {
       setAgenciesError(null);
       const { data, error } = await supabase
         .from('agency_profiles')
-        .select('id, name, logo_url, location, phone')
+        .select('id, name, logo_url, location, phone, city_id, city:cities(id, name)')
         .order('name', { ascending: true });
 
       if (error) {
@@ -166,6 +168,15 @@ const HomeScreen = ({ navigation }: any) => {
       fetchAgencies();
     }
   }, [propertyType, agencies.length, agenciesLoading, fetchAgencies]);
+
+  const agenciesForList = useMemo(() => {
+    if (!selectedCity) return agencies;
+    return agencies.filter((agency) => {
+      if (agency.city_id != null && selectedCity.id === agency.city_id) return true;
+      if (agency.city?.id != null && selectedCity.id === agency.city.id) return true;
+      return false;
+    });
+  }, [agencies, selectedCity]);
 
   // Мемоизированный список отфильтрованных объявлений для оптимизации
   const memoizedFilteredProperties = useMemo(() => {
@@ -1310,7 +1321,7 @@ const HomeScreen = ({ navigation }: any) => {
           </View>
         ) : (
           <FlatList
-            data={agencies}
+            data={agenciesForList}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <View
@@ -1346,11 +1357,11 @@ const HomeScreen = ({ navigation }: any) => {
                       <Text style={[styles.agencyName, { color: theme.text }]} numberOfLines={1}>
                         {item.name || t('agency.unnamed', 'Агентство')}
                       </Text>
-                      {item.location ? (
+                      {item.city?.name || item.location ? (
                         <View style={styles.agencyMetaRow}>
                           <Ionicons name="location-outline" size={14} color={theme.secondary} />
                           <Text style={[styles.agencyMetaText, { color: theme.secondary }]} numberOfLines={1}>
-                            {item.location}
+                            {item.city?.name || item.location}
                           </Text>
                         </View>
                       ) : null}
@@ -1915,7 +1926,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   agencyCardWrapper: {
-    marginBottom: 16,
+    marginBottom: 10,
   },
   agencyCardWrapperDesktop: {
     width: 360,
@@ -1933,14 +1944,14 @@ const styles = StyleSheet.create({
   agencyCard: {
     borderRadius: 16,
     borderWidth: 1,
-    padding: 18,
-    gap: 12,
+    padding: 14,
+    gap: 10,
   },
   agencyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
+    marginBottom: 8,
+    gap: 10,
   },
   agencyLogoWrapper: {
     width: 48,
