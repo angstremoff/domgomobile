@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, ActivityIndicator, Platform, useWindowDimensions, Share } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import Colors from '../constants/colors';
@@ -100,6 +101,7 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
             *,
             user:users(name, phone, is_agency),
             city:cities(name),
+            district:districts(id, name, city_id),
             agency:agency_profiles(id, name, phone, logo_url, description)
           `)
           .eq('agency_id', targetId)
@@ -114,6 +116,7 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
               *,
               user:users(name, phone, is_agency),
               city:cities(name),
+              district:districts(id, name, city_id),
               agency:agency_profiles(id, name, phone, logo_url, description)
             `)
             .eq('user_id', targetId)
@@ -165,9 +168,30 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
           <Image source={{ uri: agency.logo_url }} style={styles.logo} resizeMode="contain" />
         ) : null}
 
-        {agency.name ? (
-          <Text style={[styles.title, { color: theme.text }]}>{agency.name}</Text>
-        ) : null}
+        <View style={styles.titleRow}>
+          {agency.name ? (
+            <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
+              {agency.name}
+            </Text>
+          ) : null}
+          <TouchableOpacity
+            style={[styles.shareButton, { backgroundColor: theme.primary + '1A' }]}
+            onPress={() => {
+              const targetId = agency.id || agencyId;
+              const shareUrl = `https://domgo.rs/agency.html?id=${targetId}`;
+              const message = `${agency.name || t('agency.unnamed', 'Агентство')}\n${shareUrl}`;
+              Share.share({
+                message,
+                ...(Platform.OS === 'ios'
+                  ? { url: shareUrl, title: t('agency.shareTitle', 'Поделиться агентством') }
+                  : {})
+              }).catch((err) => Logger.error('Ошибка шаринга агентства:', err));
+            }}
+            accessibilityLabel={t('agency.shareTitle', 'Поделиться агентством')}
+          >
+            <Ionicons name="share-social-outline" size={20} color={theme.primary} />
+          </TouchableOpacity>
+        </View>
 
         {agency.description ? (
           <Text style={[styles.description, { color: theme.text }]}>{agency.description}</Text>
@@ -278,10 +302,24 @@ const styles = StyleSheet.create({
     height: 120,
     marginBottom: 12,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 4,
+    flex: 1,
+  },
+  shareButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   description: {
     fontSize: 14,

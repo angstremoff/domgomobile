@@ -82,6 +82,41 @@ export type Database = {
         }
         Relationships: []
       }
+      districts: {
+        Row: {
+          city_id: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          city_id: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          city_id?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "districts_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favorites: {
         Row: {
           created_at: string
@@ -125,6 +160,7 @@ export type Database = {
           city_id: number | null
           coordinates: Json | null
           created_at: string
+          district_id: string | null
           description: string
           features: string[] | null
           id: string
@@ -145,6 +181,7 @@ export type Database = {
           city_id?: number | null
           coordinates?: Json | null
           created_at?: string
+          district_id?: string | null
           description: string
           features?: string[] | null
           id?: string
@@ -165,6 +202,7 @@ export type Database = {
           city_id?: number | null
           coordinates?: Json | null
           created_at?: string
+          district_id?: string | null
           description?: string
           features?: string[] | null
           id?: string
@@ -192,6 +230,13 @@ export type Database = {
             columns: ["city_id"]
             isOneToOne: false
             referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "properties_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "districts"
             referencedColumns: ["id"]
           },
           {

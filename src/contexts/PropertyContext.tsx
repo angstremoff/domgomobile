@@ -27,6 +27,12 @@ export interface Property {
   location?: string;
   city_id?: number | null; // Исправлено: должен соответствовать схеме базы данных
   city?: { name: string };
+  district_id?: string | null;
+  district?: {
+    id: string;
+    name: string;
+    city_id?: number;
+  } | null;
   user_id: string;
   user?: { 
     name: string | null;
@@ -61,12 +67,22 @@ export interface City {
   coordinates?: { lat: number; lng: number } | null;
 }
 
+export interface District {
+  id: string;
+  name: string;
+  city_id: number;
+  is_active?: boolean;
+  sort_order?: number;
+}
+
 interface PropertyContextType {
   properties: Property[];
   filteredProperties: Property[];
   loading: boolean;
   selectedCity: City | null;
   setSelectedCity: (city: City | null) => void;
+  selectedDistrict: District | null;
+  setSelectedDistrict: (district: District | null) => void;
   getPropertiesByType: (type: 'sale' | 'rent' | 'newBuildings', page?: number, pageSize?: number) => Promise<{
     data: Property[];
     totalCount: number;
@@ -81,6 +97,9 @@ interface PropertyContextType {
   cities: City[];
   loadCities: () => Promise<City[]>;
   citiesLoading: boolean;
+  districts: District[];
+  loadDistricts: (cityId?: number | string | null) => Promise<District[]>;
+  districtsLoading: boolean;
   fetchPropertyById: (id: string) => Promise<Property | null>; // Добавлен метод для загрузки объявления по ID
 }
 
@@ -91,8 +110,12 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<District | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [citiesLoading, setCitiesLoading] = useState(false);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [districtsCityId, setDistrictsCityId] = useState<number | null>(null);
+  const [districtsLoading, setDistrictsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState<{
     all: number;
     sale: number;
@@ -522,6 +545,51 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     Logger.debug('Кэш объявлений обновлен после создания нового объявления');
   }, [refreshProperties]);
 
+  // Загрузка районов выбранного города с кэшированием по city_id
+  const loadDistricts = useCallback(async (cityId?: number | string | null) => {
+    if (!cityId && cityId !== 0) {
+      setDistricts([]);
+      setDistrictsCityId(null);
+      return [];
+    }
+
+    const numericId = typeof cityId === 'string' ? Number(cityId) : cityId;
+    const selectedCityId = selectedCity ? Number(selectedCity.id) : null;
+    const shouldUpdateState = selectedCityId !== null && !Number.isNaN(selectedCityId) && selectedCityId === numericId;
+    if (Number.isNaN(numericId)) {
+      Logger.warn('Некорректный cityId для загрузки районов', cityId);
+      setDistricts([]);
+      setDistrictsCityId(null);
+      return [];
+    }
+
+    if (shouldUpdateState && districtsCityId === numericId && districts.length > 0) {
+      return districts;
+    }
+
+    if (shouldUpdateState) {
+      setDistrictsLoading(true);
+    }
+    try {
+      const data = await propertyService.getDistricts(numericId);
+      if (shouldUpdateState) {
+        setDistricts(data || []);
+        setDistrictsCityId(numericId);
+      }
+      return data || [];
+    } catch (error) {
+      Logger.error('Ошибка при загрузке районов:', error);
+      if (shouldUpdateState) {
+        setDistricts([]);
+      }
+      return [];
+    } finally {
+      if (shouldUpdateState) {
+        setDistrictsLoading(false);
+      }
+    }
+  }, [districts, districtsCityId, selectedCity]);
+
   // Загрузка списка городов с кэшированием
   const loadCities = useCallback(async () => {
     if (cities.length > 0) {
@@ -560,6 +628,35 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     }
     return [];
   }, [cities]);
+
+  // Автозагрузка и валидация районов при смене города
+  // Автозагрузка районов при смене города.
+  // Внимание: loadDistricts обновляет локальный стейт, поэтому не добавляем его в зависимости, чтобы избежать бесконечных ререндеров.
+  useEffect(() => {
+    if (!selectedCity) {
+      setSelectedDistrict(null);
+      setDistricts([]);
+      setDistrictsCityId(null);
+      setDistrictsLoading(false);
+      return;
+    }
+
+    const numericId = Number(selectedCity.id);
+    if (Number.isNaN(numericId)) {
+      setSelectedDistrict(null);
+      setDistricts([]);
+      setDistrictsCityId(null);
+      setDistrictsLoading(false);
+      return;
+    }
+
+    if (selectedDistrict && selectedDistrict.city_id !== numericId) {
+      setSelectedDistrict(null);
+    }
+
+    loadDistricts(numericId).catch((error) => Logger.error('Ошибка автозагрузки районов:', error));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCity, selectedDistrict]);
   
   // Загрузка объявления по ID для открытия по ссылке
   const fetchPropertyById = useCallback(async (id: string): Promise<Property | null> => {
@@ -570,6 +667,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
           *,
           user:users(name, phone, is_agency),
           city:cities(name),
+          district:districts(id, name, city_id),
           agency:agency_profiles(id, name, phone, logo_url, description, website, instagram, facebook)
         `)
         .eq('id', id)
@@ -605,6 +703,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         loading,
         selectedCity,
         setSelectedCity,
+        selectedDistrict,
+        setSelectedDistrict,
         getPropertiesByType,
         setFilteredProperties,
         refreshProperties,
@@ -619,6 +719,9 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         cities,
         loadCities,
         citiesLoading,
+        districts,
+        loadDistricts,
+        districtsLoading,
         fetchPropertyById
       }}
     >

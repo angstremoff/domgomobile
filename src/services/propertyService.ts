@@ -154,6 +154,7 @@ export const propertyService = {
             *,
             user:users(name, phone, is_agency),
             city:cities(name),
+            district:districts(id, name, city_id),
             agency:agency_profiles(id, name, phone, logo_url, description)
           `, { count: 'exact' })
           .order('created_at', { ascending: false })
@@ -234,6 +235,7 @@ export const propertyService = {
             *,
             user:users(name, phone, is_agency),
             city:cities(name),
+            district:districts(id, name, city_id),
             agency:agency_profiles(id, name, phone, logo_url, description)
           `)
           .eq('id', id)
@@ -300,6 +302,7 @@ export const propertyService = {
             *,
             user:users(name, phone, is_agency),
             city:cities(name),
+            district:districts(id, name, city_id),
             agency:agency_profiles(id, name, phone, logo_url, description)
           `)
           .eq('user_id', user.id)
@@ -540,6 +543,7 @@ export const propertyService = {
           *,
           user:users(name, phone, is_agency),
           city:cities(name),
+          district:districts(id, name, city_id),
           agency:agency_profiles(id, name, phone, logo_url, description)
         `, { count: 'exact' });
       
@@ -634,6 +638,7 @@ export const propertyService = {
           *,
           user:users(name, phone, is_agency),
           city:cities(name),
+          district:districts(id, name, city_id),
           agency:agency_profiles(id, name, phone, logo_url, description)
         )
       `)
@@ -688,6 +693,56 @@ export const propertyService = {
     } catch (error) {
       Logger.error('Ошибка при обновлении объявления:', error);
       return { success: false, error };
+    }
+  },
+  
+  async getDistricts(cityId: number) {
+    const DISTRICTS_CACHE_TTL = 3 * 60 * 60 * 1000;
+    const cacheKey = `domgo_districts_${cityId}`;
+    const now = Date.now();
+
+    try {
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (now - parsed.timestamp < DISTRICTS_CACHE_TTL && Array.isArray(parsed.data)) {
+          Logger.debug('Возвращаем кэшированный список районов', { cityId });
+          return parsed.data;
+        }
+      }
+
+      Logger.debug('Загружаем районы из Supabase', { cityId });
+      const { data, error } = await supabase
+        .from('districts')
+        .select('*')
+        .eq('city_id', cityId)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('name');
+
+      if (error) {
+        Logger.error('Ошибка при получении районов:', error);
+        throw error;
+      }
+
+      await AsyncStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: now }));
+      return data || [];
+    } catch (error) {
+      Logger.error('Ошибка при работе с кэшем районов:', error);
+      const { data, error: fetchError } = await supabase
+        .from('districts')
+        .select('*')
+        .eq('city_id', cityId)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('name');
+
+      if (fetchError) {
+        Logger.error('Ошибка при повторном получении районов:', fetchError);
+        throw fetchError;
+      }
+
+      return data || [];
     }
   },
   

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator, Text, ScrollView, TouchableOpacity, Platform, useWindowDimensions, ViewStyle, Image } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, Text, ScrollView, TouchableOpacity, Platform, useWindowDimensions, ViewStyle, Image, Modal } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { supabase } from '../lib/supabaseClient';
 import PropertyCard from '../components/PropertyCard';
 import PropertyCardCompact from '../components/PropertyCardCompact';
-import type { Property } from '../contexts/PropertyContext';
+import type { Property, District } from '../contexts/PropertyContext';
 import FilterModal from '../components/FilterModal';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { useProperties } from '../contexts/PropertyContext';
@@ -46,9 +46,14 @@ const HomeScreen = ({ navigation }: any) => {
     refreshProperties, 
     loading: propertiesLoading, 
     selectedCity,
+    selectedDistrict,
+    setSelectedDistrict,
     loadMoreProperties,
     getHasMore,
-    getPropertiesByType
+    getPropertiesByType,
+    districts,
+    loadDistricts,
+    districtsLoading
   } = useProperties();
   const [propertyType, setPropertyType] = useState<ViewTab>('all');
   const [categoryByType, setCategoryByType] = useState<Record<DealTab, string>>(() => ({
@@ -122,6 +127,7 @@ const HomeScreen = ({ navigation }: any) => {
     areas: [],
     features: []
   });
+  const [districtModalVisible, setDistrictModalVisible] = useState(false);
 
   // Обновляем свойства только при существенных изменениях в избранном
   // Добавляем useRef для предотвращения повторных запросов
@@ -214,6 +220,7 @@ const HomeScreen = ({ navigation }: any) => {
         propertyTypeForData,
         propertyCategory,
         selectedCity,
+        selectedDistrict,
         filtersForApply
       );
       setFilteredProperties(filtered);
@@ -221,7 +228,7 @@ const HomeScreen = ({ navigation }: any) => {
       // Если пока нет локальной базы для sale/rent, не перетираем список
       return;
     }
-  }, [propertyType, propertyCategory, selectedCity, properties, typeItems, activeFilters, filtersAppliedRent, filtersAppliedSale]);
+  }, [propertyType, propertyCategory, selectedCity, selectedDistrict, properties, typeItems, activeFilters, filtersAppliedRent, filtersAppliedSale]);
   
   // Используем debounce для applyFilters, чтобы не вызывать фильтрацию слишком часто
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
@@ -275,11 +282,12 @@ const HomeScreen = ({ navigation }: any) => {
         propertyType,
         propertyCategory,
         selectedCity,
+        selectedDistrict,
         filtersForApply
       );
       setFilteredProperties(filtered);
     }
-  }, [selectedCity, propertyType, propertyCategory, activeFilters, typeItems, filtersAppliedRent, filtersAppliedSale]);
+  }, [selectedCity, selectedDistrict, propertyType, propertyCategory, activeFilters, typeItems, filtersAppliedRent, filtersAppliedSale]);
 
   useEffect(() => {
     if (propertyType === 'rent') {
@@ -400,6 +408,22 @@ const HomeScreen = ({ navigation }: any) => {
           }
         });
       }
+
+      if (selectedDistrict && selectedDistrict.id) {
+        const districtIdStr = String(selectedDistrict.id);
+        filtered = filtered.filter((prop) => {
+          try {
+            const propDistrictId = (prop as any).district_id || (prop as any).district?.id;
+            if (!propDistrictId) {
+              return false;
+            }
+            return String(propDistrictId) === districtIdStr;
+          } catch (error) {
+            Logger.error('Ошибка при фильтрации по району:', error);
+            return false;
+          }
+        });
+      }
       
       // Применение активных фильтров только если они были явно применены
       if (activeFilters && Object.keys(activeFilters).length > 0) {
@@ -439,6 +463,7 @@ const HomeScreen = ({ navigation }: any) => {
       type,
       propertyCategory,
       selectedCity,
+      selectedDistrict,
       filters
     );
   };
@@ -501,6 +526,18 @@ const HomeScreen = ({ navigation }: any) => {
             try { return String(p.city_id) === cityIdStr; } catch { return false; }
           });
         }
+        if (selectedDistrict && selectedDistrict.id) {
+          const districtIdStr = String(selectedDistrict.id);
+          list = list.filter((p) => {
+            try {
+              const propDistrictId = (p as any).district_id || (p as any).district?.id;
+              if (!propDistrictId) return false;
+              return String(propDistrictId) === districtIdStr;
+            } catch {
+              return false;
+            }
+          });
+        }
         setFilteredProperties(list);
       } else {
         // Для вкладки "Все" оставляем текущую стратегию
@@ -536,6 +573,23 @@ const HomeScreen = ({ navigation }: any) => {
       });
     }
     setFilterModalVisible(true);
+  };
+
+  const handleOpenDistrictModal = async () => {
+    if (!selectedCity) {
+      return;
+    }
+    try {
+      await loadDistricts(selectedCity.id);
+    } catch (error) {
+      Logger.error('Ошибка загрузки районов перед открытием модального окна:', error);
+    }
+    setDistrictModalVisible(true);
+  };
+
+  const handleSelectDistrict = (district: District | null) => {
+    setSelectedDistrict(district);
+    setDistrictModalVisible(false);
   };
 
   const handleCloseFilterModal = () => {
@@ -581,6 +635,7 @@ const HomeScreen = ({ navigation }: any) => {
         propertyTypeForData,
         categoryToApply,
         selectedCity,
+        selectedDistrict,
         propertyType === 'sale' || propertyType === 'newBuildings' ? appliedFilters : propertyType === 'rent' ? appliedFilters : activeFilters
       );
       setFilteredProperties(filtered);
@@ -953,6 +1008,18 @@ const HomeScreen = ({ navigation }: any) => {
                     try { return String(p.city_id) === cityIdStr; } catch { return false; }
                   });
                 }
+                if (selectedDistrict && selectedDistrict.id) {
+                  const districtIdStr = String(selectedDistrict.id);
+                  list = list.filter((p) => {
+                    try {
+                      const propDistrictId = (p as any).district_id || (p as any).district?.id;
+                      if (!propDistrictId) return false;
+                      return String(propDistrictId) === districtIdStr;
+                    } catch {
+                      return false;
+                    }
+                  });
+                }
                 setFilteredProperties(list);
               }
             } catch (error) {
@@ -1008,6 +1075,18 @@ const HomeScreen = ({ navigation }: any) => {
                     try { return String(p.city_id) === cityIdStr; } catch { return false; }
                   });
                 }
+                if (selectedDistrict && selectedDistrict.id) {
+                  const districtIdStr = String(selectedDistrict.id);
+                  list = list.filter((p) => {
+                    try {
+                      const propDistrictId = (p as any).district_id || (p as any).district?.id;
+                      if (!propDistrictId) return false;
+                      return String(propDistrictId) === districtIdStr;
+                    } catch {
+                      return false;
+                    }
+                  });
+                }
                 setFilteredProperties(list);
               }
             } catch (error) {
@@ -1059,6 +1138,18 @@ const HomeScreen = ({ navigation }: any) => {
                     try { return String(p.city_id) === cityIdStr; } catch { return false; }
                   });
                 }
+                if (selectedDistrict && selectedDistrict.id) {
+                  const districtIdStr = String(selectedDistrict.id);
+                  list = list.filter((p) => {
+                    try {
+                      const propDistrictId = (p as any).district_id || (p as any).district?.id;
+                      if (!propDistrictId) return false;
+                      return String(propDistrictId) === districtIdStr;
+                    } catch {
+                      return false;
+                    }
+                  });
+                }
                 setFilteredProperties(list);
               }
             } catch (error) {
@@ -1097,6 +1188,42 @@ const HomeScreen = ({ navigation }: any) => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {selectedCity ? (
+        <View
+          style={[
+            styles.districtRow,
+            { backgroundColor: theme.background, borderColor: theme.border },
+            sharedSectionStyle || undefined
+          ]}
+        >
+          <TouchableOpacity
+            style={[styles.districtButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={handleOpenDistrictModal}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="navigate-outline" size={16} color={theme.text} />
+            <Text style={[styles.districtButtonText, { color: theme.text }]}>
+              {selectedDistrict ? selectedDistrict.name : t('filters.allDistricts', 'Все районы')}
+            </Text>
+            {districtsLoading ? (
+              <ActivityIndicator size="small" color={theme.primary} style={styles.districtLoader} />
+            ) : (
+              <Ionicons name="chevron-down" size={16} color={theme.secondary} />
+            )}
+          </TouchableOpacity>
+          {selectedDistrict ? (
+            <TouchableOpacity
+              style={[styles.resetDistrictButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => handleSelectDistrict(null)}
+              activeOpacity={0.9}
+            >
+              <Ionicons name="close-circle-outline" size={16} color={theme.secondary} />
+              <Text style={[styles.resetDistrictText, { color: theme.secondary }]}>{t('filters.resetDistrict', 'Сбросить район')}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
       
       {showFilterActions && (
         <>
@@ -1305,6 +1432,51 @@ const HomeScreen = ({ navigation }: any) => {
           />
         );
       })()}
+
+      <Modal
+        visible={districtModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDistrictModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.districtModal, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>{t('filters.selectDistrict', 'Выберите район')}</Text>
+              <TouchableOpacity onPress={() => setDistrictModalVisible(false)}>
+                <Ionicons name="close" size={22} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              <TouchableOpacity
+                style={[styles.districtItem, { borderColor: theme.border }]}
+                onPress={() => handleSelectDistrict(null)}
+              >
+                <Text style={[styles.districtItemText, { color: theme.primary }]}>{t('filters.allDistricts', 'Все районы')}</Text>
+              </TouchableOpacity>
+              {districtsLoading ? (
+                <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 12 }} />
+              ) : districts.length === 0 ? (
+                <Text style={{ color: theme.secondary, paddingVertical: 8 }}>{t('filters.noDistricts', 'В этом городе пока нет районов')}</Text>
+              ) : (
+                districts.map((district) => (
+                  <TouchableOpacity
+                    key={district.id}
+                    style={[
+                      styles.districtItem,
+                      { borderColor: theme.border },
+                      selectedDistrict?.id === district.id ? { backgroundColor: theme.primary + '22' } : null
+                    ]}
+                    onPress={() => handleSelectDistrict(district)}
+                  >
+                    <Text style={[styles.districtItemText, { color: theme.text }]}>{district.name}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {isAgencyView ? (
         agenciesLoading ? (
@@ -1952,6 +2124,74 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
     gap: 10,
+  },
+  districtRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 10,
+  },
+  districtButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 8,
+  },
+  districtButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  districtLoader: {
+    marginLeft: 6,
+  },
+  resetDistrictButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+  },
+  resetDistrictText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  districtModal: {
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  districtItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  districtItemText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   agencyLogoWrapper: {
     width: 48,

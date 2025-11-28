@@ -29,7 +29,9 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
   // Получаем переведенное название города
   const translatedCityName = cityName ? t(`cities.${cityName}`, cityName) : '';
   const streetName = property.location || '';
-  const fullAddress = translatedCityName && streetName ? `${translatedCityName}, ${streetName}` : translatedCityName || streetName;
+  const districtName = property.district?.name || '';
+  const addressParts = [districtName, translatedCityName, streetName].filter(Boolean);
+  const fullAddress = addressParts.join(', ');
 
   const formattedPrice = useMemo(() => {
     const priceValue = typeof property.price === 'number' ? property.price : Number(property.price);

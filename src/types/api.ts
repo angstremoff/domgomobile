@@ -20,6 +20,12 @@ export interface Property {
   longitude?: string;
   coordinates?: Coordinates | string;
   city_id?: string | number;
+  district_id?: string | number | null;
+  district?: {
+    id: string | number;
+    name: string;
+    city_id?: string | number;
+  } | null;
   address?: string;
   images?: string[];
   features?: string[];

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, useWindowDimensions, Linking, ActivityIndicator, FlatList, SafeAreaView, Share, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, useWindowDimensions, Linking, ActivityIndicator, FlatList, SafeAreaView, Share, Platform, Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Property } from '../contexts/PropertyContext';
@@ -11,6 +11,7 @@ import { WebView } from 'react-native-webview';
 import Colors from '../constants/colors';
 import { showErrorAlert } from '../utils/alertUtils';
 import { Logger } from '../utils/logger';
+import * as Clipboard from 'expo-clipboard';
 
 // Тип для параметров навигации
 type RouteParams = {
@@ -50,6 +51,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const [mapLoading, setMapLoading] = useState(!isWebPlatform);
   const flatListRef = useRef<FlatList>(null);
   const webViewRef = useRef<WebView>(null);
+  const phoneNumber = property?.user?.phone || property?.contact?.phone || '';
 
   const propertyCoords = useMemo(() => {
     if (!property) {
@@ -141,6 +143,42 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
       setActiveImageIndex(index);
     }
   };
+
+  const handleCallPress = useCallback(async () => {
+    if (!phoneNumber) {
+      return;
+    }
+
+    const telUrl = `tel:${phoneNumber}`;
+
+    try {
+      const supported = await Linking.canOpenURL(telUrl);
+      if (!supported && Platform.OS === 'ios') {
+        Alert.alert(
+          'Нельзя позвонить в симуляторе',
+          'Скопировать номер?',
+          [
+            { text: 'Отмена', style: 'cancel' },
+            {
+              text: 'Скопировать',
+              onPress: () => {
+                Clipboard.setStringAsync(phoneNumber).catch(() => {});
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      await Linking.openURL(telUrl);
+    } catch (error) {
+      Logger.error('Не удалось открыть звонок', error);
+      if (Platform.OS === 'ios') {
+        Clipboard.setStringAsync(phoneNumber).catch(() => {});
+        Alert.alert('Не удалось открыть звонок', 'Номер скопирован в буфер обмена');
+      }
+    }
+  }, [phoneNumber]);
 
   // Функция поделиться объявлением
   const handleShare = async () => {
@@ -435,7 +473,9 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   // Получаем переведенное название города
   const translatedCityName = cityName ? t(`cities.${cityName}`, cityName) : '';
   const streetName = property.location || '';
-  const fullAddress = translatedCityName && streetName ? `${translatedCityName}, ${streetName}` : translatedCityName || streetName;
+  const districtName = property.district?.name || '';
+  const addressParts = [districtName, translatedCityName, streetName].filter(Boolean);
+  const fullAddress = addressParts.join(', ');
 
   // Отладочный вывод для всего объекта
   Logger.debug('Детали объявления:', JSON.stringify({
@@ -691,7 +731,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
                     >
                       <TouchableOpacity
                         style={styles.iconButton}
-                        onPress={() => Linking.openURL(`tel:${property.user?.phone || property.contact?.phone}`)}
+                        onPress={handleCallPress}
                       >
                         <Ionicons name="call-outline" size={20} color="#FFFFFF" />
                       </TouchableOpacity>

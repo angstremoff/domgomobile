@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
-import { useProperties } from '../contexts/PropertyContext';
+import { useProperties, District } from '../contexts/PropertyContext';
 import { showErrorAlert, showSuccessAlert } from '../utils/alertUtils';
 import type { Database } from '../lib/database.types';
 
@@ -43,7 +43,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
   const { propertyId } = route.params;
   const { t } = useTranslation();
   const { darkMode } = useTheme();
-  const { invalidateCache } = useProperties(); // Получаем функцию обновления кэша
+  const { invalidateCache, loadDistricts } = useProperties(); // Получаем функцию обновления кэша и загрузку районов
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [property, setProperty] = useState<Property | null>(null);
@@ -58,6 +58,10 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
   const [area, setArea] = useState('');
   const [rooms, setRooms] = useState('');
   const [cityId, setCityId] = useState<string>('0');
+  const [districtId, setDistrictId] = useState<string>('');
+  const [districtOptions, setDistrictOptions] = useState<District[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState<District | null>(null);
+  const [districtsLoading, setDistrictsLoading] = useState(false);
   const [propertyType, setPropertyType] = useState<'sale' | 'rent'>('sale');
   const [propertyCategory, setPropertyCategory] = useState<PropertyInsert['property_type']>('apartment');
   const [images, setImages] = useState<string[]>([]);
@@ -87,6 +91,25 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
     }
   };
 
+  const loadDistrictOptions = useCallback(async (cityValue: string | number) => {
+    const numericCityId = typeof cityValue === 'string' ? Number(cityValue) : cityValue;
+    if (!numericCityId || Number.isNaN(numericCityId)) {
+      setDistrictOptions([]);
+      return;
+    }
+
+    setDistrictsLoading(true);
+    try {
+      const data = await loadDistricts(numericCityId);
+      setDistrictOptions(data || []);
+    } catch (error) {
+      Logger.error('Ошибка при загрузке районов:', error);
+      setDistrictOptions([]);
+    } finally {
+      setDistrictsLoading(false);
+    }
+  }, [loadDistricts]);
+
   const loadProperty = async () => {
     try {
       setLoading(true);
@@ -106,6 +129,18 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       // (Picker в React Native работает со строками)
       if (data.city_id) {
         setCityId(data.city_id.toString());
+        await loadDistrictOptions(data.city_id);
+      } else {
+        setDistrictOptions([]);
+      }
+
+      if (data.district_id) {
+        setDistrictId(data.district_id);
+        const districtFromRelation = (data as any).district as District | undefined;
+        setSelectedDistrict(districtFromRelation || null);
+      } else {
+        setDistrictId('');
+        setSelectedDistrict(null);
       }
       
       setPropertyType(data.type || 'sale');
@@ -129,6 +164,20 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       // Можно добавить дополнительную логику при изменении property
     }
   }, [property]);
+
+  useEffect(() => {
+    if (cityId && cityId !== '0') {
+      loadDistrictOptions(cityId);
+      if (selectedDistrict && selectedDistrict.city_id !== Number(cityId)) {
+        setSelectedDistrict(null);
+        setDistrictId('');
+      }
+    } else {
+      setDistrictOptions([]);
+      setSelectedDistrict(null);
+      setDistrictId('');
+    }
+  }, [cityId, selectedDistrict, loadDistrictOptions]);
 
   const toggleFeature = (featureId: string) => {
     setSelectedFeatures(prev => {
@@ -251,6 +300,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
         area: area ? parseFloat(area) : undefined,
         rooms: rooms ? parseInt(rooms, 10) : undefined,
         city_id: parseInt(cityId, 10),
+        district_id: districtId ? districtId : null,
         type: propertyType,
         property_type: propertyCategory,
         features: selectedFeatures,
@@ -358,6 +408,40 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
               ))}
             </Picker>
           </View>
+
+          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.districtOptional', 'Район (необязательно)')}</Text>
+          <View style={[
+            styles.pickerContainer,
+            darkMode && styles.darkPickerContainer,
+            cityId === '0' ? styles.disabledPicker : null
+          ]}>
+            <Picker
+              selectedValue={districtId}
+              enabled={cityId !== '0'}
+              onValueChange={(itemValue) => {
+                const valueStr = itemValue?.toString() ?? '';
+                setDistrictId(valueStr);
+                if (!valueStr) {
+                  setSelectedDistrict(null);
+                  return;
+                }
+                const found = districtOptions.find((d) => d.id.toString() === valueStr);
+                setSelectedDistrict(found || null);
+              }}
+              style={[styles.picker, darkMode && styles.darkPicker]}
+              dropdownIconColor={darkMode ? "#FFFFFF" : "#1E3A8A"}
+            >
+              <Picker.Item label={t('filters.allDistricts', 'Svi delovi grada')} value="" />
+              {districtOptions.map((district) => (
+                <Picker.Item key={district.id} label={district.name} value={district.id.toString()} />
+              ))}
+            </Picker>
+          </View>
+          {districtsLoading && (
+            <View style={styles.districtLoaderRow}>
+              <ActivityIndicator size="small" color={darkMode ? "#FFFFFF" : "#1E3A8A"} />
+            </View>
+          )}
           
           <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.address')}</Text>
           <TextInput
@@ -581,6 +665,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#374151',
     borderColor: '#4B5563'
   },
+  disabledPicker: {
+    opacity: 0.6
+  },
   picker: {
     height: 50,
     width: '100%',
@@ -588,6 +675,9 @@ const styles = StyleSheet.create({
   },
   darkPicker: {
     color: '#F3F4F6'
+  },
+  districtLoaderRow: {
+    marginBottom: 12,
   },
   textArea: {
     height: 120,

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +14,7 @@ import Checkbox from './Checkbox';
 import RangeInput from './RangeInput';
 import Colors from '../constants/colors';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type DealType = 'sale' | 'rent' | 'newBuildings';
 
@@ -81,8 +83,10 @@ const FilterModal: React.FC<FilterModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const { darkMode: contextDarkMode } = useTheme();
+  const insets = useSafeAreaInsets();
   const isDarkMode = darkMode || contextDarkMode;
   const theme = isDarkMode ? Colors.dark : Colors.light;
+  const topInset = Platform.OS === 'ios' ? Math.max(insets.top, 12) : 0;
 
   const getPriceBounds = () =>
     propertyType === 'rent'
@@ -238,9 +242,18 @@ const FilterModal: React.FC<FilterModalProps> = ({
       transparent={false}
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: theme.background, paddingTop: topInset }
+        ]}
+      >
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={styles.closeButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons name="close" size={24} color={theme.text} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: theme.text }]}>{t('filters.title')}</Text>

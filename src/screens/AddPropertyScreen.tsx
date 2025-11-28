@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -20,7 +20,7 @@ import { compressImage } from '../utils/imageCompression';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { useProperties, City } from '../contexts/PropertyContext';
+import { useProperties, City, District } from '../contexts/PropertyContext';
 import { supabase } from '../lib/supabaseClient';
 import { propertyService } from '../services/propertyService';
 import { useTheme } from '../contexts/ThemeContext';
@@ -43,7 +43,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
   const { user } = useAuth();
   const { darkMode } = useTheme();
   const theme = darkMode ? Colors.dark : Colors.light;
-  const { invalidateCache, cities, loadCities } = useProperties(); // Используем города из контекста
+  const { invalidateCache, cities, loadCities, loadDistricts } = useProperties(); // Используем города из контекста
   
   // Добавляем состояния для имени и телефона пользователя
   const [userData, setUserData] = useState({
@@ -81,6 +81,11 @@ const AddPropertyScreen = ({ navigation }: any) => {
   const [cityModalVisible, setCityModalVisible] = useState(false);
   const [selectedCityName, setSelectedCityName] = useState(t('common.selectCity'));
   const [selectedCity, setSelectedCity] = useState<LocalCity | null>(null);
+  const [districtId, setDistrictId] = useState<string>('');
+  const [districtModalVisible, setDistrictModalVisible] = useState(false);
+  const [selectedDistrictName, setSelectedDistrictName] = useState(t('common.selectDistrict'));
+  const [districtOptions, setDistrictOptions] = useState<District[]>([]);
+  const [districtsLoading, setDistrictsLoading] = useState(false);
   
   const [propertyTypeModalVisible, setPropertyTypeModalVisible] = useState(false);
   const [selectedPropertyTypeName, setSelectedPropertyTypeName] = useState(t('property.sale'));
@@ -116,6 +121,35 @@ const AddPropertyScreen = ({ navigation }: any) => {
       Logger.error('Ошибка при загрузке данных пользователя:', error);
     }
   };
+
+  const loadDistrictOptions = useCallback(async (cityValue: string | number) => {
+    const numericCityId = typeof cityValue === 'string' ? Number(cityValue) : cityValue;
+    if (!numericCityId || Number.isNaN(numericCityId)) {
+      setDistrictOptions([]);
+      return;
+    }
+
+    setDistrictsLoading(true);
+    try {
+      const result = await loadDistricts(numericCityId);
+      setDistrictOptions(result || []);
+    } catch (error) {
+      Logger.error('Ошибка при загрузке районов:', error);
+      setDistrictOptions([]);
+    } finally {
+      setDistrictsLoading(false);
+    }
+  }, [loadDistricts]);
+
+  useEffect(() => {
+    if (cityId && cityId !== '0') {
+      loadDistrictOptions(cityId);
+    } else {
+      setDistrictId('');
+      setSelectedDistrictName(t('common.selectDistrict'));
+      setDistrictOptions([]);
+    }
+  }, [cityId, t, loadDistrictOptions]);
 
   // Проверяем, авторизован ли пользователь
   if (!user) {
@@ -338,6 +372,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
         rooms: Number(rooms),
         location,
         city_id: cityId !== '0' ? Number(cityId) : undefined,
+        district_id: districtId ? districtId : null,
         features: selectedFeatures,
         images: uploadedImageUrls,
         status: 'active', // по умолчанию активно
@@ -379,6 +414,9 @@ const AddPropertyScreen = ({ navigation }: any) => {
     setPropertyType('sale');
     setPropertyCategory('apartment');
     setCityId('0');
+    setDistrictId('');
+    setSelectedDistrictName(t('common.selectDistrict'));
+    setDistrictOptions([]);
     setSelectedFeatures([]);
     setImages([]);
   };
@@ -440,6 +478,9 @@ const AddPropertyScreen = ({ navigation }: any) => {
   // Функция для выбора города
   const selectCity = (city: City | LocalCity) => {
     setCityId(city.id.toString());
+    setDistrictId('');
+    setSelectedDistrictName(t('common.selectDistrict'));
+    setDistrictOptions([]);
     // Преобразуем City в локальный тип с id как string
     const localCity: LocalCity = {
       ...city,
@@ -448,6 +489,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
     setSelectedCity(localCity);
     setSelectedCityName(city.name);
     setCityModalVisible(false);
+    loadDistrictOptions(city.id);
     
     // Устанавливаем координаты из города, если они доступны
     if (city.coordinates) {
@@ -458,6 +500,18 @@ const AddPropertyScreen = ({ navigation }: any) => {
         lng: parseFloat(city.longitude)
       });
     }
+  };
+
+  const selectDistrict = (district: District | null) => {
+    if (!district) {
+      setDistrictId('');
+      setSelectedDistrictName(t('common.selectDistrict'));
+      setDistrictModalVisible(false);
+      return;
+    }
+    setDistrictId(district.id.toString());
+    setSelectedDistrictName(district.name);
+    setDistrictModalVisible(false);
   };
 
   // Функция для выбора типа сделки
@@ -720,6 +774,77 @@ const AddPropertyScreen = ({ navigation }: any) => {
                 <TouchableOpacity
                   style={[styles.closeButton, { backgroundColor: theme.primary }]}
                   onPress={() => setCityModalVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>{t('common.cancel')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.districtOptional', 'Район (необязательно)')}</Text>
+          <TouchableOpacity 
+            style={[styles.pickerButton, { 
+              backgroundColor: theme.cardBackground,
+              borderColor: theme.border,
+              borderWidth: 1,
+              opacity: cityId === '0' ? 0.6 : 1
+            }]}
+            disabled={cityId === '0'}
+            onPress={() => {
+              if (cityId !== '0') {
+                loadDistrictOptions(cityId);
+                setDistrictModalVisible(true);
+              }
+            }}
+          >
+            <Text style={[styles.pickerButtonText, { color: theme.text }]}>
+              {selectedDistrictName}
+            </Text>
+            {districtsLoading ? (
+              <ActivityIndicator size="small" color={theme.primary} />
+            ) : (
+              <Ionicons name="chevron-down" size={24} color={theme.text} />
+            )}
+          </TouchableOpacity>
+
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={districtModalVisible}
+            onRequestClose={() => setDistrictModalVisible(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={[styles.modalContent, { backgroundColor: darkMode ? '#333333' : '#FFFFFF' }]}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {t('addProperty.form.selectDistrict', 'Выберите район')}
+                </Text>
+
+                {districtsLoading ? (
+                  <View style={{ paddingVertical: 12 }}>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  </View>
+                ) : districtOptions.length === 0 ? (
+                  <Text style={[styles.cityItemText, { color: theme.secondary }]}>
+                    {t('addProperty.form.noDistricts', 'Для этого города пока нет районов')}
+                  </Text>
+                ) : (
+                  <FlatList
+                    data={[{ id: '', name: t('filters.allDistricts', 'Все районы'), city_id: Number(cityId) } as District, ...districtOptions]}
+                    keyExtractor={(item) => item.id || 'all'}
+                    renderItem={({ item }: { item: District }) => (
+                      <TouchableOpacity
+                        style={styles.cityItem}
+                        onPress={() => selectDistrict(item.id ? item : null)}
+                      >
+                        <Text style={styles.cityItemText}>{item.name}</Text>
+                      </TouchableOpacity>
+                    )}
+                  />
+                )}
+
+                <TouchableOpacity
+                  style={[styles.closeButton, { backgroundColor: theme.primary }]}
+                  onPress={() => setDistrictModalVisible(false)}
                 >
                   <Text style={styles.closeButtonText}>{t('common.cancel')}</Text>
                 </TouchableOpacity>

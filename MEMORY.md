@@ -58,15 +58,17 @@
 - Supabase агенты: `agency_profiles.user_id` 1:1 к `users.id`, `properties.agency_id` → `agency_profiles.id`. Есть триггер на `agency_profiles` (after insert/update) для заполнения `agency_id` у объявлений по `user_id`, и триггер на `properties` (before insert/update user_id) для автоподстановки `agency_id`. Разовая синхронизация: `update properties p set agency_id = ap.id from agency_profiles ap where p.user_id = ap.user_id and p.agency_id is null`.
 - Статика для домена domgo.rs живёт в отдельном репо `angstremoff/domgors` (Render / GitHub Pages). `property.html`/deeplink-handler там; для новых страниц (например, agency.html) добавляем в этот репозиторий, чтобы ссылки вида `https://domgo.rs/...` работали.
 - Репозиторий `angstremoff/domgors` (локально `/Users/test/CascadeProjects/domgors`) — старый сайт на проде для домена domgo.rs: содержит статические страницы (`public/property.html`, `public/agency.html` и др.), конфиги деплоя (render.yaml, netlify/vercel, htaccess), фронт-код (src, package.json), supabase/sql вспомогательные скрипты. Любые новые публичные страницы для домgo.rs добавляем туда.
+- При достижении остатка контекста ~5% нужно сжимать контекст (конспект, выжимка последних шагов).
 
 ## 8. Обновление версий и сборки
 - Версия приложения (отображается в настройках и в store): `package.json` → `version`, синхронизирована с `package-lock.json` (поле `version` в корне и в корневом пакете). Текущая: 1.0.7.
 - Android: `android/app/build.gradle` → `defaultConfig.versionCode` (целое, растёт) и `versionName` (строка, совпадает с версией приложения). Текущее: code 11 / name 1.0.7.
- - iOS: `app.config.js` → `ios.buildNumber` (строка) и `version` берётся из `APP_VERSION`/`package.json` (настроено через `APP_VERSION` env или pkg.version). Текущее: buildNumber 10.
+ - iOS: `app.config.js` → `ios.buildNumber` (строка) и `version` берётся из `APP_VERSION`/`package.json` (настроено через `APP_VERSION` env или pkg.version). Текущее: buildNumber 11.
 - Runtime остаётся фиксированным: `app.config.js` → `runtimeVersion` (не менять без миграции обновлений), сейчас 1.0.4.
 - Fallback версии в коде: `src/services/AppVersionManager.ts` хранит запасное значение (держать в актуальной версии приложения).
 - Сборка AAB: `./build-release-bundle.sh` (использует версию из package.json, кладёт на Desktop `DomGoMobile-<версия>-release.aab`). Перед запуском убедиться, что `release.keystore` актуальный.
 - Keystore release: `android/app/release.keystore` (секреты берём из 1Password/секретного хранилища; в сборке использовать env: `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`).
+- Последний собранный AAB: `~/Desktop/DomGoMobile-1.0.7-release.aab` (собран скриптом `./build-release-bundle.sh` с ключами: `release.keystore` + пароли `domgo2024release`, alias `domgo-release`).
 
 ### 8.1 Секреты и безопасность
 - Не храним пароли, ключи, токены и base64-контент в публичных файлах репозитория. Все чувствительные данные кладём в секретные хранилища (1Password, GitHub Secrets) и передаём в сборку через переменные окружения.
@@ -74,3 +76,12 @@
 ### 8.2 Deep Link и UI-тема Android
 - Deep link: есть мгновенная навигация к экрану объявления при активном приложении + отложенные ретраи при холодном старте; экран деталей дотягивает данные по `propertyId`, если не пришли в параметрах.
 - Android системная навигационная панель синхронизируется с темой через `expo-navigation-bar` (фон и стиль кнопок меняются под светлую/тёмную тему).
+- Агентства deep link: парсим `domgomobile://agency/...` и `https://domgo.rs/agency.html?id=...`; Android манифест содержит intent-filter (`scheme=domgomobile`, host=agency, pathPrefix=/). Статическая `agency.html` в корне репо пытается открыть приложение, иначе предлагает Web/Play Store.
+
+## 9. Районы (districts)
+- Схема: таблица `districts` (id uuid PK, city_id FK → cities, name, is_active, sort_order), колонка `properties.district_id` (FK → districts). Индексы: `districts_city_id_idx`, `districts_city_name_unique`, `properties_district_id_idx`.
+- RLS: включаем RLS на `districts`; политика select (как для cities). Insert/update — через service_role или нужные правила. Предупреждения Supabase про RLS нужно закрыть.
+- Миграция: `supabase/migrations/20241109120000_add_districts.sql` (создаёт таблицу, FK, индексы; есть комментарий для отката).
+- Фронт: поддержка района в фильтрах (HomeScreen — селектор «Все районы» после выбора города), формах создания/редактирования, отображении карточек/деталей (адрес `Район, Город, улица`). В выборке данных сервисы возвращают `district`.
+- Типы: `src/lib/database.types.ts` обновлены вручную, после миграции нужно прогнать `supabase gen types typescript`.
+- Важный фикс: в `PropertyContext` автозагрузка районов в useEffect не должна зависеть от loadDistricts, иначе цикл ререндеров. Сейчас зависимость убрана, стоит комментарий.

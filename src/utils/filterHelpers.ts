@@ -15,6 +15,7 @@ export const applyPropertyFilters = (
   propertyType: 'all' | 'sale' | 'rent' | 'newBuildings', 
   propertyCategory: string,
   selectedCity: { id: string | number } | null,
+  selectedDistrict: { id: string } | null,
   activeFilters: {
     propertyTypes: string[];
     price: number[];
@@ -72,6 +73,24 @@ export const applyPropertyFilters = (
         return propCityIdStr === cityIdStr;
       } catch (error) {
         Logger.error('Ошибка при фильтрации по городу:', error);
+        return false;
+      }
+    });
+  }
+
+  // Фильтрация по району (при активном городе)
+  if (selectedDistrict && selectedDistrict?.id) {
+    const districtIdStr = selectedDistrict.id.toString();
+    filtered = filtered.filter(prop => {
+      try {
+        if (!prop) return false;
+        const propDistrictId = (prop as any).district_id || (prop as any).district?.id;
+        if (!propDistrictId) {
+          return false;
+        }
+        return String(propDistrictId) === districtIdStr;
+      } catch (error) {
+        Logger.error('Ошибка при фильтрации по району:', error);
         return false;
       }
     });
