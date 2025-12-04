@@ -39,12 +39,12 @@ const HomeScreen = ({ navigation }: any) => {
   // Вернулись к использованию стандартного компонента PropertyCard
   const { t } = useTranslation();
   const { favorites, isLoading: favoritesLoading } = useFavorites();
-  const { 
-    properties, 
-    filteredProperties, 
-    setFilteredProperties, 
-    refreshProperties, 
-    loading: propertiesLoading, 
+  const {
+    properties,
+    filteredProperties,
+    setFilteredProperties,
+    refreshProperties,
+    loading: propertiesLoading,
     selectedCity,
     selectedDistrict,
     setSelectedDistrict,
@@ -132,7 +132,7 @@ const HomeScreen = ({ navigation }: any) => {
   // Обновляем свойства только при существенных изменениях в избранном
   // Добавляем useRef для предотвращения повторных запросов
   const previousFavoritesLength = React.useRef(0);
-  
+
   const [agencies, setAgencies] = useState<AgencySummary[]>([]);
   const [agenciesLoading, setAgenciesLoading] = useState(false);
   const [agenciesError, setAgenciesError] = useState<string | null>(null);
@@ -229,17 +229,17 @@ const HomeScreen = ({ navigation }: any) => {
       return;
     }
   }, [propertyType, propertyCategory, selectedCity, selectedDistrict, properties, typeItems, activeFilters, filtersAppliedRent, filtersAppliedSale]);
-  
+
   // Используем debounce для applyFilters, чтобы не вызывать фильтрацию слишком часто
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
-  
+
   // Применяем фильтры при изменении зависимостей с debounce
   useEffect(() => {
     // Очищаем предыдущий таймер, если он был установлен
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current);
     }
-    
+
     // Устанавливаем новый таймер для фильтрации с задержкой
     // ВАЖНО: автофильтрацию через debounce применяем только для вкладки "Все",
     // чтобы не перетирать результаты во вкладках Продажа/Аренда
@@ -248,7 +248,7 @@ const HomeScreen = ({ navigation }: any) => {
         applyFilters();
       }
     }, 300);
-    
+
     // Очистка таймера при размонтировании компонента
     return () => {
       if (debounceTimeout.current) {
@@ -328,21 +328,21 @@ const HomeScreen = ({ navigation }: any) => {
 
   const handleCombinedFilter = async (type: 'sale' | 'rent', category: string) => {
     const now = Date.now();
-    
+
     // Пропускаем частые запросы с одинаковыми параметрами
-    if (lastFilterRequest.current.type === type && 
-        lastFilterRequest.current.category === category &&
-        now - lastFilterRequest.current.timestamp < FILTER_THROTTLE_MS) {
+    if (lastFilterRequest.current.type === type &&
+      lastFilterRequest.current.category === category &&
+      now - lastFilterRequest.current.timestamp < FILTER_THROTTLE_MS) {
       Logger.debug(`Пропускаем дублирующий запрос фильтра: ${type} - ${category}`);
       return;
     }
-    
+
     // Обновляем данные о последнем запросе
     lastFilterRequest.current = { type, category, timestamp: now };
-    
+
     setPropertyType(type);
     setCategoryForType(type, category);
-    
+
     // Синхронизация с обычными фильтрами
     if (category !== 'all') {
       if (type === 'sale') {
@@ -361,43 +361,43 @@ const HomeScreen = ({ navigation }: any) => {
         setActiveFilters(updatedFilters);
       }
     }
-    
+
     setLoadingMore(true);
-    
+
     try {
       // Загружаем объявления выбранного типа (первая страница) с расширенным лимитом,
       // чтобы пользователь видел больше результатов сразу
       const { data } = await getPropertiesByType(type, 1, 30);
-      
+
       // Проверяем, не устарел ли наш запрос (другой мог стартовать пока этот выполнялся)
-      if (lastFilterRequest.current.type !== type || 
-          lastFilterRequest.current.category !== category) {
+      if (lastFilterRequest.current.type !== type ||
+        lastFilterRequest.current.category !== category) {
         Logger.debug('Запрос устарел, пропускаем обработку результатов');
         return;
       }
-      
+
       // Обновляем локальную базу для текущего типа
       setTypeItems(data);
       let filtered = [...data];
-      
+
       // Фильтрация по категории
       if (category !== 'all') {
-        filtered = filtered.filter(prop => 
+        filtered = filtered.filter(prop =>
           prop.property_type === category
         );
       }
-      
+
       // Фильтрация по городу - с максимальной защитой от ошибок
       if (selectedCity && selectedCity?.id) {
         // Заранее преобразуем id города в строку один раз
         const cityIdStr = String(selectedCity.id);
-        
+
         filtered = filtered.filter(prop => {
           // Проверяем все возможные случаи null/undefined
           if (!prop || prop.city_id === undefined || prop.city_id === null) {
             return false;
           }
-          
+
           try {
             // Преобразуем id свойства в строку
             const propCityIdStr = String(prop.city_id);
@@ -424,7 +424,7 @@ const HomeScreen = ({ navigation }: any) => {
           }
         });
       }
-      
+
       // Применение активных фильтров только если они были явно применены
       if (activeFilters && Object.keys(activeFilters).length > 0) {
         filtered = applyActiveFilters(filtered, type);
@@ -432,7 +432,7 @@ const HomeScreen = ({ navigation }: any) => {
         // Если фильтры не были применены, просто фильтруем по типу
         filtered = filtered.filter(prop => prop.type === type);
       }
-      
+
       setFilteredProperties(filtered);
     } catch (error) {
       Logger.error('Ошибка при фильтрации:', error);
@@ -444,13 +444,13 @@ const HomeScreen = ({ navigation }: any) => {
   const applyActiveFilters = (properties: any[], type: 'all' | 'sale' | 'rent') => {
     // Получаем активные фильтры в зависимости от типа
     const filters = type === 'rent' ? rentFilters :
-                   type === 'sale' ? saleFilters :
-                   activeFilters;
+      type === 'sale' ? saleFilters :
+        activeFilters;
 
     // Проверяем, были ли применены фильтры для данного типа
     const filtersApplied = type === 'rent' ? filtersAppliedRent :
-                           type === 'sale' ? filtersAppliedSale :
-                           false;
+      type === 'sale' ? filtersAppliedSale :
+        false;
 
     // Если фильтры не были явно применены, возвращаем только фильтрацию по типу
     if (!filtersApplied && type !== 'all') {
@@ -503,14 +503,14 @@ const HomeScreen = ({ navigation }: any) => {
       });
       setFiltersAppliedRent(false);
     }
-    
+
     // Сбрасываем категорию недвижимости
     if (propertyType === 'sale' || propertyType === 'newBuildings') {
       setCategoryForType(propertyType, 'all');
     } else if (propertyType === 'rent') {
       setCategoryForType('rent', 'all');
     }
-    
+
     // Применяем фильтрацию заново, получая актуальные данные из сервиса по текущему типу
     try {
       if (propertyType === 'sale' || propertyType === 'rent' || propertyType === 'newBuildings') {
@@ -560,9 +560,9 @@ const HomeScreen = ({ navigation }: any) => {
     }
     // Загружаем текущие фильтры в зависимости от выбранной вкладки
     if (propertyType === 'rent') {
-      setTempFilters({...rentFilters});
+      setTempFilters({ ...rentFilters });
     } else if (propertyType === 'sale' || propertyType === 'newBuildings') {
-      setTempFilters({...saleFilters});
+      setTempFilters({ ...saleFilters });
     } else {
       setTempFilters({
         propertyTypes: [],
@@ -684,7 +684,7 @@ const HomeScreen = ({ navigation }: any) => {
       latitude: '44.787197',
       longitude: '20.457273'
     };
-    
+
     navigation.navigate('Map', {
       selectedCity: cityForMap,
       properties: filteredProperties
@@ -692,11 +692,11 @@ const HomeScreen = ({ navigation }: any) => {
   };
 
   const loading = propertiesLoading || favoritesLoading;
-  
+
   // Для отслеживания изменений в списке объявлений и восстановления позиции прокрутки
   const prevPropertiesCountRef = useRef(0);
   const shouldRestoreScrollRef = useRef(false);
-  
+
   useEffect(() => {
     if (filteredProperties.length > 0) {
       Logger.debug('Обновление списка объявлений: ', {
@@ -706,12 +706,12 @@ const HomeScreen = ({ navigation }: any) => {
         'Тип просматриваемых объявлений': propertyType,
         'Восстановить позицию?': shouldRestoreScrollRef.current
       });
-      
+
       // Если размер увеличился (загрузили новые объявления) и позиция прокрутки не в начале,
       // восстановим позицию прокрутки
       if (filteredProperties.length > prevPropertiesCountRef.current && shouldRestoreScrollRef.current) {
         shouldRestoreScrollRef.current = false;
-        
+
         // Небольшая задержка для уверенности, что список обновился
         setTimeout(() => {
           if (flatListRef.current && scrollOffsetRef.current > 0) {
@@ -723,7 +723,7 @@ const HomeScreen = ({ navigation }: any) => {
           }
         }, 100);
       }
-      
+
       prevPropertiesCountRef.current = filteredProperties.length;
     }
   }, [filteredProperties, propertyType]);
@@ -747,10 +747,10 @@ const HomeScreen = ({ navigation }: any) => {
         'Текущая позиция прокрутки': currentOffset,
         'Количество объявлений': filteredProperties.length
       });
-      
+
       // Устанавливаем флаг, что нужно восстановить позицию прокрутки после загрузки
       shouldRestoreScrollRef.current = true;
-      
+
       setLoadingMore(true);
       try {
         await loadMoreProperties(propertyTypeForData);
@@ -853,66 +853,66 @@ const HomeScreen = ({ navigation }: any) => {
   const quickFilterOptions =
     propertyType === 'rent'
       ? [
+        {
+          key: 'rent-apartment',
+          category: 'apartment',
+          renderIcon: (size: number, color: string) => (
+            <Ionicons name="business-outline" size={size} color={color} />
+          ),
+          label: t('property.rentApartment'),
+        },
+        {
+          key: 'rent-house',
+          category: 'house',
+          renderIcon: (size: number, color: string) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+          label: t('property.rentHouse'),
+        },
+        {
+          key: 'rent-commercial',
+          category: 'commercial',
+          renderIcon: (size: number, color: string) => (
+            <MaterialIcons name="storefront" size={size} color={color} />
+          ),
+          label: t('property.rentCommercial'),
+        },
+      ]
+      : propertyType === 'sale'
+        ? [
           {
-            key: 'rent-apartment',
+            key: 'sale-apartment',
             category: 'apartment',
             renderIcon: (size: number, color: string) => (
               <Ionicons name="business-outline" size={size} color={color} />
             ),
-            label: t('property.rentApartment'),
+            label: t('property.saleApartment'),
           },
           {
-            key: 'rent-house',
+            key: 'sale-house',
             category: 'house',
             renderIcon: (size: number, color: string) => (
               <Ionicons name="home-outline" size={size} color={color} />
             ),
-            label: t('property.rentHouse'),
+            label: t('property.saleHouse'),
           },
           {
-            key: 'rent-commercial',
+            key: 'sale-commercial',
             category: 'commercial',
             renderIcon: (size: number, color: string) => (
               <MaterialIcons name="storefront" size={size} color={color} />
             ),
-            label: t('property.rentCommercial'),
+            label: t('property.saleCommercial'),
+          },
+          {
+            key: 'sale-land',
+            category: 'land',
+            renderIcon: (size: number, color: string) => (
+              <FontAwesome5 name="mountain" size={size} color={color} />
+            ),
+            label: t('filters.land'),
           },
         ]
-      : propertyType === 'sale'
-        ? [
-            {
-              key: 'sale-apartment',
-              category: 'apartment',
-              renderIcon: (size: number, color: string) => (
-                <Ionicons name="business-outline" size={size} color={color} />
-              ),
-              label: t('property.saleApartment'),
-            },
-            {
-              key: 'sale-house',
-              category: 'house',
-              renderIcon: (size: number, color: string) => (
-                <Ionicons name="home-outline" size={size} color={color} />
-              ),
-              label: t('property.saleHouse'),
-            },
-            {
-              key: 'sale-commercial',
-              category: 'commercial',
-              renderIcon: (size: number, color: string) => (
-                <MaterialIcons name="storefront" size={size} color={color} />
-              ),
-              label: t('property.saleCommercial'),
-            },
-            {
-              key: 'sale-land',
-              category: 'land',
-              renderIcon: (size: number, color: string) => (
-                <FontAwesome5 name="mountain" size={size} color={color} />
-              ),
-              label: t('filters.land'),
-            },
-          ]
         : [];
   // брейкпоинты используются для вычисления колонок и ширин карточек
 
@@ -923,16 +923,16 @@ const HomeScreen = ({ navigation }: any) => {
       // На desktop web не добавляем общий паддинг, т.к. обёртки секций управляют отступами (96px)
       isWeb
         ? (isDesktop
-            ? { paddingHorizontal: 0 }
-            : isTabletWeb
-              ? { paddingHorizontal: 24 }
-              : { paddingHorizontal: 12 })
+          ? { paddingHorizontal: 0 }
+          : isTabletWeb
+            ? { paddingHorizontal: 24 }
+            : { paddingHorizontal: 12 })
         : null,
     ]}>
       <View style={styles.filterContainer}>
         <TouchableOpacity
           style={[
-            styles.filterButton, 
+            styles.filterButton,
             isWeb ? styles.filterButtonWeb : null,
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'all' && [styles.activeFilter, { backgroundColor: theme.primary }]
@@ -951,17 +951,17 @@ const HomeScreen = ({ navigation }: any) => {
             setFiltersAppliedRent(false);
             // Очищаем typeItems, чтобы избежать показа старых данных из других вкладок
             setTypeItems([]);
-            
+
             // Очищаем текущий список перед загрузкой, чтобы избежать показа неправильных данных
             setFilteredProperties([]);
-            
+
             // Загружаем все объявления
             await refreshProperties();
             // Примечание: refreshProperties автоматически обновит filteredProperties через debounce
           }}
         >
           <Text style={[
-            styles.filterText, 
+            styles.filterText,
             isWeb ? styles.filterTextWeb : null,
             { color: theme.text },
             propertyType === 'all' && [styles.activeFilterText, { color: theme.headerText }]
@@ -969,10 +969,10 @@ const HomeScreen = ({ navigation }: any) => {
             {t('common.all')}
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[
-            styles.filterButton, 
+            styles.filterButton,
             isWeb ? styles.filterButtonWeb : null,
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'sale' && [styles.activeFilter, { backgroundColor: theme.primary }]
@@ -992,7 +992,7 @@ const HomeScreen = ({ navigation }: any) => {
             setActiveFilters(resetFilters);
             // Фильтры не считаются применёнными до явного действия пользователя
             setFiltersAppliedSale(false);
-            
+
             // Получаем свойства по типу "sale" - это обновит activePropertyTypeRef
             try {
               const result = await getPropertiesByType('sale', 1, 30);
@@ -1028,7 +1028,7 @@ const HomeScreen = ({ navigation }: any) => {
           }}
         >
           <Text style={[
-            styles.filterText, 
+            styles.filterText,
             isWeb ? styles.filterTextWeb : null,
             { color: theme.text },
             propertyType === 'sale' && [styles.activeFilterText, { color: theme.headerText }]
@@ -1036,10 +1036,10 @@ const HomeScreen = ({ navigation }: any) => {
             {t('common.sale')}
           </Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[
-            styles.filterButton, 
+            styles.filterButton,
             isWeb ? styles.filterButtonWeb : null,
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'rent' && [styles.activeFilter, { backgroundColor: theme.primary }]
@@ -1059,7 +1059,7 @@ const HomeScreen = ({ navigation }: any) => {
             setActiveFilters(resetFilters);
             // Фильтры не считаются применёнными до явного действия пользователя
             setFiltersAppliedRent(false);
-            
+
             // Получаем свойства по типу "rent" - это обновит activePropertyTypeRef
             try {
               const result = await getPropertiesByType('rent', 1, 30);
@@ -1095,7 +1095,7 @@ const HomeScreen = ({ navigation }: any) => {
           }}
         >
           <Text style={[
-            styles.filterText, 
+            styles.filterText,
             isWeb ? styles.filterTextWeb : null,
             { color: theme.text },
             propertyType === 'rent' && [styles.activeFilterText, { color: theme.headerText }]
@@ -1106,7 +1106,7 @@ const HomeScreen = ({ navigation }: any) => {
 
         <TouchableOpacity
           style={[
-            styles.filterButton, 
+            styles.filterButton,
             isWeb ? styles.filterButtonWeb : null,
             { backgroundColor: theme.card, borderColor: theme.border },
             propertyType === 'newBuildings' && [styles.activeFilter, { backgroundColor: theme.primary }]
@@ -1125,7 +1125,7 @@ const HomeScreen = ({ navigation }: any) => {
             setSaleFilters(resetFilters);
             setActiveFilters(resetFilters);
             setFiltersAppliedSale(false);
-            
+
             try {
               const result = await getPropertiesByType('newBuildings', 1, 30);
               if (result && result.data) {
@@ -1158,7 +1158,7 @@ const HomeScreen = ({ navigation }: any) => {
           }}
         >
           <Text style={[
-            styles.filterText, 
+            styles.filterText,
             isWeb ? styles.filterTextWeb : null,
             { color: theme.text },
             propertyType === 'newBuildings' && [styles.activeFilterText, { color: theme.headerText }]
@@ -1224,7 +1224,7 @@ const HomeScreen = ({ navigation }: any) => {
           ) : null}
         </View>
       ) : null}
-      
+
       {showFilterActions && (
         <>
           {showQuickFilters && (
@@ -1236,18 +1236,18 @@ const HomeScreen = ({ navigation }: any) => {
                 isWeb ? { paddingHorizontal: horizontalGutter, marginBottom: sectionGapMedium } : null,
               ]}
             >
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
                 style={[styles.categoryFilterContainer, { zIndex: 10 }]}
                 contentContainerStyle={[
                   styles.categoryFilterContent,
                   isWeb
                     ? {
-                        paddingHorizontal: isDesktop ? 8 : isTabletWeb ? 6 : 4,
-                        paddingVertical: isDesktop ? 6 : undefined,
-                        gap: isDesktop ? 16 : isTabletWeb ? 14 : 12,
-                      }
+                      paddingHorizontal: isDesktop ? 8 : isTabletWeb ? 6 : 4,
+                      paddingVertical: isDesktop ? 6 : undefined,
+                      gap: isDesktop ? 16 : isTabletWeb ? 14 : 12,
+                    }
                     : null,
                 ]}
               >
@@ -1363,8 +1363,8 @@ const HomeScreen = ({ navigation }: any) => {
                 ]}
                 onPress={() => setCompactView(!compactView)}
               >
-                <Ionicons 
-                  name={compactView ? "grid-outline" : "list-outline"} 
+                <Ionicons
+                  name={compactView ? "grid-outline" : "list-outline"}
                   size={uniformButtonIconSize}
                   color={theme.primary}
                   style={[
@@ -1479,15 +1479,18 @@ const HomeScreen = ({ navigation }: any) => {
       </Modal>
 
       {isAgencyView ? (
-        agenciesLoading ? (
+        agenciesLoading && agencies.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.secondary, marginTop: 12 }]}>
+              {t('common.loading')}
+            </Text>
           </View>
-        ) : agenciesError ? (
+        ) : agenciesError && agencies.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: theme.secondary }]}>{agenciesError}</Text>
           </View>
-        ) : agencies.length === 0 ? (
+        ) : agenciesForList.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, { color: theme.text }]}>{t('agency.emptyList', 'Агентства пока не добавлены')}</Text>
           </View>
@@ -1501,10 +1504,10 @@ const HomeScreen = ({ navigation }: any) => {
                   styles.agencyCardWrapper,
                   isWeb
                     ? (isDesktop
-                        ? styles.agencyCardWrapperDesktop
-                        : isTabletWeb
-                          ? styles.agencyCardWrapperTablet
-                          : styles.agencyCardWrapperSmallWeb)
+                      ? styles.agencyCardWrapperDesktop
+                      : isTabletWeb
+                        ? styles.agencyCardWrapperTablet
+                        : styles.agencyCardWrapperSmallWeb)
                     : styles.agencyCardWrapperNative
                 ]}
               >
@@ -1554,23 +1557,30 @@ const HomeScreen = ({ navigation }: any) => {
               isWeb ? styles.webListContainer : null,
               isWeb
                 ? (isDesktop
-                    ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' }
-                    : isTabletWeb
-                      ? { paddingHorizontal: 48, maxWidth: 1280, alignSelf: 'center' }
-                      : { paddingHorizontal: 12, maxWidth: 1280, alignSelf: 'center' })
+                  ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' }
+                  : isTabletWeb
+                    ? { paddingHorizontal: 48, maxWidth: 1280, alignSelf: 'center' }
+                    : { paddingHorizontal: 12, maxWidth: 1280, alignSelf: 'center' })
                 : { paddingHorizontal: 16 },
             ]}
             numColumns={agencyColumns}
             columnWrapperStyle={
               agencyColumns > 1
                 ? (isWeb
-                    ? styles.webColumnWrapperFull
-                    : { gap: 16, justifyContent: 'flex-start' })
+                  ? styles.webColumnWrapperFull
+                  : { gap: 16, justifyContent: 'flex-start' })
                 : undefined
             }
             showsVerticalScrollIndicator={false}
           />
         )
+      ) : loading || propertiesLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.secondary, marginTop: 12 }]}>
+            {t('common.loading')}
+          </Text>
+        </View>
       ) : filteredProperties.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={[styles.emptyText, { color: theme.text }]}>{t('property.noPropertiesFound')}</Text>
@@ -1584,7 +1594,7 @@ const HomeScreen = ({ navigation }: any) => {
               'Количество объявлений в FlatList': filteredProperties.length,
               'Текущая позиция прокрутки': scrollOffsetRef.current,
             });
-            
+
             // Восстанавливаем позицию прокрутки если размер списка изменился и флаг восстановления установлен
             if (shouldRestoreScrollRef.current && scrollOffsetRef.current > 0) {
               Logger.debug('Восстанавливаем позицию при изменении размера:', scrollOffsetRef.current);
@@ -1617,20 +1627,20 @@ const HomeScreen = ({ navigation }: any) => {
                 // Компактный режим: фиксированная ширина карточки для сетки 2/4/5
                 isWeb && compactView
                   ? (isDesktop
-                      ? { width: 230 } // 5 колонок на desktop
-                      : isTabletWeb
-                        ? { width: 240 } // 4 колонки на tablet web
-                        : { width: '48%' }) // 2 колонки на mobile web
+                    ? { width: 230 } // 5 колонок на desktop
+                    : isTabletWeb
+                      ? { width: 240 } // 4 колонки на tablet web
+                      : { width: '48%' }) // 2 колонки на mobile web
                   : null,
                 // Native compact: растягиваем элемент на половину строки
                 !isWeb && compactView ? styles.nativeItemCompact : null,
                 // Полный режим: ширина под 1/2/3 колонки (как на старом сайте 3 в ряд на desktop)
                 isWeb && !compactView
                   ? (isDesktop
-                      ? { width: 360 }
-                      : isTabletWeb
-                        ? { width: 380 }
-                        : { width: '100%' })
+                    ? { width: 360 }
+                    : isTabletWeb
+                      ? { width: 380 }
+                      : { width: '100%' })
                   : null,
               ]}
             >
@@ -1656,10 +1666,10 @@ const HomeScreen = ({ navigation }: any) => {
             // Адаптивные горизонтальные отступы для веба
             isWeb
               ? (isDesktop
-                  ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' }
-                  : isTabletWeb
-                    ? { paddingHorizontal: 48, maxWidth: 1280, alignSelf: 'center' }
-                    : { paddingHorizontal: 12, maxWidth: 1280, alignSelf: 'center' })
+                ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' }
+                : isTabletWeb
+                  ? { paddingHorizontal: 48, maxWidth: 1280, alignSelf: 'center' }
+                  : { paddingHorizontal: 12, maxWidth: 1280, alignSelf: 'center' })
               : null,
           ]}
           showsVerticalScrollIndicator={false}
@@ -1669,29 +1679,29 @@ const HomeScreen = ({ navigation }: any) => {
           numColumns={
             isWeb
               ? (compactView
-                  ? (isDesktop ? 5 : isTabletWeb ? 4 : 2)
-                  : (isDesktop ? 3 : isTabletWeb ? 2 : 1))
+                ? (isDesktop ? 5 : isTabletWeb ? 4 : 2)
+                : (isDesktop ? 3 : isTabletWeb ? 2 : 1))
               : (compactView ? 2 : 1)
           }
           columnWrapperStyle={
             // ВАЖНО: на вебе columnWrapperStyle поддерживается только при numColumns > 1
             isWeb
               ? ((compactView
-                    ? (isDesktop ? 5 : isTabletWeb ? 4 : 2)
-                    : (isDesktop ? 3 : isTabletWeb ? 2 : 1)) > 1
-                  ? (compactView
-                      ? (isDesktop || isTabletWeb
-                          ? styles.webColumnWrapperCompact
-                          : { paddingHorizontal: 12, justifyContent: 'space-between' })
-                      : styles.webColumnWrapperFull)
-                  : undefined)
+                ? (isDesktop ? 5 : isTabletWeb ? 4 : 2)
+                : (isDesktop ? 3 : isTabletWeb ? 2 : 1)) > 1
+                ? (compactView
+                  ? (isDesktop || isTabletWeb
+                    ? styles.webColumnWrapperCompact
+                    : { paddingHorizontal: 12, justifyContent: 'space-between' })
+                  : styles.webColumnWrapperFull)
+                : undefined)
               : (compactView ? styles.nativeColumnWrapperCompact : undefined)
           }
           key={
             isWeb
               ? (compactView
-                  ? (isDesktop ? 'web-compact-5' : isTabletWeb ? 'web-compact-4' : 'web-compact-2')
-                  : (isDesktop ? 'web-full-3' : isTabletWeb ? 'web-full-2' : 'web-full-1'))
+                ? (isDesktop ? 'web-compact-5' : isTabletWeb ? 'web-compact-4' : 'web-compact-2')
+                : (isDesktop ? 'web-full-3' : isTabletWeb ? 'web-full-2' : 'web-full-1'))
               : (compactView ? 'native-compact-2' : 'native-full-1')
           } // Ключ для пересоздания списка при смене режима/брейкпоинта
           onRefresh={async () => {

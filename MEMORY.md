@@ -34,6 +34,7 @@
 
 ### 5.2 Процесс публикации
 - Expo OTA отключены. Каждое обновление публикуется через Google Play/App Store.
+- **ВАЖНО: Google Play требует targetSdkVersion 35 (Android 15)** с августа 2024 года для новых приложений и обновлений. Проверить в `android/app/build.gradle` → `targetSdkVersion 35`.
 - Минимальные разрешения: `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`, `READ_MEDIA_IMAGES/VIDEO`, `INTERNET`, `VIBRATE`. Чувствительные права (`RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW`, `WRITE_EXTERNAL_STORAGE`) убраны.
 - Настройки -> «Проверить обновления» ведёт в Google Play (`https://play.google.com/store/apps/details?id=com.anonymous.DomGoMobile`). Для iOS добавим ссылку после релиза.
 - Release checklist для Play Console:

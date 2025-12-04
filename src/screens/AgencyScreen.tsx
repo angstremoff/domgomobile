@@ -163,84 +163,84 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
     >
       <View style={[styles.desktopFrame, { paddingHorizontal: horizontalPadding }]}
       >
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }, styles.cardWeb]}>        
-        {agency.logo_url ? (
-          <Image source={{ uri: agency.logo_url }} style={styles.logo} resizeMode="contain" />
-        ) : null}
-
-        <View style={styles.titleRow}>
-          {agency.name ? (
-            <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
-              {agency.name}
-            </Text>
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }, styles.cardWeb]}>
+          {agency.logo_url ? (
+            <Image source={{ uri: agency.logo_url }} style={styles.logo} resizeMode="contain" />
           ) : null}
-          <TouchableOpacity
-            style={[styles.shareButton, { backgroundColor: theme.primary + '1A' }]}
-            onPress={() => {
-              const targetId = agency.id || agencyId;
-              const shareUrl = `https://domgo.rs/agency.html?id=${targetId}`;
-              const message = `${agency.name || t('agency.unnamed', 'Агентство')}\n${shareUrl}`;
-              Share.share({
-                message,
-                ...(Platform.OS === 'ios'
-                  ? { url: shareUrl, title: t('agency.shareTitle', 'Поделиться агентством') }
-                  : {})
-              }).catch((err) => Logger.error('Ошибка шаринга агентства:', err));
-            }}
-            accessibilityLabel={t('agency.shareTitle', 'Поделиться агентством')}
-          >
-            <Ionicons name="share-social-outline" size={20} color={theme.primary} />
-          </TouchableOpacity>
+
+          <View style={styles.titleRow}>
+            {agency.name ? (
+              <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
+                {agency.name}
+              </Text>
+            ) : null}
+            <TouchableOpacity
+              style={[styles.shareButton, { backgroundColor: theme.primary + '1A' }]}
+              onPress={() => {
+                const targetId = agency.id || agencyId;
+                const shareUrl = `https://domgo.rs/agency.html?id=${targetId}`;
+                const message = `${agency.name || t('agency.unnamed', 'Агентство')}\n${shareUrl}`;
+                Share.share({
+                  message,
+                  ...(Platform.OS === 'ios'
+                    ? { url: shareUrl, title: t('agency.shareTitle', 'Поделиться агентством') }
+                    : {})
+                }).catch((err) => Logger.error('Ошибка шаринга агентства:', err));
+              }}
+              accessibilityLabel={t('agency.shareTitle', 'Поделиться агентством')}
+            >
+              <Ionicons name="share-social-outline" size={20} color={theme.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {agency.description ? (
+            <Text style={[styles.description, { color: theme.text }]}>{agency.description}</Text>
+          ) : null}
+
+          {/* Адрес, если есть */}
+          {addressNorm ? (
+            <Text style={[styles.description, { color: theme.secondary, marginTop: 6 }]}>{addressNorm}</Text>
+          ) : null}
+
+          {/* Контакты */}
+          <View style={styles.section}>
+            {agency.phone ? (
+              <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={() => Linking.openURL(`tel:${agency.phone}`)}>
+                <Text style={styles.buttonText}>{t('agency.call')}</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {/* Email */}
+            {emailNorm ? (
+              <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => Linking.openURL(`mailto:${emailNorm}`)}>
+                <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.email')}</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {telegramNorm ? (
+              <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => {
+                const url = telegramNorm.startsWith('@') || telegramNorm.startsWith('https://t.me/')
+                  ? (telegramNorm.startsWith('@') ? `https://t.me/${telegramNorm.slice(1)}` : telegramNorm)
+                  : `https://t.me/${telegramNorm}`;
+                Linking.openURL(url);
+              }}>
+                <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.telegram', 'Telegram')}</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {instagramNorm ? (
+              <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => Linking.openURL(sanitizeUrl(instagramNorm))}>
+                <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.instagram')}</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {facebookNorm ? (
+              <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => Linking.openURL(sanitizeUrl(facebookNorm))}>
+                <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.facebook')}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
-
-        {agency.description ? (
-          <Text style={[styles.description, { color: theme.text }]}>{agency.description}</Text>
-        ) : null}
-
-        {/* Адрес, если есть */}
-        {addressNorm ? (
-          <Text style={[styles.description, { color: theme.secondary, marginTop: 6 }]}>{addressNorm}</Text>
-        ) : null}
-
-        {/* Контакты */}
-        <View style={styles.section}>
-          {agency.phone ? (
-            <TouchableOpacity style={[styles.button, { backgroundColor: theme.primary }]} onPress={() => Linking.openURL(`tel:${agency.phone}`)}>
-              <Text style={styles.buttonText}>{t('agency.call')}</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {/* Email */}
-          {emailNorm ? (
-            <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => Linking.openURL(`mailto:${emailNorm}`)}>
-              <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.email')}</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {telegramNorm ? (
-            <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => {
-              const url = telegramNorm.startsWith('@') || telegramNorm.startsWith('https://t.me/') 
-                ? (telegramNorm.startsWith('@') ? `https://t.me/${telegramNorm.slice(1)}` : telegramNorm)
-                : `https://t.me/${telegramNorm}`;
-              Linking.openURL(url);
-            }}>
-              <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.telegram', 'Telegram')}</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {instagramNorm ? (
-            <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => Linking.openURL(sanitizeUrl(instagramNorm))}>
-              <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.instagram')}</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {facebookNorm ? (
-            <TouchableOpacity style={[styles.linkButton, { borderColor: theme.primary }]} onPress={() => Linking.openURL(sanitizeUrl(facebookNorm))}>
-              <Text style={[styles.linkText, { color: theme.primary }]}>{t('agency.facebook')}</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      </View>
 
         {/* Список объявлений агентства */}
         <View style={[styles.propertiesSection, styles.propertiesSectionWeb]}>
@@ -285,8 +285,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   card: {
-    margin: 16,
-    padding: 16,
+    margin: 8,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
   },
@@ -299,8 +299,8 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: '100%',
-    height: 120,
-    marginBottom: 12,
+    height: 80,
+    marginBottom: 8,
   },
   titleRow: {
     flexDirection: 'row',
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
     flex: 1,
@@ -322,18 +322,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   description: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
   section: {
-    marginTop: 16,
+    marginTop: 8,
   },
   button: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   buttonText: {
     color: '#fff',
@@ -341,11 +341,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   linkButton: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     borderWidth: 1,
   },
   linkText: {

@@ -18,7 +18,7 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
   const { toggleFavorite, isFavorite } = useFavorites();
   const propertyIsFavorite = isFavorite(property.id);
   const theme = darkMode ? Colors.dark : Colors.light;
-  
+
   const handleFavoritePress = useCallback((e: any) => {
     e.stopPropagation();
     toggleFavorite(property.id);
@@ -42,17 +42,17 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
 
   // Отладочный вывод для проверки статуса
   Logger.debug(`PropertyCard: id=${property.id}, title=${property.title}, status=${property.status}`);
-  
+
   // Проверяем, существует ли статус и является ли он проданным или сданным
   const isInactive = property.status === 'sold' || property.status === 'rented';
-  
+
   // Для отображения в интерфейсе
   const displayStatus = property.status;
 
   return (
-    <TouchableOpacity 
-      style={[styles.card, Platform.OS === 'web' && styles.cardWeb, { backgroundColor: theme.card, borderColor: theme.border }]} 
-      onPress={onPress} 
+    <TouchableOpacity
+      style={[styles.card, Platform.OS === 'web' && styles.cardWeb, { backgroundColor: theme.card, borderColor: theme.border }]}
+      onPress={onPress}
       activeOpacity={0.9}
     >
       <View style={[
@@ -60,7 +60,7 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
         Platform.OS === 'web' ? styles.imageContainerWeb : styles.imageContainerMobile,
       ]}>
         <Image
-          source={{ 
+          source={{
             uri: property.images?.[0] || 'https://via.placeholder.com/300x200',
             cache: 'force-cache'
           }}
@@ -69,7 +69,7 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
             styles.image,
             Platform.OS === 'web' && styles.imageWeb,
             // Используем переменную isInactive для проверки статуса
-            isInactive && styles.imageInactive 
+            isInactive && styles.imageInactive
           ]}
           resizeMode="cover"
           onError={(error) => {
@@ -106,15 +106,15 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
             </Text>
           </View>
         )}
-        <TouchableOpacity 
-          style={[styles.favoriteButton, Platform.OS === 'web' && styles.favoriteButtonWeb]} 
+        <TouchableOpacity
+          style={[styles.favoriteButton, Platform.OS === 'web' && styles.favoriteButtonWeb]}
           onPress={handleFavoritePress}
           activeOpacity={0.8}
         >
-          <Ionicons 
-            name={propertyIsFavorite ? "heart" : "heart-outline"} 
-            size={22} 
-            color={Platform.OS === 'web' ? (propertyIsFavorite ? "#E91E63" : "#4B5563") : (propertyIsFavorite ? "#E91E63" : "#FFFFFF")} 
+          <Ionicons
+            name={propertyIsFavorite ? "heart" : "heart-outline"}
+            size={22}
+            color={Platform.OS === 'web' ? (propertyIsFavorite ? "#E91E63" : "#4B5563") : (propertyIsFavorite ? "#E91E63" : "#FFFFFF")}
           />
         </TouchableOpacity>
       </View>
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 2, 
+    zIndex: 2,
   },
   statusText: {
     color: '#fff',
@@ -170,13 +170,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textAlign: 'center',
   },
-  imageInactive: { 
+  imageInactive: {
     opacity: 0.6,
   },
   card: {
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   imageContainerMobile: {
-    height: 160, // mobile default
+    height: 140, // mobile default
   },
   imageContainerWeb: {
     width: '100%',
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   infoContainer: {
-    padding: 12,
+    padding: 8,
   },
   infoContainerWeb: {
     // Фиксируем минимальную высоту блока информации на вебе, чтобы все карточки были одинаковыми
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   price: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 4,
   },
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
   },
   title: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     marginBottom: 4,
   },
