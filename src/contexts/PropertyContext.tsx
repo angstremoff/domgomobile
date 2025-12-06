@@ -632,6 +632,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   // Автозагрузка и валидация районов при смене города
   // Автозагрузка районов при смене города.
   // Внимание: loadDistricts обновляет локальный стейт, поэтому не добавляем его в зависимости, чтобы избежать бесконечных ререндеров.
+  // selectedDistrict также убран из зависимостей — его валидация происходит только при смене города.
   useEffect(() => {
     if (!selectedCity) {
       setSelectedDistrict(null);
@@ -650,13 +651,17 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (selectedDistrict && selectedDistrict.city_id !== numericId) {
-      setSelectedDistrict(null);
-    }
+    // Сбрасываем район, если он не принадлежит новому городу
+    setSelectedDistrict((prev) => {
+      if (prev && prev.city_id !== numericId) {
+        return null;
+      }
+      return prev;
+    });
 
     loadDistricts(numericId).catch((error) => Logger.error('Ошибка автозагрузки районов:', error));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCity, selectedDistrict]);
+  }, [selectedCity]);
   
   // Загрузка объявления по ID для открытия по ссылке
   const fetchPropertyById = useCallback(async (id: string): Promise<Property | null> => {

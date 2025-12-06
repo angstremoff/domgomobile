@@ -51,6 +51,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   const [mapLoading, setMapLoading] = useState(!isWebPlatform);
   const flatListRef = useRef<FlatList>(null);
   const webViewRef = useRef<WebView>(null);
+  const mapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const phoneNumber = property?.user?.phone || property?.contact?.phone || '';
 
   const propertyCoords = useMemo(() => {
@@ -407,7 +408,7 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   }, [propertyCoords, property]);
 
   // Обработчик сообщений от WebView
-  const handleWebViewMessage = (event: any) => {
+  const handleWebViewMessage = useCallback((event: any) => {
     try {
       const data = event.nativeEvent.data;
 
@@ -423,8 +424,13 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
         // WebView готов, отправляем координаты
         Logger.debug('WebView готов, отправляем координаты');
 
+        // Очищаем предыдущий таймер, если есть
+        if (mapTimeoutRef.current) {
+          clearTimeout(mapTimeoutRef.current);
+        }
+
         // Добавляем небольшую задержку перед отправкой координат
-        setTimeout(() => {
+        mapTimeoutRef.current = setTimeout(() => {
           sendCoordinatesToMap();
         }, 500);
       } else if (data === 'mapLoaded') {
@@ -435,7 +441,16 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
     } catch (error) {
       Logger.error('Ошибка обработки сообщения от WebView:', error);
     }
-  };
+  }, [sendCoordinatesToMap]);
+
+  // Очистка таймера при размонтировании компонента
+  useEffect(() => {
+    return () => {
+      if (mapTimeoutRef.current) {
+        clearTimeout(mapTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Вычисляем форматированную цену ПЕРЕД ранними возвратами
   const formattedPrice = useMemo(() => {

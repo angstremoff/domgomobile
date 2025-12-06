@@ -93,10 +93,8 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
         const { error: deleteError } = await supabase
           .from('favorites')
           .delete()
-          .match({
-            user_id: user.id,
-            property_id: propertyId
-          });
+          .eq('user_id', user.id)
+          .eq('property_id', propertyId);
 
         if (deleteError) throw deleteError;
         setFavorites(favorites.filter(id => id !== propertyId));

@@ -264,7 +264,7 @@ export const propertyService = {
         propertyCache.set(cacheKey, data);
       }
       
-      Logger.debug('Данные объявления из базы:', JSON.stringify(data));
+      Logger.debug('Данные объявления из базы, id:', data?.id);
       return data;
     } catch (error) {
       Logger.error('Ошибка при получении объявления:', error);

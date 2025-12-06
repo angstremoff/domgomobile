@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,12 @@ const PropertyCardCompact = memo(({ property, onPress, darkMode = false }: Prope
     e.stopPropagation();
     toggleFavorite(property.id);
   }, [property.id, toggleFavorite]);
+
+  // Мемоизация форматирования цены для оптимизации
+  const formattedPrice = useMemo(() => {
+    const priceValue = typeof property.price === 'number' ? property.price : Number(property.price);
+    return Number.isFinite(priceValue) ? priceValue.toLocaleString() : String(property.price);
+  }, [property.price]);
 
   return (
     <TouchableOpacity 
@@ -79,7 +85,7 @@ const PropertyCardCompact = memo(({ property, onPress, darkMode = false }: Prope
         Platform.OS === 'web' ? styles.infoContainerWeb : styles.infoContainerMobile,
       ]}>
         <Text style={[styles.price, { color: theme.primary }]} numberOfLines={1}>
-          {property.price.toLocaleString()}€
+          {formattedPrice}€
           {property.type === 'rent' ? `/${t('property.month')}` : ''}
         </Text>
         

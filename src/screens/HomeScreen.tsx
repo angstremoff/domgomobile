@@ -184,11 +184,6 @@ const HomeScreen = ({ navigation }: any) => {
     });
   }, [agencies, selectedCity]);
 
-  // Мемоизированный список отфильтрованных объявлений для оптимизации
-  const memoizedFilteredProperties = useMemo(() => {
-    return filteredProperties;
-  }, [filteredProperties]);
-
   // Мемоизированная функция для фильтрации объектов недвижимости
   // использует вынесенную логику из filterHelpers.ts
   const applyFilters = useCallback(() => {
@@ -698,6 +693,8 @@ const HomeScreen = ({ navigation }: any) => {
   const shouldRestoreScrollRef = useRef(false);
 
   useEffect(() => {
+    let scrollTimeoutId: NodeJS.Timeout | null = null;
+
     if (filteredProperties.length > 0) {
       Logger.debug('Обновление списка объявлений: ', {
         'Предыдущий размер': prevPropertiesCountRef.current,
@@ -713,7 +710,7 @@ const HomeScreen = ({ navigation }: any) => {
         shouldRestoreScrollRef.current = false;
 
         // Небольшая задержка для уверенности, что список обновился
-        setTimeout(() => {
+        scrollTimeoutId = setTimeout(() => {
           if (flatListRef.current && scrollOffsetRef.current > 0) {
             Logger.debug('Восстанавливаем позицию прокрутки на:', scrollOffsetRef.current);
             flatListRef.current.scrollToOffset({
@@ -726,12 +723,18 @@ const HomeScreen = ({ navigation }: any) => {
 
       prevPropertiesCountRef.current = filteredProperties.length;
     }
+
+    return () => {
+      if (scrollTimeoutId) {
+        clearTimeout(scrollTimeoutId);
+      }
+    };
   }, [filteredProperties, propertyType]);
 
   // Обработка загрузки дополнительных объявлений с сохранением позиции прокрутки
   // RU: Восстанавливаем позицию скролла после догрузки; дожидаемся await loadMoreProperties для стабильности.
   // EN: Restore scroll offset after pagination; await loadMoreProperties for stability.
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
     if (isAgencyView) {
       return;
     }
@@ -744,8 +747,7 @@ const HomeScreen = ({ navigation }: any) => {
       const currentOffset = scrollOffsetRef.current;
       Logger.debug('Начало загрузки дополнительных объявлений: ', {
         'Тип': propertyTypeForData,
-        'Текущая позиция прокрутки': currentOffset,
-        'Количество объявлений': filteredProperties.length
+        'Текущая позиция прокрутки': currentOffset
       });
 
       // Устанавливаем флаг, что нужно восстановить позицию прокрутки после загрузки
@@ -756,8 +758,7 @@ const HomeScreen = ({ navigation }: any) => {
         await loadMoreProperties(propertyTypeForData);
         Logger.debug('Загрузка завершена: ', {
           'Новая позиция прокрутки': scrollOffsetRef.current,
-          'Разница': scrollOffsetRef.current - currentOffset,
-          'Количество объявлений в filteredProperties': filteredProperties.length
+          'Разница': scrollOffsetRef.current - currentOffset
         });
         // Примечание: filteredProperties и properties обновляются контекстом; debounce не перетирает вкладки sale/rent
       } finally {
@@ -765,7 +766,7 @@ const HomeScreen = ({ navigation }: any) => {
         setLoadingMore(false);
       }
     }
-  };
+  }, [isAgencyView, loadingMore, getHasMore, propertyTypeForData, loadMoreProperties]);
 
   // Web-responsive helpers (без влияния на mobile)
   const { width } = useWindowDimensions();
@@ -847,6 +848,41 @@ const HomeScreen = ({ navigation }: any) => {
       paddingHorizontal: horizontalGutter,
     } satisfies ViewStyle;
   }, [isWeb, horizontalGutter]);
+
+  // Мемоизированные стили для карточек в FlatList renderItem
+  const cardWrapperStyle = useMemo(() => {
+    if (!isWeb) {
+      return compactView ? styles.nativeItemCompact : null;
+    }
+
+    if (compactView) {
+      if (isDesktop) return { width: 230 };
+      if (isTabletWeb) return { width: 240 };
+      return { width: '48%' as const };
+    } else {
+      if (isDesktop) return { width: 360 };
+      if (isTabletWeb) return { width: 380 };
+      return { width: '100%' as const };
+    }
+  }, [isWeb, isDesktop, isTabletWeb, compactView]);
+
+  // Мемоизированные стили для contentContainerStyle FlatList
+  const listContentStyle = useMemo(() => {
+    const baseStyles = [styles.listContent, { paddingTop: 8 }];
+
+    if (!isWeb) {
+      return baseStyles;
+    }
+
+    const webPadding = isDesktop
+      ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' as const }
+      : isTabletWeb
+        ? { paddingHorizontal: 48, maxWidth: 1280, alignSelf: 'center' as const }
+        : { paddingHorizontal: 12, maxWidth: 1280, alignSelf: 'center' as const };
+
+    return [...baseStyles, styles.webListContainer, webPadding];
+  }, [isWeb, isDesktop, isTabletWeb]);
+
   const sectionGapLarge = isWeb ? (isDesktop ? 14 : isTabletWeb ? 26 : 22) : 16;
   const sectionGapMedium = isWeb ? (isDesktop ? 10 : isTabletWeb ? 18 : 16) : 12;
 
@@ -1588,7 +1624,7 @@ const HomeScreen = ({ navigation }: any) => {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={memoizedFilteredProperties}
+          data={filteredProperties}
           onContentSizeChange={() => {
             Logger.debug('Изменился размер списка: ', {
               'Количество объявлений в FlatList': filteredProperties.length,
@@ -1622,26 +1658,10 @@ const HomeScreen = ({ navigation }: any) => {
           renderItem={({ item }: { item: Property }) => (
             <View
               style={[
-                // Базовый центрирующий враппер
+                // Базовый центрирующий враппер (только для web)
                 isWeb ? styles.webCardWrapper : null,
-                // Компактный режим: фиксированная ширина карточки для сетки 2/4/5
-                isWeb && compactView
-                  ? (isDesktop
-                    ? { width: 230 } // 5 колонок на desktop
-                    : isTabletWeb
-                      ? { width: 240 } // 4 колонки на tablet web
-                      : { width: '48%' }) // 2 колонки на mobile web
-                  : null,
-                // Native compact: растягиваем элемент на половину строки
-                !isWeb && compactView ? styles.nativeItemCompact : null,
-                // Полный режим: ширина под 1/2/3 колонки (как на старом сайте 3 в ряд на desktop)
-                isWeb && !compactView
-                  ? (isDesktop
-                    ? { width: 360 }
-                    : isTabletWeb
-                      ? { width: 380 }
-                      : { width: '100%' })
-                  : null,
+                // Мемоизированный стиль ширины карточки
+                cardWrapperStyle,
               ]}
             >
               {compactView ? (
@@ -1658,20 +1678,8 @@ const HomeScreen = ({ navigation }: any) => {
                 />
               )}
             </View>
-          )} // Мемоизируем функцию для повышения производительности 
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingTop: 8 }, // Одинаковый небольшой отступ для всех вкладок
-            isWeb ? styles.webListContainer : null,
-            // Адаптивные горизонтальные отступы для веба
-            isWeb
-              ? (isDesktop
-                ? { paddingHorizontal: 96, maxWidth: 1280, alignSelf: 'center' }
-                : isTabletWeb
-                  ? { paddingHorizontal: 48, maxWidth: 1280, alignSelf: 'center' }
-                  : { paddingHorizontal: 12, maxWidth: 1280, alignSelf: 'center' })
-              : null,
-          ]}
+          )}
+          contentContainerStyle={listContentStyle}
           showsVerticalScrollIndicator={false}
           // Колонки по аналогии со старым сайтом
           // compact: 5 (desktop) / 4 (tablet) / 2 (mobile web)
