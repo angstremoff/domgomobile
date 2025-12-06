@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   imageContainerMobile: {
-    height: 140, // mobile default
+    height: 110, // mobile default
   },
   imageContainerWeb: {
     width: '100%',
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   infoContainer: {
-    padding: 8,
+    padding: 4,
   },
   infoContainerWeb: {
     // Фиксируем минимальную высоту блока информации на вебе, чтобы все карточки были одинаковыми
@@ -273,9 +273,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   price: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 1,
   },
   priceOverlayWeb: {
     position: 'absolute',
@@ -292,9 +292,9 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
   },
   title: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 1,
   },
   location: {
     fontSize: 14,

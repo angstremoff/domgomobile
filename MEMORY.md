@@ -26,11 +26,14 @@
 - После изменения схемы: миграция + `supabase gen types typescript`.
 
 ## 5. Сборка и релизы
-### 5.1 Скрипты
+### 5.1 Скрипты и запуск
+- **Рекомендуемый запуск для разработки:** `npm run android` (expo run:android) - Metro bundler автоматически запускается, приложение работает в dev-режиме с hot reload
+- **Debug APK на эмуляторе:** `npx react-native run-android` - устанавливает debug версию с подключением к Metro
 - Локальные APK: `build-simple-apk.sh`, `build-local-apk.sh`, `build-dev-apk.sh`, `build-local-user-apk.sh`.
 - Прочие утилиты: `build-apk-eas.sh`, `build-and-upload.sh`, `release-build.sh`, `release.sh`, `create-release.sh`, `easy-build-apk.sh`, `build-simple-apk.sh`, `update-version.sh`, `generate-keystore.sh`, `download-apk.sh`.
 - Выпуск AAB: `./build-release-bundle.sh` (оборачивает `gradlew bundleRelease` и кладёт `~/Desktop/DomGoMobile-<версия>-release.aab`).
 - Релизный APK для локального QA: `android/app/build/outputs/apk/release/app-release.apk`. Установка через `adb install -r`.
+- **ВАЖНО:** Не пытаться собирать release APK через `./gradlew assembleRelease` без keystore файла - упадет с ошибкой. Для релизной сборки использовать скрипты или Metro.
 
 ### 5.2 Процесс публикации
 - Expo OTA отключены. Каждое обновление публикуется через Google Play/App Store.

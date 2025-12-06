@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 8,
   },
   desktopFrame: {
     width: '100%',
@@ -285,22 +285,22 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   card: {
-    margin: 8,
-    padding: 12,
+    margin: 2,
+    padding: 6,
     borderRadius: 12,
     borderWidth: 1,
   },
   cardWeb: {
     marginHorizontal: 0,
-    marginTop: 24,
-    marginBottom: 24,
-    padding: 24,
-    borderRadius: 16,
+    marginTop: 8,
+    marginBottom: 2,
+    padding: 6,
+    borderRadius: 12,
   },
   logo: {
     width: '100%',
-    height: 80,
-    marginBottom: 8,
+    height: 50,
+    marginBottom: 2,
   },
   titleRow: {
     flexDirection: 'row',
@@ -309,9 +309,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 1,
     flex: 1,
   },
   shareButton: {
@@ -322,18 +322,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   description: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 11,
+    lineHeight: 15,
   },
   section: {
-    marginTop: 8,
+    marginTop: 4,
   },
   button: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 5,
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 3,
   },
   buttonText: {
     color: '#fff',
@@ -341,11 +341,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   linkButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 5,
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 3,
     borderWidth: 1,
   },
   linkText: {
@@ -353,17 +353,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   propertiesSection: {
-    paddingBottom: 16,
-    gap: 8,
+    marginTop: 8,
+    paddingBottom: 8,
+    gap: 2,
   },
   propertiesSectionWeb: {
-    gap: 12,
+    gap: 2,
   },
   propertyItem: {
     width: '100%',
   },
   propertyItemDesktop: {
-    marginBottom: 8,
+    marginBottom: 0,
   },
 });
 

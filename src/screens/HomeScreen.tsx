@@ -31,8 +31,7 @@ interface AgencySummary {
   logo_url: string | null;
   location: string | null;
   phone: string | null;
-  city_id?: number | null;
-  city?: { id: number; name: string } | null;
+  city?: { id: number; name: string }[] | null;
 }
 
 const HomeScreen = ({ navigation }: any) => {
@@ -143,7 +142,7 @@ const HomeScreen = ({ navigation }: any) => {
       setAgenciesError(null);
       const { data, error } = await supabase
         .from('agency_profiles')
-        .select('id, name, logo_url, location, phone, city_id, city:cities(id, name)')
+        .select('id, name, logo_url, location, phone, city:cities(id, name)')
         .order('name', { ascending: true });
 
       if (error) {
@@ -178,8 +177,9 @@ const HomeScreen = ({ navigation }: any) => {
   const agenciesForList = useMemo(() => {
     if (!selectedCity) return agencies;
     return agencies.filter((agency) => {
-      if (agency.city_id != null && selectedCity.id === agency.city_id) return true;
-      if (agency.city?.id != null && selectedCity.id === agency.city.id) return true;
+      if (agency.city && Array.isArray(agency.city) && agency.city.length > 0) {
+        return agency.city.some(c => c.id === selectedCity.id);
+      }
       return false;
     });
   }, [agencies, selectedCity]);
@@ -1532,11 +1532,11 @@ const HomeScreen = ({ navigation }: any) => {
                       <Text style={[styles.agencyName, { color: theme.text }]} numberOfLines={1}>
                         {item.name || t('agency.unnamed', 'Агентство')}
                       </Text>
-                      {item.city?.name || item.location ? (
+                      {(item.city && item.city.length > 0 && item.city[0]?.name) || item.location ? (
                         <View style={styles.agencyMetaRow}>
                           <Ionicons name="location-outline" size={14} color={theme.secondary} />
                           <Text style={[styles.agencyMetaText, { color: theme.secondary }]} numberOfLines={1}>
-                            {item.city?.name || item.location}
+                            {(item.city && item.city.length > 0 && item.city[0]?.name) || item.location}
                           </Text>
                         </View>
                       ) : null}
@@ -1568,7 +1568,7 @@ const HomeScreen = ({ navigation }: any) => {
               agencyColumns > 1
                 ? (isWeb
                   ? styles.webColumnWrapperFull
-                  : { gap: 16, justifyContent: 'flex-start' })
+                  : { gap: 8, justifyContent: 'flex-start' })
                 : undefined
             }
             showsVerticalScrollIndicator={false}
@@ -1979,7 +1979,7 @@ const styles = StyleSheet.create({
   },
   // Обертка строк для полного вида (меньше колонок, больше дыхания)
   webColumnWrapperFull: {
-    gap: 40,
+    gap: 20,
     paddingHorizontal: 16,
     justifyContent: 'flex-start',
   },
@@ -2108,7 +2108,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   agencyCardWrapper: {
-    marginBottom: 10,
+    marginBottom: 2,
   },
   agencyCardWrapperDesktop: {
     width: 360,
@@ -2124,16 +2124,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   agencyCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 14,
-    gap: 10,
+    padding: 8,
+    gap: 6,
   },
   agencyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 10,
+    marginBottom: 4,
+    gap: 8,
   },
   districtRow: {
     flexDirection: 'row',
@@ -2204,24 +2204,24 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   agencyLogoWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   agencyLogoImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
   agencyTitleBlock: {
     flex: 1,
   },
   agencyName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   agencyMeta: {
     fontSize: 13,
@@ -2229,26 +2229,26 @@ const styles = StyleSheet.create({
   agencyMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
+    gap: 4,
+    marginTop: 2,
   },
   agencyMetaText: {
-    fontSize: 13,
+    fontSize: 12,
     flexShrink: 1,
   },
   agencyPhoneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
+    gap: 4,
+    marginTop: 4,
   },
   agencyPhoneText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   agencyListContent: {
-    paddingVertical: 16,
-    rowGap: 24,
+    paddingVertical: 8,
+    rowGap: 2,
   },
 })
 
