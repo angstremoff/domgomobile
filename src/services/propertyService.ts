@@ -392,21 +392,35 @@ export const propertyService = {
   },
   
   async markAsSold(propertyId: string) {
-    const { error } = await supabase
+    // Получаем текущего пользователя для проверки владельца
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Пользователь не авторизован');
+
+    // Обновляем только если пользователь является владельцем объявления
+    const { error, count } = await supabase
       .from('properties')
       .update({ status: 'sold' })
-      .eq('id', propertyId);
-      
+      .eq('id', propertyId)
+      .eq('user_id', user.id);
+
     if (error) throw error;
+    if (count === 0) throw new Error('Объявление не найдено или нет прав на редактирование');
   },
-  
+
   async markAsRented(propertyId: string) {
-    const { error } = await supabase
+    // Получаем текущего пользователя для проверки владельца
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Пользователь не авторизован');
+
+    // Обновляем только если пользователь является владельцем объявления
+    const { error, count } = await supabase
       .from('properties')
       .update({ status: 'rented' })
-      .eq('id', propertyId);
-      
+      .eq('id', propertyId)
+      .eq('user_id', user.id);
+
     if (error) throw error;
+    if (count === 0) throw new Error('Объявление не найдено или нет прав на редактирование');
   },
   
   async markAsActive(id: string) {

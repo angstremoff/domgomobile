@@ -1,4 +1,4 @@
-import { useState, useCallback, createContext, useContext, ReactNode } from 'react';
+import { useState, useCallback, createContext, useContext, ReactNode, useRef, useEffect } from 'react';
 import CustomAlert from './CustomAlert';
 import { useTranslation } from 'react-i18next';
 
@@ -42,6 +42,18 @@ export const AlertProvider = ({ children }: AlertProviderProps) => {
   const [buttons, setButtons] = useState<AlertButton[]>([]);
   const { t } = useTranslation();
 
+  // Ref для отслеживания монтирования и cleanup таймеров
+  const isMountedRef = useRef(true);
+  const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
+
+  // Cleanup при размонтировании
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      timeoutIdsRef.current.forEach(id => clearTimeout(id));
+    };
+  }, []);
+
   // Функция для показа алерта
   const showAlert = useCallback((title: string, message: string, buttons?: AlertButton[]) => {
     setTitle(title);
@@ -64,36 +76,46 @@ export const AlertProvider = ({ children }: AlertProviderProps) => {
     // Создаем обработчик, который сначала закроет окно, а потом выполнит коллбэк
     const combinedOnPress = () => {
       // Сначала закроем модальное окно
-      setVisible(false);
-      
+      if (isMountedRef.current) {
+        setVisible(false);
+      }
+
       // Задержка перед выполнением коллбэка, чтобы окно успело закрыться
       if (onClose) {
-        setTimeout(() => {
-          onClose();
+        const timeoutId = setTimeout(() => {
+          if (isMountedRef.current) {
+            onClose();
+          }
         }, 100);
+        timeoutIdsRef.current.push(timeoutId);
       }
     };
-    
+
     showAlert(t('common.success'), message, [{ text: t('common.ok'), onPress: combinedOnPress }]);
-  }, [showAlert, t, setVisible]);
+  }, [showAlert, t]);
 
   // Функция для показа алерта об ошибке
   const showErrorAlert = useCallback((message: string, onClose?: () => void) => {
     // Создаем обработчик, который сначала закроет окно, а потом выполнит коллбэк
     const combinedOnPress = () => {
       // Сначала закроем модальное окно
-      setVisible(false);
-      
+      if (isMountedRef.current) {
+        setVisible(false);
+      }
+
       // Задержка перед выполнением коллбэка, чтобы окно успело закрыться
       if (onClose) {
-        setTimeout(() => {
-          onClose();
+        const timeoutId = setTimeout(() => {
+          if (isMountedRef.current) {
+            onClose();
+          }
         }, 100);
+        timeoutIdsRef.current.push(timeoutId);
       }
     };
-    
+
     showAlert(t('common.error'), message, [{ text: t('common.ok'), onPress: combinedOnPress }]);
-  }, [showAlert, t, setVisible]);
+  }, [showAlert, t]);
 
   // Функция для закрытия алерта
   const handleClose = useCallback(() => {

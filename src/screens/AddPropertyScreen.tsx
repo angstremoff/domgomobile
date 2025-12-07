@@ -328,11 +328,13 @@ const AddPropertyScreen = ({ navigation }: any) => {
             const imageName = `property_${Date.now()}_${i}.${imageExtension}`;
             
             // Проверяем, что расширение файла допустимо
-            const validExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+            const validExtensions = ['jpg', 'jpeg', 'png', 'webp'];
             if (!validExtensions.includes(imageExtension)) {
               Logger.error('Недопустимое расширение файла:', imageExtension);
-              // Используем jpg как запасной вариант
-              Logger.debug('Используем jpg как запасной вариант');
+              showErrorAlert(`${t('property.errors.invalidImageFormat')}: .${imageExtension}. ${t('property.errors.allowedFormats')}: ${validExtensions.join(', ')}`);
+              setLoading(false);
+              setUploadingImages(false);
+              return;
             }
             
             // Используем метод из propertyService для загрузки изображения

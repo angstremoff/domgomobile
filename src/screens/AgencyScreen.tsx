@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, ActivityIndicator, Platform, useWindowDimensions, Share } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Linking, ActivityIndicator, Platform, useWindowDimensions, Share, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
@@ -242,23 +242,31 @@ const AgencyScreen = ({ route, navigation }: AgencyScreenProps) => {
           </View>
         </View>
 
-        {/* Список объявлений агентства */}
+        {/* Список объявлений агентства с виртуализацией */}
         <View style={[styles.propertiesSection, styles.propertiesSectionWeb]}>
           {propsLoading ? (
             <ActivityIndicator size="small" color={theme.primary} />
-          ) : (
-            properties.map((p) => (
-              <View key={p.id} style={[styles.propertyItem, styles.propertyItemDesktop]}>
-                <OptimizedPropertyCard
-                  property={p}
-                  darkMode={darkMode}
-                  onPress={() => navigation.navigate('PropertyDetails', { propertyId: p.id })}
-                />
-              </View>
-            ))
-          )}
-          {!propsLoading && properties.length === 0 && (
+          ) : properties.length === 0 ? (
             <Text style={{ color: theme.secondary, textAlign: 'center', marginTop: 8 }}>{t('common.notFound')}</Text>
+          ) : (
+            <FlatList
+              data={properties}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={[styles.propertyItem, styles.propertyItemDesktop]}>
+                  <OptimizedPropertyCard
+                    property={item}
+                    darkMode={darkMode}
+                    onPress={() => navigation.navigate('PropertyDetails', { propertyId: item.id })}
+                  />
+                </View>
+              )}
+              scrollEnabled={false}
+              initialNumToRender={5}
+              maxToRenderPerBatch={5}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS !== 'web'}
+            />
           )}
         </View>
       </View>

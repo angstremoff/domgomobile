@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Modal,
   Platform,
@@ -220,20 +220,21 @@ const FilterModal: React.FC<FilterModalProps> = ({
     { id: 'commercial', label: t('filters.commercial') }
   ];
 
-  const getRoomOptions = () => [
+  // Мемоизированные опции для предотвращения пересоздания на каждом рендере
+  const roomOptions = useMemo(() => [
     { id: '1', label: '1' },
     { id: '2', label: '2' },
     { id: '3', label: '3' },
     { id: '4', label: '4' },
     { id: '5+', label: '5+' }
-  ];
+  ], []);
 
-  const getFeatures = () => [
+  const features = useMemo(() => [
     { id: 'parking', label: t('filters.parking') },
     { id: 'balcony', label: t('filters.balcony') },
     { id: 'elevator', label: t('filters.elevator') },
     { id: 'furnished', label: t('filters.furniture') }
-  ];
+  ], [t]);
 
   return (
     <Modal
@@ -287,7 +288,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
               {t('filters.rooms')}
             </Text>
             <View style={styles.roomsContainer}>
-              {getRoomOptions().slice(0, 2).map(room => (
+              {roomOptions.slice(0, 2).map(room => (
                 <View key={room.id} style={styles.roomItem}>
                   <Checkbox
                     checked={localFilters.rooms.includes(room.id)}
@@ -299,7 +300,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
                   </Text>
                 </View>
               ))}
-              {getRoomOptions().slice(2, 3).map(room => (
+              {roomOptions.slice(2, 3).map(room => (
                 <View key={room.id} style={styles.roomItem}>
                   <Checkbox
                     checked={localFilters.rooms.includes(room.id)}
@@ -313,7 +314,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
               ))}
             </View>
             <View style={styles.roomsContainer}>
-              {getRoomOptions().slice(3).map(room => (
+              {roomOptions.slice(3).map(room => (
                 <View key={room.id} style={styles.roomItem}>
                   <Checkbox
                     checked={localFilters.rooms.includes(room.id)}
@@ -373,7 +374,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
               {t('filters.features')}
             </Text>
             <View style={styles.featuresContainer}>
-              {getFeatures().slice(0, 2).map(feature => (
+              {features.slice(0, 2).map(feature => (
                 <View key={feature.id} style={styles.featureItem}>
                   <Checkbox
                     checked={localFilters.features.includes(feature.id)}
@@ -387,7 +388,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
               ))}
             </View>
             <View style={styles.featuresContainer}>
-              {getFeatures().slice(2).map(feature => (
+              {features.slice(2).map(feature => (
                 <View key={feature.id} style={styles.featureItem}>
                   <Checkbox
                     checked={localFilters.features.includes(feature.id)}

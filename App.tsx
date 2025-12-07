@@ -1,7 +1,7 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Linking } from 'react-native';
+import { Linking, AppState, AppStateStatus } from 'react-native';
 import AppVersionManager from './src/services/AppVersionManager';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
@@ -16,6 +16,7 @@ import { logError } from './src/utils/sentry';
 import { Logger } from './src/utils/logger';
 import { supabase } from './src/lib/supabaseClient';
 import { parseDeepLink } from './src/utils/deepLinkParser';
+import { destroyAllCaches } from './src/utils/cacheManager';
 import './src/translations';
 
 export default function App() {
@@ -23,6 +24,25 @@ export default function App() {
   const clearPendingPropertyId = React.useCallback(() => setPendingPropertyId(null), []);
   const [pendingAgencyId, setPendingAgencyId] = React.useState<string | null>(null);
   const clearPendingAgencyId = React.useCallback(() => setPendingAgencyId(null), []);
+
+  // Очистка кэшей при завершении приложения для предотвращения утечек памяти
+  React.useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      // При переходе в background или inactive (закрытие приложения) очищаем интервалы кэшей
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        Logger.debug('Приложение переходит в фоновый режим, очистка кэшей...');
+        destroyAllCaches();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    // Cleanup при размонтировании App
+    return () => {
+      subscription.remove();
+      destroyAllCaches();
+    };
+  }, []);
 
   // Улучшенная система управления версиями и кэшированием
   React.useEffect(() => {

@@ -1,0 +1,149 @@
+'use client';
+
+import Link from 'next/link';
+import Image from 'next/image';
+import { Heart, MapPin, Bed, Maximize, Bath, Calendar } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { Database } from '@shared/lib/database.types';
+import { cn } from '@/lib/utils/cn';
+
+type Property = Database['public']['Tables']['properties']['Row'];
+
+interface PropertyCardProps {
+  property: Property & {
+    city?: { name: string } | null;
+    district?: { name: string } | null;
+  };
+  onFavoriteToggle?: (id: string) => void;
+  isFavorite?: boolean;
+}
+
+export function PropertyCard({ property, onFavoriteToggle, isFavorite }: PropertyCardProps) {
+  const { t } = useTranslation();
+  const mainImage = property.images?.[0] || '/placeholder-property.jpg';
+  const price = new Intl.NumberFormat('sr-RS', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(property.price);
+
+  const propertyType = property.type === 'sale' ? 'prodaja' : 'izdavanje';
+  const detailsUrl = `/${propertyType}/${property.id}`;
+
+  // Определяем тип недвижимости для отображения
+  const getPropertyTypeLabel = () => {
+    const typeMap: Record<string, string> = {
+      'apartment': t('property.apartment'),
+      'house': t('property.house'),
+      'commercial': t('property.commercial'),
+      'land': t('property.land'),
+      'garage': t('property.garage'),
+    };
+    return typeMap[property.property_type || 'apartment'] || t('property.other');
+  };
+
+  return (
+    <div className="group relative rounded-xl border border-border overflow-hidden bg-white dark:bg-surface hover:shadow-2xl transition-all duration-300">
+      {/* Изображение */}
+      <Link href={detailsUrl} className="block relative h-56 overflow-hidden">
+        <Image
+          src={mainImage}
+          alt={property.title}
+          fill
+          className="object-cover group-hover:scale-110 transition-transform duration-500"
+        />
+        {/* Градиент для лучшей читаемости */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+        {/* Статус */}
+        {property.status !== 'active' && (
+          <div className="absolute top-3 left-3 bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-lg">
+            {property.status === 'sold' ? t('property.status.sold') : t('property.status.rented')}
+          </div>
+        )}
+
+        {/* Новостройка */}
+        {property.is_new_building && (
+          <div className="absolute top-3 right-3 bg-green-500 text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-lg">
+            {t('common.newBuildings')}
+          </div>
+        )}
+
+        {/* Избранное */}
+        {onFavoriteToggle && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              onFavoriteToggle(property.id);
+            }}
+            className="absolute bottom-3 right-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur p-2.5 rounded-full hover:bg-white dark:hover:bg-gray-800 transition-colors shadow-lg"
+          >
+            <Heart
+              className={cn(
+                'h-5 w-5 transition-colors',
+                isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600 dark:text-gray-300'
+              )}
+            />
+          </button>
+        )}
+      </Link>
+
+      {/* Контент */}
+      <Link href={detailsUrl} className="block p-5">
+        {/* Тип и цена */}
+        <div className="flex items-start justify-between mb-3">
+          <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
+            {getPropertyTypeLabel()}
+          </span>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-primary">{price}</div>
+            {property.type === 'rent' && (
+              <div className="text-xs text-textSecondary">/{t('property.month')}</div>
+            )}
+          </div>
+        </div>
+
+        {/* Заголовок */}
+        <h3 className="text-lg font-semibold text-text mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+          {property.title}
+        </h3>
+
+        {/* Местоположение */}
+        <div className="flex items-center gap-1.5 text-sm text-textSecondary mb-4">
+          <MapPin className="h-4 w-4 flex-shrink-0" />
+          <span className="truncate">
+            {property.city?.name}
+            {property.district?.name && `, ${property.district.name}`}
+          </span>
+        </div>
+
+        {/* Характеристики */}
+        <div className="flex items-center gap-4 text-sm text-textSecondary pt-4 border-t border-border">
+          {property.area && (
+            <div className="flex items-center gap-1.5">
+              <Maximize className="h-4 w-4" />
+              <span className="font-medium">{property.area} {t('property.sqm')}</span>
+            </div>
+          )}
+          {property.rooms && (
+            <div className="flex items-center gap-1.5">
+              <Bed className="h-4 w-4" />
+              <span className="font-medium">{property.rooms} {t('property.rooms')}</span>
+            </div>
+          )}
+          {property.created_at && (
+            <div className="flex items-center gap-1.5 ml-auto">
+              <Calendar className="h-4 w-4" />
+              <span className="text-xs">
+                {new Date(property.created_at).toLocaleDateString('sr-RS', {
+                  day: 'numeric',
+                  month: 'short',
+                })}
+              </span>
+            </div>
+          )}
+        </div>
+      </Link>
+    </div>
+  );
+}

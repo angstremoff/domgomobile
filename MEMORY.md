@@ -8,9 +8,11 @@
 - UI: поддерживаем светлую/тёмную тему и систему переводов (`ru`, `sr`).
 
 ## 2. Архитектура и стек
-- Платформы: Android, iOS, web (desktop/mobile). React Native 0.76.9 + Expo ~52 + TypeScript 5.9.2 + Hermes. Веб-версия на React Native Web.
-- Старт: `index.ts` инициализирует Sentry и регистрирует `App.tsx`. Навигация (`AppNavigator`) обёрнута в Auth/Language/Theme/Favorites/Property/Alert провайдеры + `ErrorBoundary`.
-- Deep Link-и: `domgomobile://auth/callback`, `domgomobile://property/...`, `domgo.rs/property/...`. Для шаринга используется GitHub Pages `property.html` с fallback (экран «Открываем объявление…» предлагающий Web/Play Store).
+- **Мобильное приложение**: Android, iOS на React Native 0.76.9 + Expo ~52 + TypeScript 5.9.2 + Hermes. Код в `/src`, навигация через React Navigation.
+- **Веб-сайт (domgo.rs)**: Next.js 15.5.7 + React + TypeScript в `/web`. **Общая база данных Supabase**, но отдельный фронтенд (не React Native Web). Компоненты в `/web/components`, страницы в `/web/app`. Запуск: `npm run dev` (порт 3000).
+- **Общее**: Supabase (auth, база данных, storage), i18next (ru/sr), темная/светлая тема, те же API и бизнес-логика.
+- Старт мобильного: `index.ts` → `App.tsx` → провайдеры → `AppNavigator`.
+- Deep Link: `domgomobile://...`, `domgo.rs/property.html` (GitHub Pages fallback).
 
 ## 3. Основные сервисы и модули
 - `src/services/propertyService.ts`: CRUD объявлений в Supabase, пагинация, retry, загрузка изображений ≤5 МБ (jpg/jpeg/png/webp), работа с Supabase Storage, LRU-кэши `propertyCache`/`apiCache`.
@@ -55,8 +57,9 @@
 - Для диагностики доступен MCP Context7 (`docs/context7-setup.md`).
 
 ## 7. Важные напоминания
-- DomGoMobile поддерживает четыре платформы, но бизнес-логика едина; различия только в верстке/UX.
-- При шаринге объявлений используем `https://domgo.rs/property.html?id=<ID>` (домен направлен на GitHub Pages) — страница пытается открыть приложение, если нет — предлагает Web + Google Play.
+- **Две платформы**: мобильное (Android/iOS) и веб (Next.js). Общая БД Supabase, но разные фронтенды. Веб не использует React Native Web - это отдельный Next.js проект в `/web`.
+- **Веб-особенности**: Features из БД выводятся как есть (без перевода). Hydration: клиентские компоненты с i18next требуют `mounted` проверки. Тема: используем `theme` из next-themes, не `resolvedTheme`.
+- При шаринге объявлений используем `https://domgo.rs/property.html?id=<ID>` (GitHub Pages) — страница пытается открыть приложение, если нет — предлагает Web + Google Play.
 - Любые новые задачи, связанные с публикацией, должны учитывать требования Google Play и наличие AAB; APK используется только для локального тестирования.
 - iOS нюансы: симулятор не умеет `tel:` — в PropertyDetails показываем алерт и копируем номер в буфер; фильтры имеют safe-area паддинг и расширенный hitSlop для кнопки закрытия; заголовок DomGo.rs на iOS выровнен влево, а блок выбора города сдвинут для предотвращения наложения.
 - Supabase агенты: `agency_profiles.user_id` 1:1 к `users.id`, `properties.agency_id` → `agency_profiles.id`. Есть триггер на `agency_profiles` (after insert/update) для заполнения `agency_id` у объявлений по `user_id`, и триггер на `properties` (before insert/update user_id) для автоподстановки `agency_id`. Разовая синхронизация: `update properties p set agency_id = ap.id from agency_profiles ap where p.user_id = ap.user_id and p.agency_id is null`.
@@ -65,14 +68,13 @@
 - При достижении остатка контекста ~5% нужно сжимать контекст (конспект, выжимка последних шагов).
 
 ## 8. Обновление версий и сборки
-- Версия приложения (отображается в настройках и в store): `package.json` → `version`, синхронизирована с `package-lock.json` (поле `version` в корне и в корневом пакете). Текущая: 1.0.7.
-- Android: `android/app/build.gradle` → `defaultConfig.versionCode` (целое, растёт) и `versionName` (строка, совпадает с версией приложения). Текущее: code 11 / name 1.0.7.
- - iOS: `app.config.js` → `ios.buildNumber` (строка) и `version` берётся из `APP_VERSION`/`package.json` (настроено через `APP_VERSION` env или pkg.version). Текущее: buildNumber 11.
+- Версия приложения (отображается в настройках и в store): `package.json` → `version`, синхронизирована с `package-lock.json` (поле `version` в корне и в корневом пакете).
+- Android: `android/app/build.gradle` → `defaultConfig.versionCode` (целое, растёт) и `versionName` (строка, совпадает с версией приложения).
+ - iOS: `app.config.js` → `ios.buildNumber` (строка) и `version` берётся из `APP_VERSION`/`package.json` (настроено через `APP_VERSION` env или pkg.version).
 - Runtime остаётся фиксированным: `app.config.js` → `runtimeVersion` (не менять без миграции обновлений), сейчас 1.0.4.
 - Fallback версии в коде: `src/services/AppVersionManager.ts` хранит запасное значение (держать в актуальной версии приложения).
 - Сборка AAB: `./build-release-bundle.sh` (использует версию из package.json, кладёт на Desktop `DomGoMobile-<версия>-release.aab`). Перед запуском убедиться, что `release.keystore` актуальный.
 - Keystore release: `android/app/release.keystore` (секреты берём из 1Password/секретного хранилища; в сборке использовать env: `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`).
-- Последний собранный AAB: `~/Desktop/DomGoMobile-1.0.7-release.aab` (собран скриптом `./build-release-bundle.sh` с ключами: `release.keystore` + пароли `domgo2024release`, alias `domgo-release`).
 
 ### 8.1 Секреты и безопасность
 - Не храним пароли, ключи, токены и base64-контент в публичных файлах репозитория. Все чувствительные данные кладём в секретные хранилища (1Password, GitHub Secrets) и передаём в сборку через переменные окружения.

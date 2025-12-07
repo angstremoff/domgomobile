@@ -293,13 +293,13 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
       
       // Собираем данные для обновления
       const updatedProperty: Partial<PropertyInsert> = {
-        title,
-        description,
-        price: parseFloat(price),
-        location: address, // В API используется поле location вместо address
-        area: area ? parseFloat(area) : undefined,
-        rooms: rooms ? parseInt(rooms, 10) : undefined,
-        city_id: parseInt(cityId, 10),
+        title: title.trim(),
+        description: description.trim(),
+        price: parseFloat(price.trim()),
+        location: address.trim(), // В API используется поле location вместо address
+        area: area ? parseFloat(area.trim()) : undefined,
+        rooms: rooms ? parseInt(rooms.trim(), 10) : undefined,
+        city_id: parseInt(cityId.trim(), 10),
         district_id: districtId ? districtId : null,
         type: propertyType,
         property_type: propertyCategory,

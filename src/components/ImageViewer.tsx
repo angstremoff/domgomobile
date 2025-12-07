@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Modal,
@@ -26,51 +26,63 @@ const { width, height } = Dimensions.get('window');
 
 const ImageViewer = ({ images, visible, initialIndex = 0, onClose, darkMode = false }: ImageViewerProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const flatListRef = React.useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList>(null);
   const theme = darkMode ? Colors.dark : Colors.light;
-  
+
   // При изменении initialIndex, обновляем текущий индекс и прокручиваем к нему
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       setCurrentIndex(initialIndex);
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         flatListRef.current?.scrollToIndex({
           index: initialIndex,
           animated: false
         });
       }, 100);
+      // Cleanup при размонтировании или изменении зависимостей
+      return () => clearTimeout(timeoutId);
     }
   }, [initialIndex, visible]);
 
-  const handleScroll = (event: any) => {
+  // Мемоизированный обработчик скролла
+  const handleScroll = useCallback((event: any) => {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
     const index = Math.floor(event.nativeEvent.contentOffset.x / slideSize);
-    if (index !== currentIndex) {
-      setCurrentIndex(index);
-    }
-  };
+    setCurrentIndex(prevIndex => {
+      if (index !== prevIndex) return index;
+      return prevIndex;
+    });
+  }, []);
 
-  const handleNext = () => {
-    if (currentIndex < images.length - 1) {
-      const nextIndex = currentIndex + 1;
-      setCurrentIndex(nextIndex);
-      flatListRef.current?.scrollToIndex({
-        index: nextIndex,
-        animated: true
-      });
-    }
-  };
+  // Мемоизированный обработчик перехода к следующему изображению
+  const handleNext = useCallback(() => {
+    setCurrentIndex(prevIndex => {
+      if (prevIndex < images.length - 1) {
+        const nextIndex = prevIndex + 1;
+        flatListRef.current?.scrollToIndex({
+          index: nextIndex,
+          animated: true
+        });
+        return nextIndex;
+      }
+      return prevIndex;
+    });
+  }, [images.length]);
 
-  const handlePrev = () => {
-    if (currentIndex > 0) {
-      const prevIndex = currentIndex - 1;
-      setCurrentIndex(prevIndex);
-      flatListRef.current?.scrollToIndex({
-        index: prevIndex,
-        animated: true
-      });
-    }
-  };
+  // Мемоизированный обработчик перехода к предыдущему изображению
+  const handlePrev = useCallback(() => {
+    setCurrentIndex(prevIndex => {
+      if (prevIndex > 0) {
+        const newIndex = prevIndex - 1;
+        flatListRef.current?.scrollToIndex({
+          index: newIndex,
+          animated: true
+        });
+        return newIndex;
+      }
+      return prevIndex;
+    });
+  }, []);
 
   const renderItem = ({ item }: { item: string }) => (
     <View style={styles.slide}>

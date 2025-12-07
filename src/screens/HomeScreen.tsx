@@ -692,6 +692,23 @@ const HomeScreen = ({ navigation }: any) => {
   const prevPropertiesCountRef = useRef(0);
   const shouldRestoreScrollRef = useRef(false);
 
+  // Мемоизированный обработчик изменения размера контента FlatList
+  const handleContentSizeChange = useCallback(() => {
+    Logger.debug('Изменился размер списка: ', {
+      'Текущая позиция прокрутки': scrollOffsetRef.current,
+    });
+
+    // Восстанавливаем позицию прокрутки если размер списка изменился и флаг восстановления установлен
+    if (shouldRestoreScrollRef.current && scrollOffsetRef.current > 0) {
+      Logger.debug('Восстанавливаем позицию при изменении размера:', scrollOffsetRef.current);
+      flatListRef.current?.scrollToOffset({
+        offset: scrollOffsetRef.current,
+        animated: false
+      });
+      shouldRestoreScrollRef.current = false;
+    }
+  }, []);
+
   useEffect(() => {
     let scrollTimeoutId: NodeJS.Timeout | null = null;
 
@@ -886,7 +903,8 @@ const HomeScreen = ({ navigation }: any) => {
   const sectionGapLarge = isWeb ? (isDesktop ? 14 : isTabletWeb ? 26 : 22) : 16;
   const sectionGapMedium = isWeb ? (isDesktop ? 10 : isTabletWeb ? 18 : 16) : 12;
 
-  const quickFilterOptions =
+  // Мемоизируем quickFilterOptions для предотвращения пересоздания на каждом рендере
+  const quickFilterOptions = useMemo(() =>
     propertyType === 'rent'
       ? [
         {
@@ -949,7 +967,8 @@ const HomeScreen = ({ navigation }: any) => {
             label: t('filters.land'),
           },
         ]
-        : [];
+        : []
+  , [propertyType, t]);
   // брейкпоинты используются для вычисления колонок и ширин карточек
 
   return (
@@ -1625,22 +1644,7 @@ const HomeScreen = ({ navigation }: any) => {
         <FlatList
           ref={flatListRef}
           data={filteredProperties}
-          onContentSizeChange={() => {
-            Logger.debug('Изменился размер списка: ', {
-              'Количество объявлений в FlatList': filteredProperties.length,
-              'Текущая позиция прокрутки': scrollOffsetRef.current,
-            });
-
-            // Восстанавливаем позицию прокрутки если размер списка изменился и флаг восстановления установлен
-            if (shouldRestoreScrollRef.current && scrollOffsetRef.current > 0) {
-              Logger.debug('Восстанавливаем позицию при изменении размера:', scrollOffsetRef.current);
-              flatListRef.current?.scrollToOffset({
-                offset: scrollOffsetRef.current,
-                animated: false
-              });
-              shouldRestoreScrollRef.current = false;
-            }
-          }}
+          onContentSizeChange={handleContentSizeChange}
           keyExtractor={(item) => item.id}
           initialNumToRender={10}
           maxToRenderPerBatch={10}

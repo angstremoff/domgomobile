@@ -169,3 +169,13 @@ export const apiCache = new LRUCacheManager({
   ttl: 3 * 60 * 1000, // 3 минуты
   cleanupInterval: 1 * 60 * 1000
 });
+
+/**
+ * Уничтожает все глобальные кэши.
+ * Вызывайте при завершении приложения для предотвращения утечек памяти.
+ */
+export function destroyAllCaches(): void {
+  propertyCache.destroy();
+  imageCache.destroy();
+  apiCache.destroy();
+}

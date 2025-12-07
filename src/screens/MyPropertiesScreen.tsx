@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { propertyService } from '../services/propertyService';
@@ -32,11 +32,12 @@ const MyPropertiesScreen = ({ navigation }: any) => {
     }
   };
 
-  const onRefresh = async () => {
+  // Мемоизированный обработчик обновления списка
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadProperties();
     setRefreshing(false);
-  };
+  }, []);
 
   useEffect(() => {
     loadProperties();

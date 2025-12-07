@@ -1,0 +1,34 @@
+'use client';
+
+import { useEffect } from 'react';
+import i18n from 'i18next';
+import { initReactI18next, I18nextProvider } from 'react-i18next';
+import ru from '@shared/translations/ru.json';
+import sr from '@shared/translations/sr.json';
+
+// Инициализация i18next
+if (!i18n.isInitialized) {
+  i18n.use(initReactI18next).init({
+    resources: {
+      ru: { translation: ru },
+      sr: { translation: sr },
+    },
+    lng: 'sr', // Сербский по умолчанию для domgo.rs
+    fallbackLng: 'sr',
+    interpolation: {
+      escapeValue: false,
+    },
+  });
+}
+
+export function I18nProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Восстанавливаем язык из localStorage
+    const savedLanguage = localStorage.getItem('language');
+    if (savedLanguage && (savedLanguage === 'ru' || savedLanguage === 'sr')) {
+      i18n.changeLanguage(savedLanguage);
+    }
+  }, []);
+
+  return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>;
+}

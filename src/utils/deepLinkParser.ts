@@ -4,6 +4,16 @@ export type ParsedDeepLink =
   | { type: 'agency'; agencyId: string; raw: string }
   | { type: 'unknown'; raw: string };
 
+// Регулярное выражение для проверки UUID формата
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Проверяет, является ли строка валидным UUID
+ */
+function isValidUUID(id: string): boolean {
+  return UUID_REGEX.test(id);
+}
+
 const PROPERTY_SCHEMES = [
   'domgomobile://property',
   'https://domgo.rs/property.html',
@@ -99,7 +109,8 @@ export function parseDeepLink(url: string): ParsedDeepLink {
 
   if (matchesSupportedPropertyHost) {
     const propertyId = tryParsePropertyId();
-    if (propertyId) {
+    // Валидируем ID как UUID для безопасности
+    if (propertyId && isValidUUID(propertyId)) {
       return { type: 'property', propertyId, raw };
     }
   }
@@ -146,7 +157,8 @@ export function parseDeepLink(url: string): ParsedDeepLink {
   const matchesAgencyHost = AGENCY_SCHEMES.some((pattern) => url.startsWith(pattern) || url.includes(pattern));
   if (matchesAgencyHost) {
     const agencyId = tryParseAgencyId();
-    if (agencyId) {
+    // Валидируем ID как UUID для безопасности
+    if (agencyId && isValidUUID(agencyId)) {
       return { type: 'agency', agencyId, raw };
     }
   }

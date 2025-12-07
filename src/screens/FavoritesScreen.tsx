@@ -134,6 +134,11 @@ const FavoritesScreen = ({ navigation }: any) => {
                 }
               : undefined
           }
+          // Оптимизация производительности FlatList
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS !== 'web'}
         />
       )}
     </View>

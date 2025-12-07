@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
@@ -17,6 +17,14 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+
+  // Set для O(1) проверки isFavorite вместо O(N) поиска в массиве
+  const favoritesSetRef = useRef<Set<string>>(new Set());
+
+  // Обновляем Set при изменении favorites
+  useEffect(() => {
+    favoritesSetRef.current = new Set(favorites);
+  }, [favorites]);
 
   // Загрузка избранного из AsyncStorage
   const loadLocalFavorites = async () => {
@@ -74,21 +82,31 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const toggleFavorite = async (propertyId: string) => {
+  // Стабильная ссылка на toggleFavorite с useCallback для предотвращения лишних ререндеров карточек
+  const toggleFavorite = useCallback(async (propertyId: string) => {
     if (!user) {
       // Неавторизованный пользователь - используем AsyncStorage
-      const newFavorites = favorites.includes(propertyId)
-        ? favorites.filter(id => id !== propertyId)
-        : [...favorites, propertyId];
-      
-      setFavorites(newFavorites);
-      await AsyncStorage.setItem('favorites', JSON.stringify(newFavorites));
+      setFavorites(prev => {
+        const isCurrentlyFavorite = prev.includes(propertyId);
+        const newFavorites = isCurrentlyFavorite
+          ? prev.filter(id => id !== propertyId)
+          : [...prev, propertyId];
+
+        // Асинхронно сохраняем в AsyncStorage
+        AsyncStorage.setItem('favorites', JSON.stringify(newFavorites)).catch(err =>
+          Logger.error('Error saving favorites to AsyncStorage:', err)
+        );
+
+        return newFavorites;
+      });
       return;
     }
 
     // Авторизованный пользователь - используем Supabase
     try {
-      if (favorites.includes(propertyId)) {
+      const isCurrentlyFavorite = favoritesSetRef.current.has(propertyId);
+
+      if (isCurrentlyFavorite) {
         // Удаляем из избранного
         const { error: deleteError } = await supabase
           .from('favorites')
@@ -97,7 +115,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           .eq('property_id', propertyId);
 
         if (deleteError) throw deleteError;
-        setFavorites(favorites.filter(id => id !== propertyId));
+        setFavorites(prev => prev.filter(id => id !== propertyId));
       } else {
         // Добавляем в избранное
         const { error: insertError } = await supabase
@@ -108,16 +126,17 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
           });
 
         if (insertError) throw insertError;
-        setFavorites([...favorites, propertyId]);
+        setFavorites(prev => [...prev, propertyId]);
       }
     } catch (error) {
       Logger.error('Error toggling favorite:', error);
     }
-  };
+  }, [user]);
 
-  const isFavorite = (propertyId: string) => {
-    return favorites.includes(propertyId);
-  };
+  // O(1) проверка вместо O(N) благодаря Set
+  const isFavorite = useCallback((propertyId: string) => {
+    return favoritesSetRef.current.has(propertyId);
+  }, []);
 
   return (
     <FavoritesContext.Provider value={{ favorites, toggleFavorite, isFavorite, isLoading }}>

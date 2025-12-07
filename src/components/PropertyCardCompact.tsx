@@ -18,10 +18,12 @@ const PropertyCardCompact = memo(({ property, onPress, darkMode = false }: Prope
   const propertyIsFavorite = isFavorite(property.id);
   const theme = darkMode ? Colors.dark : Colors.light;
   
+  // toggleFavorite теперь стабильная ссылка (useCallback в FavoritesContext),
+  // поэтому не включаем её в зависимости для предотвращения лишних ререндеров
   const handleFavoritePress = useCallback((e: any) => {
     e.stopPropagation();
     toggleFavorite(property.id);
-  }, [property.id, toggleFavorite]);
+  }, [property.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Мемоизация форматирования цены для оптимизации
   const formattedPrice = useMemo(() => {
