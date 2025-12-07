@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/providers/AuthProvider';
+import { useTranslation } from 'react-i18next';
 
 export function RegisterForm() {
   const [email, setEmail] = useState('');
@@ -15,18 +16,19 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Пароли не совпадают');
+      setError(t('auth.passwordsDoNotMatch'));
       return;
     }
 
     if (password.length < 6) {
-      setError('Пароль должен быть минимум 6 символов');
+      setError(t('auth.passwordTooShort'));
       return;
     }
 
@@ -35,7 +37,7 @@ export function RegisterForm() {
     const { error } = await signUp(email, password);
 
     if (error) {
-      setError(error.message || 'Ошибка регистрации');
+      setError(error.message || t('auth.registerError'));
       setLoading(false);
     } else {
       router.push('/profil');
@@ -47,8 +49,8 @@ export function RegisterForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input
         type="email"
-        label="Email"
-        placeholder="your@email.com"
+        label={t('auth.email')}
+        placeholder={t('auth.enterEmail')}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
@@ -57,8 +59,8 @@ export function RegisterForm() {
 
       <Input
         type="password"
-        label="Пароль"
-        placeholder="••••••••"
+        label={t('auth.password')}
+        placeholder={t('auth.enterPassword')}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         required
@@ -67,8 +69,8 @@ export function RegisterForm() {
 
       <Input
         type="password"
-        label="Подтвердите пароль"
-        placeholder="••••••••"
+        label={t('auth.confirmPassword')}
+        placeholder={t('auth.confirmPasswordPlaceholder')}
         value={confirmPassword}
         onChange={(e) => setConfirmPassword(e.target.value)}
         required
@@ -82,13 +84,13 @@ export function RegisterForm() {
       )}
 
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+        {loading ? t('common.loading') : t('auth.register')}
       </Button>
 
       <p className="text-center text-sm text-textSecondary">
-        Уже есть аккаунт?{' '}
+        {t('auth.alreadyHaveAccount')}{' '}
         <Link href="/prijava" className="text-primary hover:underline">
-          Войти
+          {t('auth.login')}
         </Link>
       </p>
     </form>

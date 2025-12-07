@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Filter, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -23,12 +24,13 @@ export interface FilterState {
 export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({});
+  const { t } = useTranslation();
 
   const propertyTypes = [
-    { value: 'apartment', label: 'Квартира' },
-    { value: 'house', label: 'Дом' },
-    { value: 'commercial', label: 'Коммерческая' },
-    { value: 'land', label: 'Земля' },
+    { value: 'apartment', label: t('property.apartment') },
+    { value: 'house', label: t('property.house') },
+    { value: 'commercial', label: t('property.commercial') },
+    { value: 'land', label: t('property.land') },
   ];
 
   const handleApplyFilters = () => {
@@ -51,7 +53,7 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
         onClick={() => setIsOpen(!isOpen)}
       >
         <Filter className="h-5 w-5 mr-2" />
-        Фильтры
+        {t('common.filters')}
       </Button>
 
       {/* Filter panel */}
@@ -59,7 +61,7 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold text-text flex items-center gap-2">
             <Filter className="h-5 w-5" />
-            Фильтры
+            {t('filters.title')}
           </h3>
           {isOpen && (
             <button
@@ -75,7 +77,7 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
           {/* Property Type */}
           <div>
             <label className="block text-sm font-medium text-text mb-2">
-              Тип недвижимости
+              {t('filters.propertyType')}
             </label>
             <select
               className="w-full px-4 py-2 bg-surface border border-border rounded-md text-text focus:outline-none focus:ring-2 focus:ring-primary"
@@ -84,7 +86,7 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
                 setFilters({ ...filters, propertyType: e.target.value || undefined })
               }
             >
-              <option value="">Все типы</option>
+              <option value="">{t('common.allTypes')}</option>
               {propertyTypes.map((type) => (
                 <option key={type.value} value={type.value}>
                   {type.label}
@@ -96,12 +98,12 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
           {/* Price Range */}
           <div>
             <label className="block text-sm font-medium text-text mb-2">
-              Цена (€)
+              {t('filters.price')} (€)
             </label>
             <div className="grid grid-cols-2 gap-3">
               <Input
                 type="number"
-                placeholder="От"
+                placeholder={t('common.from')}
                 value={filters.minPrice || ''}
                 onChange={(e) =>
                   setFilters({
@@ -112,7 +114,7 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
               />
               <Input
                 type="number"
-                placeholder="До"
+                placeholder={t('common.to')}
                 value={filters.maxPrice || ''}
                 onChange={(e) =>
                   setFilters({
@@ -127,12 +129,12 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
           {/* Area Range */}
           <div>
             <label className="block text-sm font-medium text-text mb-2">
-              Площадь (м²)
+              {t('filters.area')}
             </label>
             <div className="grid grid-cols-2 gap-3">
               <Input
                 type="number"
-                placeholder="От"
+                placeholder={t('common.from')}
                 value={filters.minArea || ''}
                 onChange={(e) =>
                   setFilters({
@@ -143,7 +145,7 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
               />
               <Input
                 type="number"
-                placeholder="До"
+                placeholder={t('common.to')}
                 value={filters.maxArea || ''}
                 onChange={(e) =>
                   setFilters({
@@ -158,7 +160,7 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
           {/* Rooms */}
           <div>
             <label className="block text-sm font-medium text-text mb-2">
-              Количество комнат
+              {t('filters.rooms')}
             </label>
             <div className="grid grid-cols-5 gap-2">
               {[1, 2, 3, 4, 5].map((num) => (
@@ -176,7 +178,7 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
                       : 'bg-surface text-text hover:bg-border'
                   }`}
                 >
-                  {num === 5 ? '5+' : num}
+                  {num === 5 ? t('filters.5plusRooms') : num}
                 </button>
               ))}
             </div>
@@ -185,10 +187,10 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4 border-t border-border">
             <Button onClick={handleResetFilters} variant="outline" className="flex-1">
-              Сбросить
+              {t('filters.resetFilters')}
             </Button>
             <Button onClick={handleApplyFilters} className="flex-1">
-              Применить
+              {t('filters.applyFilters')}
             </Button>
           </div>
         </div>

@@ -1,10 +1,11 @@
 import { Metadata } from 'next';
 import { RegisterForm } from '@/components/forms/RegisterForm';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { FormTitle } from '@/components/forms/FormTitle';
 
 export const metadata: Metadata = {
-  title: 'Регистрация - DomGo.rs',
-  description: 'Создайте аккаунт на DomGo.rs',
+  title: 'Registracija - DomGo.rs',
+  description: 'Kreirajte nalog na DomGo.rs',
 };
 
 export default function RegistracijaPage() {
@@ -13,7 +14,7 @@ export default function RegistracijaPage() {
       <div className="max-w-md mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Регистрация</CardTitle>
+            <FormTitle translationKey="auth.register" />
           </CardHeader>
           <CardContent>
             <RegisterForm />

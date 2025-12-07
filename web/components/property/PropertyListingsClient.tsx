@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Filter, MapPin, List, Map as MapIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -8,11 +8,19 @@ import { PropertyGrid } from './PropertyGrid';
 import { PropertyFilters, FilterState } from './PropertyFilters';
 import { PropertyMap } from './PropertyMap';
 import { Button } from '@/components/ui/Button';
+import type { Database } from '@shared/lib/database.types';
+
+type PropertyRow = Database['public']['Tables']['properties']['Row'];
+type PropertyWithRelations = PropertyRow & {
+  city?: { name: string } | null;
+  district?: { name: string } | null;
+};
+type City = Database['public']['Tables']['cities']['Row'];
 
 interface PropertyListingsClientProps {
   type: 'sale' | 'rent';
   isNewBuilding?: boolean;
-  initialProperties: any[];
+  initialProperties: PropertyWithRelations[];
 }
 
 export function PropertyListingsClient({
@@ -21,15 +29,16 @@ export function PropertyListingsClient({
   initialProperties
 }: PropertyListingsClientProps) {
   const { t } = useTranslation();
-  const [properties, setProperties] = useState(initialProperties);
+  const [properties, setProperties] = useState<PropertyWithRelations[]>(initialProperties);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [filters, setFilters] = useState<FilterState>({});
 
   // Быстрые фильтры
-  const [selectedCity, setSelectedCity] = useState<string>('');
-  const [cities, setCities] = useState<any[]>([]);
+  const [selectedCity, setSelectedCity] = useState<number | undefined>();
+  const [cities, setCities] = useState<City[]>([]);
 
   useEffect(() => {
     fetchCities();
@@ -44,8 +53,9 @@ export function PropertyListingsClient({
     if (data) setCities(data);
   };
 
-  const fetchProperties = async (filterState: FilterState = {}) => {
+  const fetchProperties = useCallback(async (filterState: FilterState = {}) => {
     setLoading(true);
+    setError(null);
     const supabase = createClient();
 
     let query = supabase
@@ -63,7 +73,7 @@ export function PropertyListingsClient({
     }
 
     // Применяем фильтры
-    if (selectedCity) {
+    if (selectedCity !== undefined) {
       query = query.eq('city_id', selectedCity);
     }
 
@@ -91,13 +101,18 @@ export function PropertyListingsClient({
       query = query.eq('rooms', filterState.rooms);
     }
 
-    const { data } = await query
+    const { data, error: fetchError } = await query
       .order('created_at', { ascending: false })
       .limit(50);
 
-    setProperties(data || []);
+    if (fetchError) {
+      setError(fetchError.message);
+      setProperties([]);
+    } else {
+      setProperties((data as PropertyWithRelations[]) || []);
+    }
     setLoading(false);
-  };
+  }, [isNewBuilding, selectedCity, type]);
 
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
@@ -105,14 +120,14 @@ export function PropertyListingsClient({
   };
 
   const handleCityChange = (cityId: string) => {
-    setSelectedCity(cityId);
+    setSelectedCity(cityId ? Number(cityId) : undefined);
   };
 
   useEffect(() => {
-    if (selectedCity) {
+    if (selectedCity !== undefined) {
       fetchProperties(filters);
     }
-  }, [selectedCity]);
+  }, [selectedCity, filters, fetchProperties]);
 
   const getTitle = () => {
     if (isNewBuilding) return t('common.newBuildings');
@@ -130,13 +145,13 @@ export function PropertyListingsClient({
           <div className="flex flex-wrap gap-3 items-center">
             {/* Выбор города */}
             <select
-              value={selectedCity}
+              value={selectedCity !== undefined ? String(selectedCity) : ''}
               onChange={(e) => handleCityChange(e.target.value)}
               className="px-4 py-2 bg-surface border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">{t('common.allCities')}</option>
               {cities.map((city) => (
-                <option key={city.id} value={city.id}>
+                <option key={city.id} value={city.id.toString()}>
                   {city.name}
                 </option>
               ))}
@@ -198,7 +213,7 @@ export function PropertyListingsClient({
                   <div className="inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
-                <PropertyGrid properties={properties} loading={loading} />
+                <PropertyGrid properties={properties} loading={loading} error={error} />
               )}
             </>
           ) : (

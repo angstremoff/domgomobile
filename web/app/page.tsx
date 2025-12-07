@@ -25,7 +25,7 @@ export default function HomePage() {
           DomGo.rs
         </h1>
         <p className="text-xl text-textSecondary mb-8 max-w-2xl mx-auto">
-          Поиск квартир, домов и коммерческой недвижимости в Сербии. Продажа, аренда, новостройки.
+          {t('web.heroSubtitle')}
         </p>
       </section>
 

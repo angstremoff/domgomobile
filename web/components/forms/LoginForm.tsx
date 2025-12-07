@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/providers/AuthProvider';
+import { useTranslation } from 'react-i18next';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -14,6 +15,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +25,7 @@ export function LoginForm() {
     const { error } = await signIn(email, password);
 
     if (error) {
-      setError(error.message || 'Ошибка входа. Проверьте email и пароль.');
+      setError(error.message || t('auth.loginError'));
       setLoading(false);
     } else {
       router.push('/profil');
@@ -35,8 +37,8 @@ export function LoginForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input
         type="email"
-        label="Email"
-        placeholder="your@email.com"
+        label={t('auth.email')}
+        placeholder={t('auth.enterEmail')}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
@@ -45,8 +47,8 @@ export function LoginForm() {
 
       <Input
         type="password"
-        label="Пароль"
-        placeholder="••••••••"
+        label={t('auth.password')}
+        placeholder={t('auth.enterPassword')}
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         required
@@ -60,13 +62,13 @@ export function LoginForm() {
       )}
 
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Вход...' : 'Войти'}
+        {loading ? t('common.loading') : t('auth.login')}
       </Button>
 
       <p className="text-center text-sm text-textSecondary">
-        Нет аккаунта?{' '}
+        {t('auth.noAccount')}{' '}
         <Link href="/registracija" className="text-primary hover:underline">
-          Зарегистрироваться
+          {t('auth.register')}
         </Link>
       </p>
     </form>

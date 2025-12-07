@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface PropertyGalleryProps {
   images: string[];
@@ -12,11 +13,12 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showThumbnails, setShowThumbnails] = useState(false);
+  const { t } = useTranslation();
 
   if (!images || images.length === 0) {
     return (
       <div className="w-full h-96 bg-surface flex items-center justify-center rounded-lg">
-        <p className="text-textSecondary">Нет изображений</p>
+        <p className="text-textSecondary">{t('property.noImages')}</p>
       </div>
     );
   }
@@ -43,7 +45,7 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
              onClick={() => openFullscreen(currentIndex)}>
           <Image
             src={images[currentIndex]}
-            alt={`Фото ${currentIndex + 1}`}
+            alt={t('property.photoAlt', { index: currentIndex + 1 })}
             fill
             className="object-cover"
           />
@@ -85,7 +87,7 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
               onClick={() => setShowThumbnails(!showThumbnails)}
               className="mb-2 text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-2"
             >
-              {showThumbnails ? '▼ Скрыть все фото' : '▶ Показать все фото'} ({images.length})
+              {showThumbnails ? t('property.hideAllPhotos') : t('property.showAllPhotos')} ({images.length})
             </button>
             {showThumbnails && (
               <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
@@ -101,7 +103,7 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
                   >
                     <Image
                       src={image}
-                      alt={`Миниатюра ${index + 1}`}
+                      alt={t('property.thumbnailAlt', { index: index + 1 })}
                       fill
                       className="object-cover"
                     />
@@ -129,7 +131,7 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
             <div className="relative w-full h-full max-w-6xl">
               <Image
                 src={images[currentIndex]}
-                alt={`Фото ${currentIndex + 1}`}
+                alt={t('property.photoAlt', { index: currentIndex + 1 })}
                 fill
                 className="object-contain"
               />

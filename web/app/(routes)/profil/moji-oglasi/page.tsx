@@ -7,15 +7,22 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/Button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
+import type { Database } from '@shared/lib/database.types';
 
 export default function MojiOglasiPage() {
   const { user } = useAuth();
-  const [properties, setProperties] = useState<any[]>([]);
+  const [properties, setProperties] = useState<PropertyWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+  const { t } = useTranslation();
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      setProperties([]);
+      return;
+    }
 
     const loadProperties = async () => {
       const { data } = await supabase
@@ -28,7 +35,7 @@ export default function MojiOglasiPage() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      setProperties(data || []);
+      setProperties((data as PropertyWithRelations[]) || []);
       setLoading(false);
     };
 
@@ -39,16 +46,18 @@ export default function MojiOglasiPage() {
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-text mb-2">Мои объявления</h1>
+          <h1 className="text-3xl font-bold text-text mb-2">{t('profile.myProperties')}</h1>
           <p className="text-textSecondary">
-            {loading ? 'Загрузка...' : `Всего ${properties.length} объявлений`}
+            {loading
+              ? t('common.loading')
+              : t('profile.myPropertiesCount', { count: properties.length })}
           </p>
         </div>
 
         <Link href="/profil/dodaj-oglas">
           <Button>
             <Plus className="h-5 w-5 mr-2" />
-            Добавить объявление
+            {t('property.add')}
           </Button>
         </Link>
       </div>
@@ -57,3 +66,8 @@ export default function MojiOglasiPage() {
     </div>
   );
 }
+
+type PropertyWithRelations = Database['public']['Tables']['properties']['Row'] & {
+  city?: { name: string } | null;
+  district?: { name: string } | null;
+};

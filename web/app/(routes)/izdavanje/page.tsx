@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { PropertyListingsClient } from '@/components/property/PropertyListingsClient';
 
 export const metadata: Metadata = {
-  title: 'Аренда недвижимости - DomGo.rs',
-  description: 'Квартиры и дома для долгосрочной аренды в Сербии',
+  title: 'Izdavanje nekretnina - DomGo.rs',
+  description: 'Stanovi i kuće za dugoročni zakup u Srbiji',
 };
 
 export default async function IzdavanjePage() {

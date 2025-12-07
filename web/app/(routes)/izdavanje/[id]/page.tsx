@@ -4,11 +4,11 @@ import { createClient } from '@/lib/supabase/server';
 import { PropertyDetails } from '@/components/property/PropertyDetails';
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { id } = params;
   const supabase = await createClient();
 
   const { data: property } = await supabase
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!property) {
     return {
-      title: 'Объявление не найдено - DomGo.rs',
+      title: 'Oglas nije pronađen - DomGo.rs',
     };
   }
 
@@ -30,8 +30,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }).format(property.price);
 
   return {
-    title: `${property.title} - ${price}/мес | DomGo.rs`,
-    description: property.description?.slice(0, 160) || `${property.title} в аренду`,
+    title: `${property.title} - ${price} mesečno | DomGo.rs`,
+    description: property.description?.slice(0, 160) || `${property.title} za izdavanje`,
     openGraph: {
       title: property.title,
       description: property.description || '',
@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function PropertyPage({ params }: Props) {
-  const { id } = await params;
+  const { id } = params;
   const supabase = await createClient();
 
   const { data: property, error } = await supabase

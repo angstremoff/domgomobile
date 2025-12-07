@@ -3,6 +3,7 @@
 import { PropertyCard } from './PropertyCard';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Database } from '@shared/lib/database.types';
+import { useTranslation } from 'react-i18next';
 
 type Property = Database['public']['Tables']['properties']['Row'] & {
   city?: { name: string } | null;
@@ -14,6 +15,7 @@ interface PropertyGridProps {
   loading?: boolean;
   onFavoriteToggle?: (id: string) => void;
   favorites?: string[];
+  error?: string | null;
 }
 
 export function PropertyGrid({
@@ -21,7 +23,10 @@ export function PropertyGrid({
   loading,
   onFavoriteToggle,
   favorites = [],
+  error,
 }: PropertyGridProps) {
+  const { t } = useTranslation();
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -36,10 +41,22 @@ export function PropertyGrid({
     );
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-textSecondary text-lg">
+          {t('common.errorLoadingData')}
+        </p>
+      </div>
+    );
+  }
+
   if (properties.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-textSecondary text-lg">Объявления не найдены</p>
+        <p className="text-textSecondary text-lg">
+          {t('property.noPropertiesFound')}
+        </p>
       </div>
     );
   }

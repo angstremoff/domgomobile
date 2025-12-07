@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTheme } from 'next-themes';
 import { useTranslation } from 'react-i18next';
 import { Moon, Sun, Globe, User, Menu } from 'lucide-react';
@@ -21,7 +22,6 @@ export function Header() {
   const toggleTheme = () => {
     const currentTheme = theme || 'light';
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    console.log('Toggle theme:', { current: currentTheme, new: newTheme });
     setTheme(newTheme);
   };
 
@@ -37,7 +37,7 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Логотип */}
           <Link href="/" className="flex items-center space-x-2">
-            <img src="/logo.png" alt="DomGo" className="h-10 w-10" />
+            <Image src="/logo.png" alt="DomGo" width={40} height={40} className="h-10 w-10" />
             <span className="text-2xl font-bold text-primary">DomGo.rs</span>
           </Link>
 

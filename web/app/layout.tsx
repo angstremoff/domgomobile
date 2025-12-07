@@ -11,16 +11,16 @@ import 'leaflet/dist/leaflet.css';
 const inter = Inter({ subsets: ['latin', 'cyrillic'] });
 
 export const metadata: Metadata = {
-  title: 'DomGo.rs - Недвижимость в Сербии',
-  description: 'Поиск и продажа недвижимости в Сербии. Квартиры, дома, коммерческая недвижимость.',
-  keywords: 'недвижимость, Сербия, квартиры, дома, аренда, продажа',
+  title: 'DomGo.rs - Nekretnine u Srbiji',
+  description: 'Pretraga i prodaja nekretnina u Srbiji: stanovi, kuće, poslovni prostori.',
+  keywords: 'nekretnine, Srbija, stanovi, kuće, zakup, prodaja',
   icons: {
     icon: '/favicon.ico',
     apple: '/logo.png',
   },
   openGraph: {
-    title: 'DomGo.rs - Недвижимость в Сербии',
-    description: 'Поиск и продажа недвижимости в Сербии',
+    title: 'DomGo.rs - Nekretnine u Srbiji',
+    description: 'Pretraga i prodaja nekretnina u Srbiji',
     url: 'https://domgo.rs',
     siteName: 'DomGo.rs',
     locale: 'sr_RS',

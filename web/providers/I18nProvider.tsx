@@ -27,7 +27,21 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const savedLanguage = localStorage.getItem('language');
     if (savedLanguage && (savedLanguage === 'ru' || savedLanguage === 'sr')) {
       i18n.changeLanguage(savedLanguage);
+      document.documentElement.lang = savedLanguage;
+    } else {
+      document.documentElement.lang = i18n.language;
     }
+  }, []);
+
+  useEffect(() => {
+    const handleLanguageChange = (lng: string) => {
+      document.documentElement.lang = lng;
+    };
+
+    i18n.on('languageChanged', handleLanguageChange);
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
   }, []);
 
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>;

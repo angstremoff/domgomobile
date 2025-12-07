@@ -1,10 +1,11 @@
 import { Metadata } from 'next';
 import { LoginForm } from '@/components/forms/LoginForm';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { FormTitle } from '@/components/forms/FormTitle';
 
 export const metadata: Metadata = {
-  title: 'Вход - DomGo.rs',
-  description: 'Войдите в свой аккаунт DomGo.rs',
+  title: 'Prijava - DomGo.rs',
+  description: 'Prijavite se u svoj DomGo.rs nalog',
 };
 
 export default function PrijavaPage() {
@@ -13,7 +14,7 @@ export default function PrijavaPage() {
       <div className="max-w-md mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle className="text-center">Вход</CardTitle>
+            <FormTitle translationKey="auth.login" />
           </CardHeader>
           <CardContent>
             <LoginForm />

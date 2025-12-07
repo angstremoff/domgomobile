@@ -2,23 +2,30 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { Database } from '@shared/lib/database.types';
 
 interface PropertyMapProps {
-  properties: any[];
+  properties: Property[];
   center?: [number, number];
   zoom?: number;
 }
 
+type Property = Database['public']['Tables']['properties']['Row'] & {
+  city?: { name: string } | null;
+  district?: { name: string } | null;
+};
+
 export function PropertyMap({ properties, center, zoom = 7 }: PropertyMapProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [mounted, setMounted] = useState(false);
+  const locale = i18n.language === 'ru' ? 'ru-RU' : 'sr-RS';
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   // Функция извлечения координат
-  const extractCoordinates = (property: any): { lat: number; lng: number } | null => {
+  const extractCoordinates = (property: Property): { lat: number; lng: number } | null => {
     // Проверяем latitude и longitude
     if (property.latitude && property.longitude) {
       const lat = typeof property.latitude === 'string' ? parseFloat(property.latitude) : property.latitude;
@@ -82,11 +89,14 @@ export function PropertyMap({ properties, center, zoom = 7 }: PropertyMapProps) 
       const coords = extractCoordinates(property);
       if (!coords) return null;
 
-      const isSale = property.type === 'sale';
       const priceValue = typeof property.price === 'number' ? property.price : Number(property.price);
       const formattedPrice = !Number.isNaN(priceValue)
-        ? `${priceValue.toLocaleString('ru-RU')} €${isSale ? '' : '/мес'}`
-        : 'Цена по запросу';
+        ? `${new Intl.NumberFormat(locale, {
+            style: 'currency',
+            currency: 'EUR',
+            maximumFractionDigits: 0,
+          }).format(priceValue)}${property.type === 'sale' ? '' : `/${t('property.month')}`}`
+        : t('property.priceOnRequest');
 
       const image = Array.isArray(property.images) && property.images.length > 0
         ? property.images[0]
@@ -112,11 +122,12 @@ export function PropertyMap({ properties, center, zoom = 7 }: PropertyMapProps) 
       type: 'FeatureCollection',
       features,
     };
-  }, [propertiesWithCoords]);
+  }, [propertiesWithCoords, locale, t]);
 
   const mapHtml = useMemo(() => {
     const calculatedZoom = propertiesWithCoords.length > 1 ? 10 : 12;
     const finalZoom = zoom || calculatedZoom;
+    const viewDetails = `${t('property.details')} →`;
 
     return `
       <!DOCTYPE html>
@@ -206,7 +217,7 @@ export function PropertyMap({ properties, center, zoom = 7 }: PropertyMapProps) 
                   '<img class="popup-image" src="' + feature.properties.imageUrl + '" alt="' + feature.properties.title + '" />' +
                   '<div class="popup-title">' + feature.properties.title + '</div>' +
                   '<div class="popup-price">' + feature.properties.price + '</div>' +
-                  '<a class="popup-link" href="' + propertyUrl + '" target="_parent">Подробнее →</a>' +
+                  '<a class="popup-link" href="' + propertyUrl + '" target="_parent">${viewDetails}</a>' +
                 '</div>'
               );
 
@@ -225,13 +236,13 @@ export function PropertyMap({ properties, center, zoom = 7 }: PropertyMapProps) 
         </body>
       </html>
     `;
-  }, [mapCenter.lat, mapCenter.lng, mapData, zoom, propertiesWithCoords.length]);
+  }, [mapCenter.lat, mapCenter.lng, mapData, zoom, propertiesWithCoords.length, t]);
 
   if (!mounted) {
     return (
       <div className="w-full h-[500px] bg-surface rounded-lg flex items-center justify-center">
         <div className="text-center">
-          <p className="text-textSecondary">Загрузка карты...</p>
+          <p className="text-textSecondary">{t('property.mapLoading')}</p>
         </div>
       </div>
     );
@@ -241,7 +252,7 @@ export function PropertyMap({ properties, center, zoom = 7 }: PropertyMapProps) 
     return (
       <div className="w-full h-[500px] bg-surface rounded-lg flex items-center justify-center border border-border">
         <div className="text-center">
-          <p className="text-textSecondary">Нет объектов с координатами</p>
+          <p className="text-textSecondary">{t('property.noPropertiesOnMap')}</p>
         </div>
       </div>
     );

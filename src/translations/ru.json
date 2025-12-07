@@ -76,7 +76,10 @@
     "profileUpdated": "Профиль обновлен",
     "errorLoadingData": "Ошибка при загрузке данных",
     "noAvailableListings": "Нет доступных объявлений",
-    "notFound": "Не найдено"
+    "notFound": "Не найдено",
+    "pageNotFoundTitle": "Страница не найдена",
+    "pageNotFoundDescription": "Запрашиваемая страница не существует или была удалена",
+    "goHome": "Вернуться на главную"
   },
   "cities": {
     "Лозница": "Лозница",
@@ -95,6 +98,12 @@
     "logout": "Выйти",
     "editProfile": "Редактировать профиль",
     "changePassword": "Изменить пароль",
+    "dashboardTitle": "Личный кабинет",
+    "favoritesDescription": "Сохраненные объявления",
+    "myPropertiesDescription": "Управление объявлениями",
+    "settingsDescription": "Настройки профиля",
+    "logoutDescription": "Выход из аккаунта",
+    "myPropertiesCount": "Всего {{count}} объявлений",
     "noProperties": "У вас пока нет объявлений",
     "errorLoadingProperties": "Ошибка при загрузке объявлений",
     "propertyRentedMarked": "Объявление отмечено как сданное",
@@ -263,6 +272,8 @@
     "mapView": "Карта объектов",
     "selectCityForMap": "Выберите город для просмотра объектов на карте",
     "noPropertiesOnMap": "Нет объектов с координатами в выбранном городе",
+    "mapLoading": "Загрузка карты...",
+    "priceOnRequest": "Цена по запросу",
     "status": {
       "sold": "Продано",
       "rented": "Сдано",
@@ -285,7 +296,12 @@
     "propertyType": "Тип недвижимости",
     "uploadingPhotos": "Загрузка фотографий...",
     "errorUpdatingProperty": "Ошибка при обновлении объявления",
-    "errorLoadingCities": "Ошибка при загрузке городов"
+    "errorLoadingCities": "Ошибка при загрузке городов",
+    "noImages": "Нет изображений",
+    "showAllPhotos": "Показать все фото",
+    "hideAllPhotos": "Скрыть все фото",
+    "photoAlt": "Фото {{index}}",
+    "thumbnailAlt": "Миниатюра {{index}}"
   },
   "auth": {
     "login": "Войти",
@@ -443,6 +459,7 @@
     "furniture": "Мебель"
   },
   "favoriteScreen": {
+    "count": "Найдено {{count}} объявлений",
     "emptyText": "У вас пока нет избранных объявлений. Добавьте объявления в избранное, чтобы они отображались здесь."
   },
   "addProperty": {
@@ -500,6 +517,15 @@
     "facebook": "Facebook",
     "email": "Email",
     "emptyList": "Агентства пока не добавлены",
-    "unnamed": "Агентство"
+    "unnamed": "Агентство",
+    "listTitle": "Агентства недвижимости",
+    "listDescription": "Проверенные агентства недвижимости в Сербии",
+    "backToList": "Все агентства",
+    "contact": "Контакты",
+    "listingsTitle": "Объявления агентства",
+    "listingsCount": "Всего {{count}} объявлений"
+  },
+  "web": {
+    "heroSubtitle": "Поиск квартир, домов и коммерческой недвижимости в Сербии. Продажа, аренда, новостройки."
   }
 }
