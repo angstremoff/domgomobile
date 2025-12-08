@@ -2,9 +2,16 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PropertyDetails } from '@/components/property/PropertyDetails';
+import type { Database } from '@shared/lib/database.types';
 
 type PageProps = {
   params: Promise<{ id: string }>;
+};
+
+type Property = Database['public']['Tables']['properties']['Row'] & {
+  city?: { name: string } | null;
+  district?: { name: string } | null;
+  user?: { name: string; phone: string } | null;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -27,7 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     style: 'currency',
     currency: 'EUR',
     maximumFractionDigits: 0,
-  }).format(property.price);
+  }).format((property as Property).price);
 
   return {
     title: `${property.title} - ${price} mesečno | DomGo.rs`,
@@ -58,11 +65,12 @@ export default async function PropertyPage({ params }: PageProps) {
 
   if (error || !property) {
     notFound();
+    return null;
   }
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <PropertyDetails property={property} />
+      <PropertyDetails property={property as Property} />
     </div>
   );
 }
