@@ -26,6 +26,12 @@ export function PropertyCard({ property, onFavoriteToggle, isFavorite }: Propert
     currency: 'EUR',
     maximumFractionDigits: 0,
   }).format(property.price);
+  const translatedCity = property.city?.name
+    ? t(`cities.${property.city.name}`, { defaultValue: property.city.name })
+    : '';
+  const translatedDistrict = property.district?.name
+    ? t(`districts.${property.district.name}`, { defaultValue: property.district.name })
+    : '';
 
   const propertyType = property.type === 'sale' ? 'prodaja' : 'izdavanje';
   const detailsUrl = `/${propertyType}/${property.id}`;
@@ -112,8 +118,8 @@ export function PropertyCard({ property, onFavoriteToggle, isFavorite }: Propert
         <div className="flex items-center gap-1.5 text-sm text-textSecondary mb-4">
           <MapPin className="h-4 w-4 flex-shrink-0" />
           <span className="truncate">
-            {property.city?.name}
-            {property.district?.name && `, ${property.district.name}`}
+            {translatedCity}
+            {translatedDistrict && `, ${translatedDistrict}`}
           </span>
         </div>
 

@@ -290,6 +290,12 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
         setSaving(false);
         return;
       }
+
+      if (!districtId) {
+        showErrorAlert(t('property.validation.districtRequired', 'Пожалуйста, выберите район'));
+        setSaving(false);
+        return;
+      }
       
       // Собираем данные для обновления
       const updatedProperty: Partial<PropertyInsert> = {
@@ -300,7 +306,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
         area: area ? parseFloat(area.trim()) : undefined,
         rooms: rooms ? parseInt(rooms.trim(), 10) : undefined,
         city_id: parseInt(cityId.trim(), 10),
-        district_id: districtId ? districtId : null,
+        district_id: districtId,
         type: propertyType,
         property_type: propertyCategory,
         features: selectedFeatures,
@@ -409,7 +415,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
             </Picker>
           </View>
 
-          <Text style={[styles.label, darkMode && styles.darkText]}>{t('property.districtOptional', 'Район (необязательно)')}</Text>
+          <Text style={[styles.label, darkMode && styles.darkText]}>{`${t('property.district', 'Район')} *`}</Text>
           <View style={[
             styles.pickerContainer,
             darkMode && styles.darkPickerContainer,
@@ -431,7 +437,7 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
               style={[styles.picker, darkMode && styles.darkPicker]}
               dropdownIconColor={darkMode ? "#FFFFFF" : "#1E3A8A"}
             >
-              <Picker.Item label={t('filters.allDistricts', 'Svi delovi grada')} value="" />
+              <Picker.Item label={t('common.selectDistrict')} value="" />
               {districtOptions.map((district) => (
                 <Picker.Item key={district.id} label={district.name} value={district.id.toString()} />
               ))}
@@ -583,10 +589,10 @@ const EditPropertyScreen = ({ route, navigation }: any) => {
             <TouchableOpacity 
               style={[
                 styles.saveButton, 
-                (saving || uploadingImages || images.length === 0) && styles.disabledButton
+                (saving || uploadingImages || images.length === 0 || !districtId || cityId === '0') && styles.disabledButton
               ]} 
               onPress={handleSave}
-              disabled={saving || uploadingImages || images.length === 0}
+              disabled={saving || uploadingImages || images.length === 0 || !districtId || cityId === '0'}
             >
               {saving ? (
                 <ActivityIndicator size="small" color="#fff" />

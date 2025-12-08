@@ -24,6 +24,12 @@ export function PropertyDetails({ property }: PropertyDetailsProps) {
     currency: 'EUR',
     maximumFractionDigits: 0,
   }).format(property.price);
+  const translatedCity = property.city?.name
+    ? t(`cities.${property.city.name}`, { defaultValue: property.city.name })
+    : property.city?.name || property.location;
+  const translatedDistrict = property.district?.name
+    ? t(`districts.${property.district.name}`, { defaultValue: property.district.name })
+    : '';
 
   const getPropertyTypeLabel = (type: string) => {
     const typeMap: Record<string, string> = {
@@ -79,8 +85,8 @@ export function PropertyDetails({ property }: PropertyDetailsProps) {
             <div className="flex items-center text-textSecondary mb-4">
               <MapPin className="h-5 w-5 mr-2" />
               <span>
-                {property.district?.name && `${property.district.name}, `}
-                {property.city?.name || property.location}
+                {translatedDistrict && `${translatedDistrict}, `}
+                {translatedCity}
               </span>
             </div>
             <p className="text-4xl font-bold text-primary">{price}</p>

@@ -488,7 +488,9 @@ const PropertyDetailsScreen = ({ route, navigation }: { route: RouteParams; navi
   // Получаем переведенное название города
   const translatedCityName = cityName ? t(`cities.${cityName}`, cityName) : '';
   const streetName = property.location || '';
-  const districtName = property.district?.name || '';
+  const districtName = property.district?.name
+    ? t(`districts.${property.district.name}`, { defaultValue: property.district.name })
+    : '';
   const addressParts = [districtName, translatedCityName, streetName].filter(Boolean);
   const fullAddress = addressParts.join(', ');
 

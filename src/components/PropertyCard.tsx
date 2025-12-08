@@ -30,9 +30,11 @@ const PropertyCard = memo(({ property, onPress, darkMode = false }: PropertyCard
   const cityName = property.city?.name || '';
   // Получаем переведенное название города
   const translatedCityName = cityName ? t(`cities.${cityName}`, cityName) : '';
-  const streetName = property.location || '';
-  const districtName = property.district?.name || '';
-  const addressParts = [districtName, translatedCityName, streetName].filter(Boolean);
+  const districtName = property.district?.name
+    ? t(`districts.${property.district.name}`, { defaultValue: property.district.name })
+    : '';
+  // Формат: Город, Район
+  const addressParts = [translatedCityName, districtName].filter(Boolean);
   const fullAddress = addressParts.join(', ');
 
   const formattedPrice = useMemo(() => {

@@ -1,14 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Filter, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import type { Database } from '@shared/lib/database.types';
 
 interface PropertyFiltersProps {
   onFilterChange: (filters: FilterState) => void;
+  cityId?: number;
+  districts?: District[];
+  districtsLoading?: boolean;
+  selectedDistrictId?: string;
 }
 
 export interface FilterState {
@@ -19,9 +24,18 @@ export interface FilterState {
   maxArea?: number;
   rooms?: number;
   cityId?: string;
+  districtId?: string;
 }
 
-export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
+type District = Database['public']['Tables']['districts']['Row'];
+
+export function PropertyFilters({
+  onFilterChange,
+  cityId,
+  districts = [],
+  districtsLoading,
+  selectedDistrictId,
+}: PropertyFiltersProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({});
   const { t } = useTranslation();
@@ -43,6 +57,14 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
     onFilterChange({});
     setIsOpen(false);
   };
+
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      cityId: cityId ? String(cityId) : undefined,
+      districtId: selectedDistrictId || undefined,
+    }));
+  }, [cityId, selectedDistrictId]);
 
   return (
     <div className="relative">
@@ -94,6 +116,36 @@ export function PropertyFilters({ onFilterChange }: PropertyFiltersProps) {
               ))}
             </select>
           </div>
+
+          {/* District selector */}
+          {cityId !== undefined && (
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                {t('filters.selectDistrict')}
+              </label>
+              {districtsLoading ? (
+                <div className="text-sm text-textSecondary">{t('common.loading')}</div>
+              ) : districts.length === 0 ? (
+                <div className="text-sm text-textSecondary">{t('filters.noDistricts')}</div>
+              ) : (
+                <select
+                  className="w-full px-4 py-2 bg-surface border border-border rounded-md text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                  value={filters.districtId || ''}
+                  onChange={(e) =>
+                    setFilters({ ...filters, districtId: e.target.value || undefined })
+                  }
+                  disabled={districtsLoading}
+                >
+                  <option value="">{t('filters.allDistricts')}</option>
+                  {districts.map((district) => (
+                    <option key={district.id} value={district.id}>
+                      {district.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           {/* Price Range */}
           <div>

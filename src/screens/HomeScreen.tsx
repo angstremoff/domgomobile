@@ -682,6 +682,7 @@ const HomeScreen = ({ navigation }: any) => {
 
     navigation.navigate('Map', {
       selectedCity: cityForMap,
+      selectedDistrict,
       properties: filteredProperties
     });
   };

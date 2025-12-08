@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Filter, MapPin, List, Map as MapIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -16,6 +16,7 @@ type PropertyWithRelations = PropertyRow & {
   district?: { name: string } | null;
 };
 type City = Database['public']['Tables']['cities']['Row'];
+type District = Database['public']['Tables']['districts']['Row'];
 
 interface PropertyListingsClientProps {
   type: 'sale' | 'rent';
@@ -39,6 +40,27 @@ export function PropertyListingsClient({
   // Быстрые фильтры
   const [selectedCity, setSelectedCity] = useState<number | undefined>();
   const [cities, setCities] = useState<City[]>([]);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | undefined>();
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [districtsLoading, setDistrictsLoading] = useState(false);
+
+  const selectedDistrictData = useMemo(
+    () => districts.find((district) => district.id === selectedDistrict),
+    [districts, selectedDistrict]
+  );
+
+  const mapCenter = useMemo(() => {
+    if (selectedDistrictData?.latitude && selectedDistrictData?.longitude) {
+      const lat = parseFloat(String(selectedDistrictData.latitude));
+      const lng = parseFloat(String(selectedDistrictData.longitude));
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return [lat, lng] as [number, number];
+      }
+    }
+    return undefined;
+  }, [selectedDistrictData]);
+
+  const mapZoom = selectedDistrictData ? 14 : undefined;
 
   useEffect(() => {
     fetchCities();
@@ -53,10 +75,43 @@ export function PropertyListingsClient({
     if (data) setCities(data);
   };
 
+  const fetchDistricts = useCallback(async (cityId: number) => {
+    setDistrictsLoading(true);
+    const supabase = createClient();
+    const { data, error: fetchError } = await supabase
+      .from('districts')
+      .select('id, name, city_id, is_active, sort_order, latitude, longitude')
+      .eq('city_id', cityId)
+      .eq('is_active', true)
+      .order('sort_order')
+      .order('name');
+
+    if (fetchError) {
+      setDistricts([]);
+    } else {
+      setDistricts(data || []);
+    }
+    setDistrictsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (selectedCity !== undefined) {
+      fetchDistricts(selectedCity);
+      setSelectedDistrict(undefined);
+      setFilters((prev) => ({ ...prev, cityId: String(selectedCity), districtId: undefined }));
+    } else {
+      setDistricts([]);
+      setSelectedDistrict(undefined);
+      setFilters((prev) => ({ ...prev, cityId: undefined, districtId: undefined }));
+    }
+  }, [fetchDistricts, selectedCity]);
+
   const fetchProperties = useCallback(async (filterState: FilterState = {}) => {
     setLoading(true);
     setError(null);
     const supabase = createClient();
+
+    const districtFilter = filterState.districtId ?? selectedDistrict;
 
     let query = supabase
       .from('properties')
@@ -75,6 +130,10 @@ export function PropertyListingsClient({
     // Применяем фильтры
     if (selectedCity !== undefined) {
       query = query.eq('city_id', selectedCity);
+    }
+
+    if (districtFilter) {
+      query = query.eq('district_id', districtFilter);
     }
 
     if (filterState.propertyType) {
@@ -112,22 +171,29 @@ export function PropertyListingsClient({
       setProperties((data as PropertyWithRelations[]) || []);
     }
     setLoading(false);
-  }, [isNewBuilding, selectedCity, type]);
+  }, [isNewBuilding, selectedCity, selectedDistrict, type]);
 
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
+    setSelectedDistrict(newFilters.districtId || undefined);
     fetchProperties(newFilters);
   };
 
   const handleCityChange = (cityId: string) => {
     setSelectedCity(cityId ? Number(cityId) : undefined);
+    setSelectedDistrict(undefined);
+  };
+
+  const handleDistrictChange = (districtId: string) => {
+    const value = districtId || undefined;
+    setSelectedDistrict(value);
+    setFilters((prev) => ({ ...prev, districtId: value }));
+    fetchProperties({ ...filters, districtId: value });
   };
 
   useEffect(() => {
-    if (selectedCity !== undefined) {
-      fetchProperties(filters);
-    }
-  }, [selectedCity, filters, fetchProperties]);
+    fetchProperties(filters);
+  }, [selectedCity, selectedDistrict, fetchProperties]);
 
   const getTitle = () => {
     if (isNewBuilding) return t('common.newBuildings');
@@ -156,6 +222,22 @@ export function PropertyListingsClient({
                 </option>
               ))}
             </select>
+
+            {selectedCity !== undefined && (
+              <select
+                value={selectedDistrict || ''}
+                onChange={(e) => handleDistrictChange(e.target.value)}
+                className="px-4 py-2 bg-surface border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={districtsLoading || districts.length === 0}
+              >
+                <option value="">{t('filters.allDistricts')}</option>
+                {districts.map((district) => (
+                  <option key={district.id} value={district.id}>
+                    {district.name}
+                  </option>
+                ))}
+              </select>
+            )}
 
             {/* Кнопка фильтров */}
             <Button
@@ -200,7 +282,13 @@ export function PropertyListingsClient({
         {/* Боковая панель фильтров */}
         {showFilters && (
           <aside className="lg:w-80 flex-shrink-0">
-            <PropertyFilters onFilterChange={handleFilterChange} />
+            <PropertyFilters
+              onFilterChange={handleFilterChange}
+              cityId={selectedCity}
+              districts={districts}
+              districtsLoading={districtsLoading}
+              selectedDistrictId={selectedDistrict}
+            />
           </aside>
         )}
 
@@ -217,7 +305,7 @@ export function PropertyListingsClient({
               )}
             </>
           ) : (
-            <PropertyMap properties={properties} />
+            <PropertyMap properties={properties} center={mapCenter} zoom={mapZoom} />
           )}
         </div>
       </div>

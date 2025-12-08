@@ -73,6 +73,8 @@ export interface District {
   city_id: number;
   is_active?: boolean;
   sort_order?: number;
+  latitude?: string | null;
+  longitude?: string | null;
 }
 
 interface PropertyContextType {

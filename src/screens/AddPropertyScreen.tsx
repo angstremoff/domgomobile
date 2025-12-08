@@ -243,6 +243,16 @@ const AddPropertyScreen = ({ navigation }: any) => {
       return;
     }
 
+    if (!cityId || cityId === '0') {
+      showErrorAlert(t('property.validation.cityRequired', 'Пожалуйста, выберите город'));
+      return;
+    }
+
+    if (!districtId) {
+      showErrorAlert(t('property.validation.districtRequired', 'Пожалуйста, выберите район'));
+      return;
+    }
+
     // Проверка на имя пользователя
     if (!userData.name.trim()) {
       showErrorAlert(t('profile.errors.nameRequired'));
@@ -374,7 +384,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
         rooms: Number(rooms),
         location,
         city_id: cityId !== '0' ? Number(cityId) : undefined,
-        district_id: districtId ? districtId : null,
+        district_id: districtId,
         features: selectedFeatures,
         images: uploadedImageUrls,
         status: 'active', // по умолчанию активно
@@ -783,7 +793,7 @@ const AddPropertyScreen = ({ navigation }: any) => {
             </View>
           </Modal>
 
-          <Text style={[styles.label, { color: theme.text }]}>{t('addProperty.form.districtOptional', 'Район (необязательно)')}</Text>
+          <Text style={[styles.label, { color: theme.text }]}>{`${t('property.district', 'Район')} *`}</Text>
           <TouchableOpacity 
             style={[styles.pickerButton, { 
               backgroundColor: theme.cardBackground,
@@ -831,12 +841,12 @@ const AddPropertyScreen = ({ navigation }: any) => {
                   </Text>
                 ) : (
                   <FlatList
-                    data={[{ id: '', name: t('filters.allDistricts', 'Все районы'), city_id: Number(cityId) } as District, ...districtOptions]}
-                    keyExtractor={(item) => item.id || 'all'}
+                    data={districtOptions}
+                    keyExtractor={(item) => item.id}
                     renderItem={({ item }: { item: District }) => (
                       <TouchableOpacity
                         style={styles.cityItem}
-                        onPress={() => selectDistrict(item.id ? item : null)}
+                        onPress={() => selectDistrict(item)}
                       >
                         <Text style={styles.cityItemText}>{item.name}</Text>
                       </TouchableOpacity>
@@ -1026,10 +1036,10 @@ const AddPropertyScreen = ({ navigation }: any) => {
           <TouchableOpacity 
             style={[
               styles.submitButton, 
-              (loading || uploadingImages || images.length === 0) && styles.disabledButton
+              (loading || uploadingImages || images.length === 0 || !districtId || cityId === '0') && styles.disabledButton
             ]} 
             onPress={handleSubmit}
-            disabled={loading || uploadingImages || images.length === 0}
+            disabled={loading || uploadingImages || images.length === 0 || !districtId || cityId === '0'}
           >
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />

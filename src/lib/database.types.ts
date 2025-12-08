@@ -88,6 +88,8 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          latitude: string | null
+          longitude: string | null
           name: string
           sort_order: number
         }
@@ -96,6 +98,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          latitude?: string | null
+          longitude?: string | null
           name: string
           sort_order?: number
         }
@@ -104,6 +108,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          latitude?: string | null
+          longitude?: string | null
           name?: string
           sort_order?: number
         }

@@ -728,7 +728,7 @@ export const propertyService = {
       Logger.debug('Загружаем районы из Supabase', { cityId });
       const { data, error } = await supabase
         .from('districts')
-        .select('*')
+        .select('id, name, city_id, is_active, sort_order, latitude, longitude')
         .eq('city_id', cityId)
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
@@ -745,7 +745,7 @@ export const propertyService = {
       Logger.error('Ошибка при работе с кэшем районов:', error);
       const { data, error: fetchError } = await supabase
         .from('districts')
-        .select('*')
+        .select('id, name, city_id, is_active, sort_order, latitude, longitude')
         .eq('city_id', cityId)
         .eq('is_active', true)
         .order('sort_order', { ascending: true })

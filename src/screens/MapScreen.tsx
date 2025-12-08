@@ -35,15 +35,22 @@ type MapFeatureCollection = {
 
 const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
   const { t } = useTranslation();
-  const { selectedCity, properties: routeProperties } = route.params || {};
-  const { properties } = useProperties();
+  const { selectedCity: routeSelectedCity, selectedDistrict: routeSelectedDistrict, properties: routeProperties } = route.params || {};
+  const {
+    properties: contextProperties,
+    selectedCity: contextSelectedCity,
+    selectedDistrict: contextSelectedDistrict
+  } = useProperties();
   const [activeFilter, setActiveFilter] = useState<'all' | 'sale' | 'rent'>('all');
   const isWeb = Platform.OS === 'web';
 
+  const selectedCity = routeSelectedCity || contextSelectedCity || null;
+  const selectedDistrict = routeSelectedDistrict || contextSelectedDistrict || null;
+
   const propertiesForMap: Property[] = Array.isArray(routeProperties)
     ? routeProperties
-    : Array.isArray(properties)
-      ? properties
+    : Array.isArray(contextProperties)
+      ? contextProperties
       : [];
 
   const filteredItems = useMemo<Property[]>(() => {
@@ -128,6 +135,14 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
   }, [extractCoordinates, filteredItems, t]);
 
   const mapCenter = useMemo(() => {
+    if (selectedDistrict?.latitude && selectedDistrict?.longitude) {
+      const lat = parseFloat(String(selectedDistrict.latitude));
+      const lng = parseFloat(String(selectedDistrict.longitude));
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { lat, lng };
+      }
+    }
+
     if (selectedCity?.latitude && selectedCity?.longitude) {
       return {
         lat: parseFloat(String(selectedCity.latitude)),
@@ -141,7 +156,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
     }
 
     return { lat: 44.787197, lng: 20.457273 }; // Белград по умолчанию
-  }, [mapPoints, selectedCity]);
+  }, [mapPoints, selectedCity, selectedDistrict]);
 
   const mapHtml = useMemo(() => {
     const postMessageSnippet = isWeb
@@ -161,7 +176,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
       features,
     };
 
-    const zoom = mapPoints.length > 1 ? 10 : 12;
+    const zoom = selectedDistrict ? 14 : (mapPoints.length > 1 ? 10 : 12);
 
     return `
       <!DOCTYPE html>
@@ -265,7 +280,7 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
         </body>
       </html>
     `;
-  }, [isWeb, mapCenter.lat, mapCenter.lng, mapPoints]);
+  }, [isWeb, mapCenter.lat, mapCenter.lng, mapPoints, selectedDistrict?.id]);
 
   useEffect(() => {
     if (!isWeb) {
@@ -290,8 +305,9 @@ const MapScreen: React.FC<MapScreenProps> = ({ navigation, route }) => {
   }, [isWeb, navigation]);
 
   const mapKey = useMemo(() => {
-    return `${activeFilter}-${mapPoints.length}-${mapPoints.map((point) => point.properties.id).join('|')}`;
-  }, [activeFilter, mapPoints]);
+    const districtKey = selectedDistrict?.id || 'no-district';
+    return `${activeFilter}-${districtKey}-${mapPoints.length}-${mapPoints.map((point) => point.properties.id).join('|')}`;
+  }, [activeFilter, mapPoints, selectedDistrict?.id]);
 
   const handleNativeMessage = (event: any) => {
     try {
