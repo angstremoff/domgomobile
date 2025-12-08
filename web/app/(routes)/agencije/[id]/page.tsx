@@ -48,17 +48,18 @@ export default async function AgencyPage({ params }: PageProps) {
     .single();
 
   // Фолбек: если передали user_id вместо agency_id
-  const resolvedAgency = agency
-    ? agency
+  const resolvedAgency: Agency | null = agency
+    ? (agency as Agency)
     : await supabase
         .from('agency_profiles')
         .select('*')
         .eq('user_id', id)
         .single()
-        .then(({ data }) => data);
+        .then(({ data }) => (data as Agency | null));
 
   if (!resolvedAgency) {
     notFound();
+    return null;
   }
 
   const { data: propertiesByAgency } = await supabase
