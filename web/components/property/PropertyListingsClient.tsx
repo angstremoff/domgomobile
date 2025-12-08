@@ -193,7 +193,7 @@ export function PropertyListingsClient({
 
   useEffect(() => {
     fetchProperties(filters);
-  }, [selectedCity, selectedDistrict, fetchProperties]);
+  }, [selectedCity, selectedDistrict, filters, fetchProperties]);
 
   const getTitle = () => {
     if (isNewBuilding) return t('common.newBuildings');

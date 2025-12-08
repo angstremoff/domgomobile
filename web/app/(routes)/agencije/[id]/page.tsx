@@ -10,16 +10,17 @@ type Property = Database['public']['Tables']['properties']['Row'] & {
   district?: { name: string } | null;
 };
 
-interface PageProps {
-  params: { id: string };
-}
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: agency } = await supabase
     .from('agency_profiles')
     .select('name, description')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   if (!agency) {
@@ -35,12 +36,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function AgencyPage({ params }: PageProps) {
+  const { id } = await params;
   const supabase = await createClient();
 
   const { data: agency } = await supabase
     .from('agency_profiles')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   // Фолбек: если передали user_id вместо agency_id
@@ -49,7 +51,7 @@ export default async function AgencyPage({ params }: PageProps) {
     : await supabase
         .from('agency_profiles')
         .select('*')
-        .eq('user_id', params.id)
+        .eq('user_id', id)
         .single()
         .then(({ data }) => data);
 
