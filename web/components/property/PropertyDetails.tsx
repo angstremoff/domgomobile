@@ -43,10 +43,8 @@ export function PropertyDetails({ property }: PropertyDetailsProps) {
     return typeMap[type] || type;
   };
 
-  // В мобильном приложении features просто отображаются как есть из БД
-  // Без перевода, так и сделаем здесь
   const getFeatureLabel = (feature: string) => {
-    return feature;
+    return t(`features.${feature}`, { defaultValue: feature });
   };
 
   const handleCall = () => {

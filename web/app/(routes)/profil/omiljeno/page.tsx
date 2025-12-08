@@ -10,6 +10,7 @@ import type { Database } from '@shared/lib/database.types';
 export default function OmiljenoPage() {
   const { user } = useAuth();
   const [properties, setProperties] = useState<PropertyWithRelations[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
   const { t } = useTranslation();
@@ -18,6 +19,7 @@ export default function OmiljenoPage() {
     if (!user) {
       setLoading(false);
       setProperties([]);
+      setFavorites([]);
       return;
     }
 
@@ -28,6 +30,7 @@ export default function OmiljenoPage() {
         .eq('user_id', user.id);
 
       const favoriteList = (favorites ?? []) as { property_id: string }[];
+      setFavorites(favoriteList.map((f) => f.property_id));
 
       if (favoriteList.length > 0) {
         const propertyIds = favoriteList.map((f) => f.property_id);
@@ -52,6 +55,19 @@ export default function OmiljenoPage() {
     loadFavorites();
   }, [user, supabase]);
 
+  const handleFavoriteToggle = async (id: string) => {
+    if (!user) return;
+    const isFav = favorites.includes(id);
+    setFavorites((prev) => (isFav ? prev.filter((f) => f !== id) : [...prev, id]));
+
+    if (isFav) {
+      await supabase.from('favorites').delete().eq('property_id', id).eq('user_id', user.id);
+      setProperties((prev) => prev.filter((p) => p.id !== id));
+    } else {
+      await supabase.from('favorites').insert({ property_id: id, user_id: user.id });
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-8">
@@ -63,7 +79,12 @@ export default function OmiljenoPage() {
         </p>
       </div>
 
-      <PropertyGrid properties={properties} loading={loading} />
+      <PropertyGrid
+        properties={properties}
+        loading={loading}
+        favorites={favorites}
+        onFavoriteToggle={handleFavoriteToggle}
+      />
     </div>
   );
 }

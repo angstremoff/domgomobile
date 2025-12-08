@@ -74,7 +74,7 @@ export default function ProfilPage() {
           </Link>
 
           {/* Настройки */}
-          <Link href="/podesavanja">
+          <Link href="/profil">
             <Card className="hover:shadow-lg transition-all cursor-pointer">
               <CardContent className="flex items-center p-6">
                 <Settings className="h-12 w-12 text-primary mr-4" />

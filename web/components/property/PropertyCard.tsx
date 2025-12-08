@@ -19,7 +19,8 @@ interface PropertyCardProps {
 }
 
 export function PropertyCard({ property, onFavoriteToggle, isFavorite }: PropertyCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === 'ru' ? 'ru-RU' : 'sr-RS';
   const mainImage = property.images?.[0] || '/placeholder-property.jpg';
   const price = new Intl.NumberFormat('sr-RS', {
     style: 'currency',
@@ -141,10 +142,11 @@ export function PropertyCard({ property, onFavoriteToggle, isFavorite }: Propert
             <div className="flex items-center gap-1.5 ml-auto">
               <Calendar className="h-4 w-4" />
               <span className="text-xs">
-                {new Date(property.created_at).toLocaleDateString('sr-RS', {
+                {new Intl.DateTimeFormat(locale, {
                   day: 'numeric',
                   month: 'short',
-                })}
+                  year: 'numeric',
+                }).format(new Date(property.created_at))}
               </span>
             </div>
           )}

@@ -8,6 +8,7 @@ import { PropertyGrid } from './PropertyGrid';
 import { PropertyFilters, FilterState } from './PropertyFilters';
 import { PropertyMap } from './PropertyMap';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/providers/AuthProvider';
 import type { Database } from '@shared/lib/database.types';
 
 type PropertyRow = Database['public']['Tables']['properties']['Row'];
@@ -30,6 +31,7 @@ export function PropertyListingsClient({
   initialProperties
 }: PropertyListingsClientProps) {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [properties, setProperties] = useState<PropertyWithRelations[]>(initialProperties);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -40,6 +42,7 @@ export function PropertyListingsClient({
   const [filters, setFilters] = useState<FilterState>({});
   const [page, setPage] = useState(0);
   const loaderRef = useRef<HTMLDivElement | null>(null);
+  const [favorites, setFavorites] = useState<string[]>([]);
 
   // Быстрые фильтры
   const [selectedCity, setSelectedCity] = useState<number | undefined>();
@@ -69,6 +72,25 @@ export function PropertyListingsClient({
   useEffect(() => {
     fetchCities();
   }, []);
+
+  // Загрузка избранного для текущего пользователя
+  useEffect(() => {
+    const supabase = createClient();
+    const loadFavorites = async () => {
+      if (!user) {
+        setFavorites([]);
+        return;
+      }
+      const { data, error: favError } = await supabase
+        .from('favorites')
+        .select('property_id')
+        .eq('user_id', user.id);
+      if (!favError) {
+        setFavorites((data || []).map((f) => f.property_id));
+      }
+    };
+    loadFavorites();
+  }, [user]);
 
   const fetchCities = async () => {
     const supabase = createClient();
@@ -238,6 +260,25 @@ export function PropertyListingsClient({
     fetchProperties({ reset: true, filters: { ...filters, districtId: value } });
   };
 
+  const handleFavoriteToggle = async (id: string) => {
+    if (!user) {
+      alert(t('common.loginRequired'));
+      return;
+    }
+    const supabase = createClient();
+    const isFav = favorites.includes(id);
+    // оптимистичное обновление
+    setFavorites((prev) =>
+      isFav ? prev.filter((fav) => fav !== id) : [...prev, id]
+    );
+
+    if (isFav) {
+      await supabase.from('favorites').delete().eq('property_id', id).eq('user_id', user.id);
+    } else {
+      await supabase.from('favorites').insert({ property_id: id, user_id: user.id });
+    }
+  };
+
   useEffect(() => {
     if (viewMode !== 'list') {
       return;
@@ -374,7 +415,13 @@ export function PropertyListingsClient({
                   <div className="inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
-                <PropertyGrid properties={properties} loading={loading && properties.length === 0} error={error} />
+                <PropertyGrid
+                  properties={properties}
+                  loading={loading && properties.length === 0}
+                  error={error}
+                  onFavoriteToggle={handleFavoriteToggle}
+                  favorites={favorites}
+                />
               )}
             </>
           ) : (
