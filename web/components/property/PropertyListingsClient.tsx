@@ -86,7 +86,8 @@ export function PropertyListingsClient({
         .select('property_id')
         .eq('user_id', user.id);
       if (!favError) {
-        setFavorites((data || []).map((f) => f.property_id));
+        const favoriteList = (data ?? []) as { property_id: string }[];
+        setFavorites(favoriteList.map((f) => f.property_id));
       }
     };
     loadFavorites();
