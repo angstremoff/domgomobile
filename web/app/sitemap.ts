@@ -1,6 +1,13 @@
 import { MetadataRoute } from 'next';
 import { createClient } from '@/lib/supabase/server';
 
+interface PropertyForSitemap {
+  id: string;
+  type: string | null;
+  created_at: string;
+  is_new_building: boolean | null;
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = await createClient();
 
@@ -12,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .order('created_at', { ascending: false });
 
   // Генерируем URL для объявлений
-  const propertyUrls: MetadataRoute.Sitemap = (properties || []).map((p) => {
+  const propertyUrls: MetadataRoute.Sitemap = ((properties || []) as PropertyForSitemap[]).map((p) => {
     let path = '/prodaja';
     if (p.type === 'rent') path = '/izdavanje';
     else if (p.is_new_building) path = '/novogradnja';

@@ -26,30 +26,20 @@ export function PropertyMap({ properties, center, zoom = 7 }: PropertyMapProps) 
 
   // Функция извлечения координат
   const extractCoordinates = (property: Property): { lat: number; lng: number } | null => {
-    // Проверяем latitude и longitude
-    if (property.latitude && property.longitude) {
-      const lat = typeof property.latitude === 'string' ? parseFloat(property.latitude) : property.latitude;
-      const lng = typeof property.longitude === 'string' ? parseFloat(property.longitude) : property.longitude;
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        return { lat, lng };
-      }
-    }
-
     // Проверяем поле coordinates
     if (property.coordinates) {
       try {
+        let coordsObj: { lat?: number | string; lng?: number | string } | null = null;
+
         if (typeof property.coordinates === 'string') {
-          const parsed = JSON.parse(property.coordinates);
-          if (parsed?.lat && parsed?.lng) {
-            const lat = parseFloat(String(parsed.lat));
-            const lng = parseFloat(String(parsed.lng));
-            if (Number.isFinite(lat) && Number.isFinite(lng)) {
-              return { lat, lng };
-            }
-          }
-        } else if (typeof property.coordinates === 'object') {
-          const lat = parseFloat(String(property.coordinates.lat));
-          const lng = parseFloat(String(property.coordinates.lng));
+          coordsObj = JSON.parse(property.coordinates);
+        } else if (typeof property.coordinates === 'object' && property.coordinates !== null) {
+          coordsObj = property.coordinates as { lat?: number | string; lng?: number | string };
+        }
+
+        if (coordsObj?.lat !== undefined && coordsObj?.lng !== undefined) {
+          const lat = parseFloat(String(coordsObj.lat));
+          const lng = parseFloat(String(coordsObj.lng));
           if (Number.isFinite(lat) && Number.isFinite(lng)) {
             return { lat, lng };
           }
