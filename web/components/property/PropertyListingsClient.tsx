@@ -9,7 +9,7 @@ import { PropertyFilters, FilterState } from './PropertyFilters';
 import { PropertyMap } from './PropertyMap';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/providers/AuthProvider';
-import type { Database } from '@shared/lib/database.types';
+import type { Database, TablesInsert } from '@shared/lib/database.types';
 
 type PropertyRow = Database['public']['Tables']['properties']['Row'];
 type PropertyWithRelations = PropertyRow & {
@@ -275,7 +275,8 @@ export function PropertyListingsClient({
     if (isFav) {
       await supabase.from('favorites').delete().eq('property_id', id).eq('user_id', user.id);
     } else {
-      await supabase.from('favorites').insert({ property_id: id, user_id: user.id });
+      const newFav: TablesInsert<'favorites'> = { property_id: id, user_id: user.id };
+      await supabase.from('favorites').insert(newFav);
     }
   };
 

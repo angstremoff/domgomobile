@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { PropertyGrid } from '@/components/property/PropertyGrid';
 import { useAuth } from '@/providers/AuthProvider';
 import { useTranslation } from 'react-i18next';
-import type { Database } from '@shared/lib/database.types';
+import type { Database, TablesInsert } from '@shared/lib/database.types';
 
 export default function OmiljenoPage() {
   const { user } = useAuth();
@@ -64,7 +64,8 @@ export default function OmiljenoPage() {
       await supabase.from('favorites').delete().eq('property_id', id).eq('user_id', user.id);
       setProperties((prev) => prev.filter((p) => p.id !== id));
     } else {
-      await supabase.from('favorites').insert({ property_id: id, user_id: user.id });
+      const newFav: TablesInsert<'favorites'> = { property_id: id, user_id: user.id };
+      await supabase.from('favorites').insert(newFav);
     }
   };
 
