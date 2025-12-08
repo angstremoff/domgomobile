@@ -18,11 +18,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: property } = await supabase
+  const { data } = await supabase
     .from('properties')
     .select('title, description, price, location, images, city:cities(name)')
     .eq('id', id)
     .single();
+
+  const property = data as Property | null;
 
   if (!property) {
     return {
@@ -34,7 +36,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     style: 'currency',
     currency: 'EUR',
     maximumFractionDigits: 0,
-  }).format((property as Property).price);
+  }).format(property.price);
 
   return {
     title: `${property.title} - ${price} mesečno | DomGo.rs`,
