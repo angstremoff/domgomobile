@@ -65,7 +65,7 @@ export default function OmiljenoPage() {
       setProperties((prev) => prev.filter((p) => p.id !== id));
     } else {
       const newFav: TablesInsert<'favorites'> = { property_id: id, user_id: user.id };
-      await supabase.from('favorites').insert([newFav] as TablesInsert<'favorites'>[]);
+      await supabase.from('favorites').insert([newFav] as any);
     }
   };
 
