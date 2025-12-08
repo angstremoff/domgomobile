@@ -17,11 +17,13 @@ type PageProps = {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: agency } = await supabase
+  const { data: agencyData } = await supabase
     .from('agency_profiles')
     .select('name, description')
     .eq('id', id)
     .single();
+
+  const agency = agencyData as Agency | null;
 
   if (!agency) {
     return {
