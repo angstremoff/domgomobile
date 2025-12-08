@@ -367,12 +367,12 @@ export function PropertyListingsClient({
         <div className="flex-1">
           {viewMode === 'list' ? (
             <>
-              {loading ? (
+              {loading && properties.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : (
-                <PropertyGrid properties={properties} loading={loading} error={error} />
+                <PropertyGrid properties={properties} loading={loading && properties.length === 0} error={error} />
               )}
             </>
           ) : (
