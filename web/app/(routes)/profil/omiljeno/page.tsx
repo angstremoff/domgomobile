@@ -27,8 +27,10 @@ export default function OmiljenoPage() {
         .select('property_id')
         .eq('user_id', user.id);
 
-      if (favorites && favorites.length > 0) {
-        const propertyIds = favorites.map((f) => f.property_id);
+      const favoriteList = (favorites ?? []) as { property_id: string }[];
+
+      if (favoriteList.length > 0) {
+        const propertyIds = favoriteList.map((f) => f.property_id);
 
         const { data: props } = await supabase
           .from('properties')
