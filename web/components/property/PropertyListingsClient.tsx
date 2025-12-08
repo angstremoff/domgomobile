@@ -239,10 +239,6 @@ export function PropertyListingsClient({
   };
 
   useEffect(() => {
-    fetchProperties({ reset: true, filters });
-  }, [selectedCity, selectedDistrict, filters, fetchProperties]);
-
-  useEffect(() => {
     if (viewMode !== 'list') {
       return;
     }
@@ -265,6 +261,12 @@ export function PropertyListingsClient({
       observer.disconnect();
     };
   }, [fetchProperties, viewMode]);
+
+  // Инициализационная загрузка
+  useEffect(() => {
+    fetchProperties({ reset: true, filters });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getTitle = () => {
     if (isNewBuilding) return t('common.newBuildings');
