@@ -158,6 +158,10 @@ export function PropertyListingsClient({
       const supabase = createClient();
 
       const districtFilter = filterState.districtId ?? selectedDistrict;
+      const cityFilter =
+        filterState.cityId !== undefined && filterState.cityId !== ''
+          ? Number(filterState.cityId)
+          : selectedCity;
 
       let query = supabase
         .from('properties')
@@ -174,8 +178,8 @@ export function PropertyListingsClient({
       }
 
       // Применяем фильтры
-      if (selectedCity !== undefined) {
-        query = query.eq('city_id', selectedCity);
+      if (cityFilter !== undefined) {
+        query = query.eq('city_id', cityFilter);
       }
 
       if (districtFilter) {
