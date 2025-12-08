@@ -1,25 +1,55 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Phone, Globe, Mail, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { createClient } from '@/lib/supabase/client';
 import type { Database } from '@shared/lib/database.types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Link from 'next/link';
 
 type Agency = Database['public']['Tables']['agency_profiles']['Row'];
 
-interface AgenciesListProps {
-  agencies: Agency[];
-  hasError?: boolean;
-}
-
-export function AgenciesList({ agencies, hasError = false }: AgenciesListProps) {
+export function AgenciesListClient() {
   const { t } = useTranslation();
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const loadAgencies = async () => {
+      const { data, error: fetchError } = await supabase
+        .from('agency_profiles')
+        .select('id, name, phone, email, site, location, logo_url, description')
+        .order('name', { ascending: true })
+        .limit(50);
+
+      if (fetchError) {
+        setError(true);
+      } else {
+        setAgencies((data as Agency[]) || []);
+      }
+      setLoading(false);
+    };
+
+    loadAgencies();
+  }, [supabase]);
 
   const formatSite = (site?: string | null) => {
     if (!site) return null;
     return site.startsWith('http') ? site : `https://${site}`;
   };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="flex justify-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
 
   const renderEmptyState = () => (
     <Card>
@@ -27,7 +57,7 @@ export function AgenciesList({ agencies, hasError = false }: AgenciesListProps) 
         <div className="text-center space-y-3">
           <MapPin className="h-12 w-12 text-textSecondary mx-auto" />
           <p className="text-textSecondary text-lg">
-            {t(hasError ? 'common.errorLoadingData' : 'agency.emptyList')}
+            {t(error ? 'common.errorLoadingData' : 'agency.emptyList')}
           </p>
         </div>
       </CardContent>

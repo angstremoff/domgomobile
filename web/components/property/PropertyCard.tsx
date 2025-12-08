@@ -33,8 +33,8 @@ export function PropertyCard({ property, onFavoriteToggle, isFavorite }: Propert
     ? t(`districts.${property.district.name}`, { defaultValue: property.district.name })
     : '';
 
-  const propertyType = property.type === 'sale' ? 'prodaja' : 'izdavanje';
-  const detailsUrl = `/${propertyType}/${property.id}`;
+  // URL для деталей объявления (query params для static export)
+  const detailsUrl = `/oglas/?id=${property.id}`;
 
   // Определяем тип недвижимости для отображения
   const getPropertyTypeLabel = () => {

@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
-import path from 'path';
 
 const nextConfig: NextConfig = {
+  // Статический экспорт для Render Static Site
+  output: 'export',
+  trailingSlash: true,
   images: {
+    unoptimized: true, // Для static export нужно отключить оптимизацию
     remotePatterns: [
       {
         protocol: 'https',
@@ -10,18 +13,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  async redirects() {
-    return [
-      {
-        source: '/property/:id',
-        destination: '/prodaja/:id',
-        permanent: true,
-      },
-    ];
-  },
-  // Указываем корректный workspace root для устранения предупреждения
-  output: 'standalone',
-  outputFileTracingRoot: path.join(__dirname, '../'),
+  // Редиректы не работают в static export, убираем
 };
 
 export default nextConfig;
