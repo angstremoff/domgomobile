@@ -276,7 +276,7 @@ export function PropertyListingsClient({
       await supabase.from('favorites').delete().eq('property_id', id).eq('user_id', user.id);
     } else {
       const newFav: TablesInsert<'favorites'> = { property_id: id, user_id: user.id };
-      await supabase.from('favorites').insert([newFav]);
+      await supabase.from('favorites').insert([newFav] as TablesInsert<'favorites'>[]);
     }
   };
 
