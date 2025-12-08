@@ -3,12 +3,12 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { PropertyDetails } from '@/components/property/PropertyDetails';
 
-interface Props {
-  params: { id: string };
-}
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = params;
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
   const supabase = await createClient();
 
   const { data: property } = await supabase
@@ -41,8 +41,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function PropertyPage({ params }: Props) {
-  const { id } = params;
+export default async function PropertyPage({ params }: PageProps) {
+  const { id } = await params;
   const supabase = await createClient();
 
   const { data: property, error } = await supabase
