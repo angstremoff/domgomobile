@@ -269,8 +269,9 @@ export function AddPropertyForm() {
       setSelectedFeatures([]);
       setFiles([]);
 
-      if (data?.id) {
-        router.push(`/oglas/?id=${data.id}`);
+      const createdId = (data as { id?: string } | null)?.id;
+      if (createdId) {
+        router.push(`/oglas/?id=${createdId}`);
       }
     } catch (submitError) {
       const message =
