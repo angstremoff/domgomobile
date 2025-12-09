@@ -4,6 +4,8 @@ import type { Database } from '@shared/lib/database.types';
 
 const BASE_url = 'https://domgo.rs';
 
+export const dynamic = 'force-static';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // For static export we must use a client that doesn't rely on cookies/headers
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
