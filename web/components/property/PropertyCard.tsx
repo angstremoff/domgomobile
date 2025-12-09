@@ -62,12 +62,18 @@ export function PropertyCard({ property, onFavoriteToggle, isFavorite }: Propert
         {/* Градиент для лучшей читаемости */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-        {/* Статус */}
-        {property.status !== 'active' && (
-          <div className="absolute top-3 left-3 bg-red-500 text-white px-4 py-1.5 rounded-full text-xs font-semibold shadow-lg">
-            {property.status === 'sold' ? t('property.status.sold') : t('property.status.rented')}
+        {/* Тип сделки (Продажа/Аренда) */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+          <div className={`${property.type === 'sale' ? 'bg-blue-500' : 'bg-orange-500'} text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg`}>
+            {property.type === 'sale' ? t('common.sale') : t('common.rent')}
           </div>
-        )}
+          {/* Статус */}
+          {property.status !== 'active' && (
+            <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+              {property.status === 'sold' ? t('property.status.sold') : t('property.status.rented')}
+            </div>
+          )}
+        </div>
 
         {/* Новостройка */}
         {property.is_new_building && (

@@ -76,7 +76,8 @@
     "profileUpdated": "Профиль обновлен",
     "errorLoadingData": "Ошибка при загрузке данных",
     "noAvailableListings": "Нет доступных объявлений",
-    "notFound": "Не найдено"
+    "notFound": "Не найдено",
+    "accessDenied": "Доступ запрещён"
   },
   "cities": {
     "Лозница": "Лозница",
@@ -345,7 +346,9 @@
     "propertyType": "Тип недвижимости",
     "uploadingPhotos": "Загрузка фотографий...",
     "errorUpdatingProperty": "Ошибка при обновлении объявления",
-    "errorLoadingCities": "Ошибка при загрузке городов"
+    "errorLoadingCities": "Ошибка при загрузке городов",
+    "updateSuccess": "Объявление успешно обновлено",
+    "updateError": "Ошибка при обновлении объявления"
   },
   "auth": {
     "login": "Войти",

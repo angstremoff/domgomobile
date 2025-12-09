@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Phone, Globe, Mail, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { createClient } from '@/lib/supabase/client';
@@ -9,13 +9,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Link from 'next/link';
 
 type Agency = Database['public']['Tables']['agency_profiles']['Row'];
+type City = Database['public']['Tables']['cities']['Row'];
 
 export function AgenciesListClient() {
   const { t } = useTranslation();
   const [agencies, setAgencies] = useState<Agency[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [cities, setCities] = useState<City[]>([]);
+  const [selectedCity, setSelectedCity] = useState<string | undefined>();
   const supabase = createClient();
+
+  // Загрузка списка городов
+  useEffect(() => {
+    const fetchCities = async () => {
+      const { data } = await supabase
+        .from('cities')
+        .select('*')
+        .order('name');
+      if (data) setCities(data);
+    };
+    fetchCities();
+  }, [supabase]);
 
   useEffect(() => {
     const loadAgencies = async () => {
@@ -36,9 +51,26 @@ export function AgenciesListClient() {
     loadAgencies();
   }, [supabase]);
 
+  // Фильтрация агентств по городу
+  const filteredAgencies = useMemo(() => {
+    if (!selectedCity) return agencies;
+    // Ищем город по id
+    const city = cities.find(c => c.id.toString() === selectedCity);
+    if (!city) return agencies;
+    // Фильтруем агентства по полю location (содержит название города)
+    return agencies.filter(agency => {
+      if (!agency.location) return false;
+      return agency.location.toLowerCase().includes(city.name.toLowerCase());
+    });
+  }, [agencies, selectedCity, cities]);
+
   const formatSite = (site?: string | null) => {
     if (!site) return null;
     return site.startsWith('http') ? site : `https://${site}`;
+  };
+
+  const handleCityChange = (cityId: string) => {
+    setSelectedCity(cityId || undefined);
   };
 
   if (loading) {
@@ -72,11 +104,27 @@ export function AgenciesListClient() {
           <p className="text-textSecondary">{t('agency.listDescription')}</p>
         </div>
 
-        {!agencies.length ? (
+        {/* Фильтр по городу */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <select
+            value={selectedCity || ''}
+            onChange={(e) => handleCityChange(e.target.value)}
+            className="px-4 py-2 bg-surface border border-border rounded-lg text-text focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">{t('common.allCities')}</option>
+            {cities.map((city) => (
+              <option key={city.id} value={city.id.toString()}>
+                {city.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {!filteredAgencies.length ? (
           renderEmptyState()
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {agencies.map((agency) => {
+            {filteredAgencies.map((agency) => {
               const site = formatSite(agency.site);
 
               return (

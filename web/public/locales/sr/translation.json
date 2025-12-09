@@ -67,7 +67,8 @@
       "active": "Aktivno",
       "notSold": "Nije prodato",
       "notRented": "Nije izdato"
-    }
+    },
+    "accessDenied": "Pristup odbijen"
   },
   "cities": {
     "Лозница": "Loznica",
@@ -243,6 +244,8 @@
       "updateSuccess": "Oglas je uspešno ažuriran",
       "deleteSuccess": "Oglas je uspešno obrisan"
     },
+    "updateSuccess": "Oglas je uspešno ažuriran",
+    "updateError": "Greška prilikom ažuriranja oglasa",
     "status": {
       "active": "Aktivno",
       "sold": "Prodato",

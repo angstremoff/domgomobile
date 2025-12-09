@@ -20,11 +20,8 @@ export default function HomePage() {
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Hero секция */}
-      <section className="text-center py-16">
-        <h1 className="text-4xl md:text-5xl font-bold text-text mb-6">
-          DomGo.rs
-        </h1>
-        <p className="text-xl text-textSecondary mb-8 max-w-2xl mx-auto">
+      <section className="text-center py-6">
+        <p className="text-xl text-textSecondary max-w-2xl mx-auto">
           {t('web.heroSubtitle')}
         </p>
       </section>
