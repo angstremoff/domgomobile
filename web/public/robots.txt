@@ -13,16 +13,11 @@ Allow: /novogradnja
 Allow: /agencije
 Allow: /oglas
 
-# Запрет индексации старого домена render
-User-agent: *
-Host: domgors.onrender.com
-Disallow: /
-
 # Карта сайта
 Sitemap: https://domgo.rs/sitemap.xml
 
 # Хост (для Яндекса)
-Host: https://domgo.rs
+Host: domgo.rs
 
 # Crawl-delay для снижения нагрузки (опционально для Яндекса)
 User-agent: Yandex

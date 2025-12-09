@@ -5,6 +5,8 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { PropertyDetails } from '@/components/property/PropertyDetails';
 import { useTranslation } from 'react-i18next';
+import { generatePropertyDescription, generatePropertyTitle } from '@/lib/seo-utils';
+import { DEFAULT_SITE_URL, setCanonicalLink, upsertJsonLd, upsertMetaTag } from '@/lib/seo-head';
 import type { Database } from '@shared/lib/database.types';
 
 type Property = Database['public']['Tables']['properties']['Row'] & {
@@ -19,7 +21,7 @@ export function PropertyPageClient() {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const supabase = createClient();
 
   useEffect(() => {
@@ -51,6 +53,69 @@ export function PropertyPageClient() {
 
     loadProperty();
   }, [id, supabase]);
+
+  useEffect(() => {
+    if (!property || !id) {
+      return;
+    }
+
+    const lang = i18n.language?.startsWith('ru') ? 'ru' : 'sr';
+    const title = generatePropertyTitle(property, lang);
+    const description = generatePropertyDescription(property, lang);
+    const image = property.images && property.images.length > 0
+      ? property.images[0]
+      : `${DEFAULT_SITE_URL}/placeholder-property.jpg`;
+    const url = `${DEFAULT_SITE_URL}/oglas?id=${id}`;
+
+    document.title = title;
+    upsertMetaTag('description', description);
+    upsertMetaTag('og:title', title, 'property');
+    upsertMetaTag('og:description', description, 'property');
+    upsertMetaTag('og:type', 'product', 'property');
+    upsertMetaTag('og:url', url, 'property');
+    upsertMetaTag('og:image', image, 'property');
+    upsertMetaTag('twitter:card', 'summary_large_image');
+    upsertMetaTag('twitter:title', title);
+    upsertMetaTag('twitter:description', description);
+    upsertMetaTag('twitter:image', image);
+    setCanonicalLink(url);
+
+    const itemOffered: Record<string, unknown> = {
+      '@type': property.property_type === 'house' ? 'House' : 'Apartment',
+      name: title.replace(` | DomGo.rs`, '').trim(),
+      image: property.images && property.images.length > 0 ? property.images : undefined,
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: property.city?.name,
+        addressRegion: property.district?.name || property.city?.name,
+        addressCountry: 'RS',
+      },
+    };
+
+    if (property.area) {
+      itemOffered.floorSize = {
+        '@type': 'QuantitativeValue',
+        value: property.area,
+        unitText: 'M2',
+      };
+    }
+
+    const jsonLd: Record<string, unknown> = {
+      '@context': 'https://schema.org',
+      '@type': 'Offer',
+      url,
+      description,
+      priceCurrency: 'EUR',
+      availability: 'https://schema.org/InStock',
+      itemOffered,
+    };
+
+    if (property.price) {
+      jsonLd.price = property.price;
+    }
+
+    upsertJsonLd('ld-json-property', jsonLd);
+  }, [property, id, i18n.language]);
 
   if (loading) {
     return (
