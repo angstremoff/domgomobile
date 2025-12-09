@@ -1,20 +1,14 @@
 import { Metadata } from 'next';
 import { AgencyPageClient } from '@/components/agency/AgencyPageClient';
-import { createClient } from '@supabase/supabase-js';
 import { generateAgencyTitle } from '@/lib/seo-utils';
-import type { Database } from '@shared/lib/database.types';
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-type Agency = Database['public']['Tables']['agency_profiles']['Row'] & {
-  city?: { name: string } | null;
-};
-
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
   const params = await searchParams;
-  const id = params.agencyId as string || params.id as string;
+  const id = (params.agencyId as string) || (params.id as string);
   const lang = (params.lang as 'sr' | 'ru') || 'sr';
 
   if (!id) {
@@ -24,75 +18,15 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     };
   }
 
-  try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const title = generateAgencyTitle({ name: 'Agencija', city: null }, lang);
+  const description = lang === 'ru'
+    ? 'Детали агентства недвижимости.'
+    : 'Detalji agencije za nekretnine.';
 
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase env is missing');
-    }
-
-    const supabase = createClient<Database>(supabaseUrl, supabaseKey);
-    const { data, error } = await supabase
-      .from('agency_profiles')
-      .select(`
-    *,
-    city: cities(name)
-      `)
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    const rawAgency = data as unknown;
-    const normalizedAgency: Agency | null = rawAgency && typeof rawAgency === 'object'
-      ? {
-          ...(rawAgency as Omit<Agency, 'city'>),
-          city: Array.isArray((rawAgency as { city?: unknown }).city)
-            ? ((rawAgency as { city?: { name: string }[] }).city?.[0] ?? null)
-            : ((rawAgency as { city?: { name: string } | null }).city ?? null),
-        }
-      : null;
-
-    if (!normalizedAgency) {
-      return {
-        title: 'Agencija nije pronađena | DomGo.rs',
-        description: 'Tražena agencija ne postoji.'
-      };
-    }
-
-    const title = generateAgencyTitle(normalizedAgency, lang);
-    const description = normalizedAgency.description
-      ? (normalizedAgency.description.slice(0, 160) + (normalizedAgency.description.length > 160 ? '...' : ''))
-      : `Pogledajte ponudu nekretnina agencije ${normalizedAgency.name} na DomGo.rs`;
-
-    const images = normalizedAgency.logo_url ? [normalizedAgency.logo_url] : [];
-
-    return {
-      title,
-      description,
-      openGraph: {
-        title,
-        description,
-        images,
-        type: 'profile',
-      },
-      twitter: {
-        card: 'summary',
-        title,
-        description,
-        images,
-      }
-    };
-  } catch (error) {
-    console.error('Ошибка generateMetadata agencija:', error);
-    return {
-      title: 'Agencija - DomGo.rs',
-      description: 'Detalji agencije za nekretnine'
-    };
-  }
+  return {
+    title,
+    description,
+  };
 }
 
 export default function AgencijaPage() {
