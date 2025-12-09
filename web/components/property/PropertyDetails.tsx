@@ -54,12 +54,37 @@ export function PropertyDetails({ property }: PropertyDetailsProps) {
   };
 
   const handleShare = async () => {
-    if (navigator.share) {
-      await navigator.share({
-        title: property.title,
-        text: property.description || '',
-        url: window.location.href,
-      });
+    // Используем property.html обработчик deep links - как в мобильном приложении
+    // Он проверяет платформу, наличие приложения и предлагает установить или открыть на сайте
+    const deeplinkHandlerUrl = `https://domgo.rs/property.html?id=${property.id}`;
+
+    // Получаем переведённое название города
+    const cityName = property.city?.name || '';
+    const translatedCityName = cityName ? t(`cities.${cityName}`, { defaultValue: cityName }) : '';
+
+    // Формируем текст для шаринга
+    const priceText = new Intl.NumberFormat('sr-RS', {
+      style: 'currency',
+      currency: 'EUR',
+      maximumFractionDigits: 0,
+    }).format(property.price);
+
+    const shareText = `${property.title}\n${priceText}\n${translatedCityName}\n\n${t('property.moreDetailsInApp', 'Подробнее в приложении DomGo')}: ${deeplinkHandlerUrl}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: property.title,
+          text: shareText,
+          url: deeplinkHandlerUrl,
+        });
+      } else {
+        // Fallback: копируем в буфер обмена
+        await navigator.clipboard.writeText(shareText);
+        alert(t('common.linkCopied', 'Ссылка скопирована в буфер обмена'));
+      }
+    } catch (error) {
+      console.error('Ошибка при шаринге:', error);
     }
   };
 
