@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, MapPin, Bed, Maximize, Bath, Calendar } from 'lucide-react';
+import { Heart, MapPin, Bed, Maximize, Bath } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Database } from '@shared/lib/database.types';
 import { cn } from '@/lib/utils/cn';
@@ -142,18 +142,6 @@ export function PropertyCard({ property, onFavoriteToggle, isFavorite }: Propert
             <div className="flex items-center gap-1.5">
               <Bed className="h-4 w-4" />
               <span className="font-medium">{property.rooms} {t('property.rooms')}</span>
-            </div>
-          )}
-          {property.created_at && (
-            <div className="flex items-center gap-1.5 ml-auto">
-              <Calendar className="h-4 w-4" />
-              <span className="text-xs">
-                {new Intl.DateTimeFormat(locale, {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                }).format(new Date(property.created_at))}
-              </span>
             </div>
           )}
         </div>

@@ -170,8 +170,7 @@ export function PropertyListingsClient({
           city:cities(name),
           district:districts(name)
         `)
-        .eq('type', type)
-        .eq('status', 'active');
+        .eq('type', type);
 
       if (isNewBuilding) {
         query = query.eq('is_new_building', true);
@@ -374,22 +373,20 @@ export function PropertyListingsClient({
           <div className="flex gap-2 bg-surface border border-border rounded-lg p-1">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${
-                viewMode === 'list'
+              className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${viewMode === 'list'
                   ? 'bg-primary text-white'
                   : 'text-textSecondary hover:text-text'
-              }`}
+                }`}
             >
               <List className="h-4 w-4" />
               <span className="hidden sm:inline">{t('common.view')}</span>
             </button>
             <button
               onClick={() => setViewMode('map')}
-              className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${
-                viewMode === 'map'
+              className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${viewMode === 'map'
                   ? 'bg-primary text-white'
                   : 'text-textSecondary hover:text-text'
-              }`}
+                }`}
             >
               <MapIcon className="h-4 w-4" />
               <span className="hidden sm:inline">{t('common.map')}</span>

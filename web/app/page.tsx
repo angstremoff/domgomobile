@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
-import { Building2, Home, Key } from 'lucide-react';
+import { Building2, Home, Key, Plus } from 'lucide-react';
+import { useAuth } from '@/providers/AuthProvider';
 
 export default function HomePage() {
   const { t } = useTranslation();
+  const { user, loading } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -86,22 +88,42 @@ export default function HomePage() {
       </section>
 
       {/* CTA секция */}
-      <section className="py-12 text-center max-w-2xl mx-auto">
-        <div className="bg-surface border border-border rounded-lg p-8">
-          <h2 className="text-2xl font-bold text-text mb-4">
-            {t('property.addNew')}
-          </h2>
-          <p className="text-textSecondary mb-6">
-            {t('auth.requiredForAddingProperty')}
-          </p>
-          <Link
-            href="/registracija"
-            className="inline-block px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
-          >
-            {t('auth.register')}
-          </Link>
-        </div>
-      </section>
+      {!loading && (
+        <section className="py-12 text-center max-w-2xl mx-auto">
+          <div className="bg-surface border border-border rounded-lg p-8">
+            <h2 className="text-2xl font-bold text-text mb-4">
+              {t('property.addNew')}
+            </h2>
+            {user ? (
+              <>
+                <p className="text-textSecondary mb-6">
+                  {t('property.addProperty.selectType')}
+                </p>
+                <Link
+                  href="/oglas/novi"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="h-5 w-5" />
+                  {t('property.add')}
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="text-textSecondary mb-6">
+                  {t('auth.requiredForAddingProperty')}
+                </p>
+                <Link
+                  href="/registracija"
+                  className="inline-block px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+                >
+                  {t('auth.register')}
+                </Link>
+              </>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
+
