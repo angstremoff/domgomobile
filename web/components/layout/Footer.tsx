@@ -108,8 +108,7 @@ export function Footer() {
           </div>
           {/* SEO-текст для поисковиков */}
           <p className="mt-4 text-xs text-textSecondary/60 text-center max-w-3xl mx-auto">
-            DomGo.rs - nekretnine u Srbiji, stanovi i kuće na prodaju i izdavanje u Beogradu, Novom Sadu, Nišu.
-            Недвижимость в Сербии: квартиры и дома в Белграде, Нови-Саде, Нише.
+            {t('footer.seoLine', 'DomGo.rs — nekretnine u Srbiji: kupovina i iznajmljivanje stanova i kuća.')}
           </p>
         </div>
       </div>

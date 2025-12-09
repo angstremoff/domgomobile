@@ -506,5 +506,8 @@
     "email": "Email",
     "emptyList": "Još nema agencija",
     "unnamed": "Agencija bez naziva"
+  },
+  "footer": {
+    "seoLine": "DomGo.rs — nekretnine u Srbiji: kupovina i iznajmljivanje stanova i kuća."
   }
 }

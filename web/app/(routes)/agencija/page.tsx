@@ -46,21 +46,29 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       throw error;
     }
 
-    const agency = data as Agency | null;
+    const rawAgency = data as unknown;
+    const normalizedAgency: Agency | null = rawAgency && typeof rawAgency === 'object'
+      ? {
+          ...(rawAgency as Omit<Agency, 'city'>),
+          city: Array.isArray((rawAgency as { city?: unknown }).city)
+            ? ((rawAgency as { city?: { name: string }[] }).city?.[0] ?? null)
+            : ((rawAgency as { city?: { name: string } | null }).city ?? null),
+        }
+      : null;
 
-    if (!agency) {
+    if (!normalizedAgency) {
       return {
         title: 'Agencija nije pronađena | DomGo.rs',
         description: 'Tražena agencija ne postoji.'
       };
     }
 
-    const title = generateAgencyTitle(agency, lang);
-    const description = agency.description
-      ? (agency.description.slice(0, 160) + (agency.description.length > 160 ? '...' : ''))
-      : `Pogledajte ponudu nekretnina agencije ${agency.name} na DomGo.rs`;
+    const title = generateAgencyTitle(normalizedAgency, lang);
+    const description = normalizedAgency.description
+      ? (normalizedAgency.description.slice(0, 160) + (normalizedAgency.description.length > 160 ? '...' : ''))
+      : `Pogledajte ponudu nekretnina agencije ${normalizedAgency.name} na DomGo.rs`;
 
-    const images = agency.logo_url ? [agency.logo_url] : [];
+    const images = normalizedAgency.logo_url ? [normalizedAgency.logo_url] : [];
 
     return {
       title,
