@@ -1,10 +1,14 @@
 import { MetadataRoute } from 'next';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@shared/lib/database.types';
 
 const BASE_url = 'https://domgo.rs';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const supabase = await createClient();
+    // For static export we must use a client that doesn't rely on cookies/headers
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabase = createClient<Database>(supabaseUrl, supabaseKey);
 
     // Static routes
     const routes = [

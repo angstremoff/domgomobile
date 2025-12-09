@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { PropertyPageClient } from '@/components/property/PropertyPageClient';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { generatePropertyTitle, generatePropertyDescription } from '@/lib/seo-utils';
 import type { Database } from '@shared/lib/database.types';
 
@@ -25,7 +25,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     };
   }
 
-  const supabase = await createClient();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient<Database>(supabaseUrl, supabaseKey);
   const { data } = await supabase
     .from('properties')
     .select(`

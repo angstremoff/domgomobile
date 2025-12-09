@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { AgencyPageClient } from '@/components/agency/AgencyPageClient';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { generateAgencyTitle } from '@/lib/seo-utils';
 import type { Database } from '@shared/lib/database.types';
 
@@ -24,12 +24,14 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     };
   }
 
-  const supabase = await createClient();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient<Database>(supabaseUrl, supabaseKey);
   const { data } = await supabase
     .from('agency_profiles')
     .select(`
-      *,
-      city:cities(name)
+  *,
+  city: cities(name)
     `)
     .eq('id', id)
     .single();
