@@ -1,0 +1,54 @@
+import { MetadataRoute } from 'next';
+import { createClient } from '@/lib/supabase/server';
+
+const BASE_url = 'https://domgo.rs';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+    const supabase = await createClient();
+
+    // Static routes
+    const routes = [
+        '',
+        '/prodaja',
+        '/izdavanje',
+        '/novogradnja',
+        '/agencije',
+    ].map((route) => ({
+        url: `${BASE_url}${route}`,
+        lastModified: new Date(),
+        changeFrequency: 'daily' as const,
+        priority: route === '' ? 1 : 0.8,
+    }));
+
+    // Fetch active properties
+    // Note: We only take the last 10000 to avoid hitting limits or timeouts initially.
+    // In a real large-scale app, we would split sitemaps.
+    const { data: properties } = await supabase
+        .from('properties')
+        .select('id, created_at')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(10000);
+
+    const propertyRoutes = (properties || []).map((property) => ({
+        url: `${BASE_url}/oglas?id=${property.id}`,
+        lastModified: new Date(property.created_at),
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+    }));
+
+    // Fetch agencies
+    const { data: agencies } = await supabase
+        .from('agency_profiles')
+        .select('id, created_at')
+        .limit(1000);
+
+    const agencyRoutes = (agencies || []).map((agency) => ({
+        url: `${BASE_url}/agencija?id=${agency.id}`,
+        lastModified: new Date(agency.created_at),
+        changeFrequency: 'monthly' as const,
+        priority: 0.6,
+    }));
+
+    return [...routes, ...propertyRoutes, ...agencyRoutes];
+}

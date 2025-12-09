@@ -1,10 +1,71 @@
 import { Metadata } from 'next';
 import { PropertyPageClient } from '@/components/property/PropertyPageClient';
+import { createClient } from '@/lib/supabase/server';
+import { generatePropertyTitle, generatePropertyDescription } from '@/lib/seo-utils';
+import type { Database } from '@shared/lib/database.types';
 
-export const metadata: Metadata = {
-  title: 'Oglas - DomGo.rs',
-  description: 'Detalji oglasa nekretnine',
+type Props = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
+
+type Property = Database['public']['Tables']['properties']['Row'] & {
+  city?: { name: string } | null;
+  district?: { name: string } | null;
+};
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const id = params.id as string;
+  const lang = (params.lang as 'sr' | 'ru') || 'sr';
+
+  if (!id) {
+    return {
+      title: 'Oglas - DomGo.rs',
+      description: 'Detalji oglasa nekretnine'
+    };
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('properties')
+    .select(`
+      *,
+      city:cities(name),
+      district:districts(name)
+    `)
+    .eq('id', id)
+    .single();
+
+  const property = data as Property | null;
+
+  if (!property) {
+    return {
+      title: 'Oglas nije pronađen | DomGo.rs',
+      description: 'Traženi oglas više nije aktivan ili ne postoji.'
+    };
+  }
+
+  const title = generatePropertyTitle(property, lang);
+  const description = generatePropertyDescription(property, lang);
+  const images = property.images && property.images.length > 0 ? [property.images[0]] : [];
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images,
+    }
+  };
+}
 
 export default function OglasPage() {
   return <PropertyPageClient />;

@@ -1,10 +1,72 @@
 import { Metadata } from 'next';
 import { AgencyPageClient } from '@/components/agency/AgencyPageClient';
+import { createClient } from '@/lib/supabase/server';
+import { generateAgencyTitle } from '@/lib/seo-utils';
+import type { Database } from '@shared/lib/database.types';
 
-export const metadata: Metadata = {
-  title: 'Agencija - DomGo.rs',
-  description: 'Detalji agencije za nekretnine',
+type Props = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
+
+type Agency = Database['public']['Tables']['agency_profiles']['Row'] & {
+  city?: { name: string } | null;
+};
+
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams;
+  const id = params.agencyId as string || params.id as string;
+  const lang = (params.lang as 'sr' | 'ru') || 'sr';
+
+  if (!id) {
+    return {
+      title: 'Agencija - DomGo.rs',
+      description: 'Detalji agencije za nekretnine'
+    };
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('agency_profiles')
+    .select(`
+      *,
+      city:cities(name)
+    `)
+    .eq('id', id)
+    .single();
+
+  const agency = data as Agency | null;
+
+  if (!agency) {
+    return {
+      title: 'Agencija nije pronađena | DomGo.rs',
+      description: 'Tražena agencija ne postoji.'
+    };
+  }
+
+  const title = generateAgencyTitle(agency, lang);
+  const description = agency.description
+    ? (agency.description.slice(0, 160) + (agency.description.length > 160 ? '...' : ''))
+    : `Pogledajte ponudu nekretnina agencije ${agency.name} na DomGo.rs`;
+
+  const images = agency.logo_url ? [agency.logo_url] : [];
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images,
+      type: 'profile',
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+      images,
+    }
+  };
+}
 
 export default function AgencijaPage() {
   return <AgencyPageClient />;
