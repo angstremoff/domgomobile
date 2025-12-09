@@ -95,6 +95,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
+    google: 'google543a84de6483d7b7',
     yandex: '5d2c280f46e86563',
   },
   category: 'real estate',

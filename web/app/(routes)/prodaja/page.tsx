@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { PropertyListingsClient } from '@/components/property/PropertyListingsClient';
+import { Breadcrumbs } from '@/components/seo/Breadcrumbs';
 
 export const metadata: Metadata = {
   title: 'Prodaja nekretnina | Продажа недвижимости',
@@ -16,6 +17,10 @@ export const metadata: Metadata = {
 };
 
 export default function ProdajaPage() {
-  // Данные загружаются на клиенте в PropertyListingsClient
-  return <PropertyListingsClient type="sale" initialProperties={[]} />;
+  return (
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <Breadcrumbs items={[{ name: 'Prodaja' }]} />
+      <PropertyListingsClient type="sale" initialProperties={[]} />
+    </div>
+  );
 }
