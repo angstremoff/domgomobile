@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/Button';
@@ -24,7 +24,7 @@ export default function MojiOglasiPage() {
   const supabase = createClient();
   const { t } = useTranslation();
 
-  const loadProperties = async () => {
+  const loadProperties = useCallback(async () => {
     if (!user) {
       setLoading(false);
       setProperties([]);
@@ -43,11 +43,11 @@ export default function MojiOglasiPage() {
 
     setProperties((data as PropertyWithRelations[]) || []);
     setLoading(false);
-  };
+  }, [user, supabase]);
 
   useEffect(() => {
     loadProperties();
-  }, [user, supabase]);
+  }, [loadProperties]);
 
   const handleMarkAsSold = async (propertyId: string) => {
     setActionLoading(propertyId);

@@ -23,12 +23,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Fetch active properties
     // Note: We only take the last 10000 to avoid hitting limits or timeouts initially.
     // In a real large-scale app, we would split sitemaps.
-    const { data: properties } = await supabase
+    const { data: propertiesData } = await supabase
         .from('properties')
         .select('id, created_at')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(10000);
+
+    const properties = propertiesData as unknown as { id: string; created_at: string }[] | null;
 
     const propertyRoutes = (properties || []).map((property) => ({
         url: `${BASE_url}/oglas?id=${property.id}`,
@@ -38,10 +40,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
 
     // Fetch agencies
-    const { data: agencies } = await supabase
+    const { data: agenciesData } = await supabase
         .from('agency_profiles')
         .select('id, created_at')
         .limit(1000);
+
+    const agencies = agenciesData as unknown as { id: string; created_at: string }[] | null;
 
     const agencyRoutes = (agencies || []).map((agency) => ({
         url: `${BASE_url}/agencija?id=${agency.id}`,
