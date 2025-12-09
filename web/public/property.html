@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,12 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Roboto', sans-serif;
       background-color: #f5f5f5;
@@ -26,7 +20,6 @@
       min-height: 100vh;
       padding: 20px;
     }
-
     .container {
       background-color: white;
       border-radius: 12px;
@@ -36,100 +29,31 @@
       width: 100%;
       text-align: center;
     }
-
-    .logo {
-      width: 100px;
-      height: 100px;
-      margin-bottom: 20px;
-    }
-
-    h1 {
-      font-size: 24px;
-      margin-bottom: 16px;
-      color: #1E3A8A;
-    }
-
-    p {
-      font-size: 16px;
-      margin-bottom: 24px;
-      line-height: 1.5;
-      color: #555;
-    }
-
-    .buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
+    .logo { width: 100px; height: 100px; margin-bottom: 20px; }
+    h1 { font-size: 24px; margin-bottom: 16px; color: #1E3A8A; }
+    p { font-size: 16px; margin-bottom: 24px; line-height: 1.5; color: #555; }
+    .buttons { display: flex; flex-direction: column; gap: 12px; }
     .btn {
-      display: block;
-      padding: 14px 20px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: 500;
-      font-size: 16px;
-      transition: all 0.2s;
+      display: block; padding: 14px 20px; border-radius: 8px; text-decoration: none;
+      font-weight: 500; font-size: 16px; transition: all 0.2s;
     }
-
-    .btn-primary {
-      background-color: #1E3A8A;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background-color: #152B67;
-    }
-
-    .btn-secondary {
-      background-color: #EEF2FF;
-      color: #1E3A8A;
-      border: 1px solid #1E3A8A;
-    }
-
-    .btn-secondary:hover {
-      background-color: #E0E7FF;
-    }
-
-    .loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin-top: 20px;
-    }
-
+    .btn-primary { background-color: #1E3A8A; color: white; }
+    .btn-primary:hover { background-color: #152B67; }
+    .btn-secondary { background-color: #EEF2FF; color: #1E3A8A; border: 1px solid #1E3A8A; }
+    .btn-secondary:hover { background-color: #E0E7FF; }
+    .loading { display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
     .spinner {
-      width: 40px;
-      height: 40px;
-      margin-bottom: 16px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #1E3A8A;
-      border-radius: 50%;
+      width: 40px; height: 40px; margin-bottom: 16px;
+      border: 4px solid #f3f3f3; border-top: 4px solid #1E3A8A; border-radius: 50%;
       animation: spin 1s linear infinite;
     }
-
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      100% {
-        transform: rotate(360deg);
-      }
-    }
-
-    .error {
-      color: #E53E3E;
-      margin-top: 20px;
-      display: none;
-    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .error { color: #E53E3E; margin-top: 20px; display: none; }
   </style>
 </head>
-
 <body>
   <div class="container">
-    <img src="https://raw.githubusercontent.com/angstremoff/domgomobile/main/assets/icon.png" alt="DomGo Logo"
-      class="logo" onerror="this.style.display='none'">
+    <img src="https://raw.githubusercontent.com/angstremoff/domgomobile/main/assets/icon.png" alt="DomGo Logo" class="logo" onerror="this.style.display='none'">
     <div id="opening">
       <h1>Открываем объявление...</h1>
       <p>Пытаемся открыть объявление в приложении DomGo</p>
@@ -163,7 +87,7 @@
     const appScheme = `domgomobile://property/${propertyId}`;
     // Указываем актуальный packageId домена приложения, чтобы Android корректно находил установленный клиент
     const androidIntent = `intent://property/${propertyId}#Intent;scheme=domgomobile;package=domgo.rs;end`;
-
+    
     // Check if we are pointing to the correct web route
     const webUrl = `https://domgo.rs/oglas?id=${propertyId}`;
 
@@ -221,5 +145,4 @@
     }
   </script>
 </body>
-
 </html>
