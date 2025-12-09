@@ -24,50 +24,67 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     };
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createClient<Database>(supabaseUrl, supabaseKey);
-  const { data } = await supabase
-    .from('agency_profiles')
-    .select(`
-  *,
-  city: cities(name)
-    `)
-    .eq('id', id)
-    .single();
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const agency = data as Agency | null;
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase env is missing');
+    }
 
-  if (!agency) {
+    const supabase = createClient<Database>(supabaseUrl, supabaseKey);
+    const { data, error } = await supabase
+      .from('agency_profiles')
+      .select(`
+    *,
+    city: cities(name)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    const agency = data as Agency | null;
+
+    if (!agency) {
+      return {
+        title: 'Agencija nije pronađena | DomGo.rs',
+        description: 'Tražena agencija ne postoji.'
+      };
+    }
+
+    const title = generateAgencyTitle(agency, lang);
+    const description = agency.description
+      ? (agency.description.slice(0, 160) + (agency.description.length > 160 ? '...' : ''))
+      : `Pogledajte ponudu nekretnina agencije ${agency.name} na DomGo.rs`;
+
+    const images = agency.logo_url ? [agency.logo_url] : [];
+
     return {
-      title: 'Agencija nije pronađena | DomGo.rs',
-      description: 'Tražena agencija ne postoji.'
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        images,
+        type: 'profile',
+      },
+      twitter: {
+        card: 'summary',
+        title,
+        description,
+        images,
+      }
+    };
+  } catch (error) {
+    console.error('Ошибка generateMetadata agencija:', error);
+    return {
+      title: 'Agencija - DomGo.rs',
+      description: 'Detalji agencije za nekretnine'
     };
   }
-
-  const title = generateAgencyTitle(agency, lang);
-  const description = agency.description
-    ? (agency.description.slice(0, 160) + (agency.description.length > 160 ? '...' : ''))
-    : `Pogledajte ponudu nekretnina agencije ${agency.name} na DomGo.rs`;
-
-  const images = agency.logo_url ? [agency.logo_url] : [];
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      images,
-      type: 'profile',
-    },
-    twitter: {
-      card: 'summary',
-      title,
-      description,
-      images,
-    }
-  };
 }
 
 export default function AgencijaPage() {
