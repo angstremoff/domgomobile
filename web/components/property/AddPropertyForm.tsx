@@ -88,10 +88,11 @@ export function AddPropertyForm() {
         .order('name');
 
       if (!fetchError) {
-        setDistricts(data || []);
-        if (data && data.length > 0) {
-          const hasSelected = data.some((d) => d.id === districtId);
-          setDistrictId(hasSelected ? districtId : data[0].id);
+        const districtList = (data || []) as District[];
+        setDistricts(districtList);
+        if (districtList.length > 0) {
+          const hasSelected = districtList.some((d) => d.id === districtId);
+          setDistrictId(hasSelected ? districtId : districtList[0].id);
         } else {
           setDistrictId('');
         }
