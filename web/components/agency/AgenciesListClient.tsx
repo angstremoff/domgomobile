@@ -58,11 +58,15 @@ export function AgenciesListClient() {
     const city = cities.find(c => c.id.toString() === selectedCity);
     if (!city) return agencies;
     // Фильтруем агентства по полю location (содержит название города)
+    const cityName = city.name.toLowerCase();
+    // Также проверяем перевод города для сербского
+    const translatedCityName = t(`cities.${city.name}`, { defaultValue: city.name }).toLowerCase();
     return agencies.filter(agency => {
       if (!agency.location) return false;
-      return agency.location.toLowerCase().includes(city.name.toLowerCase());
+      const loc = agency.location.toLowerCase();
+      return loc.includes(cityName) || loc.includes(translatedCityName);
     });
-  }, [agencies, selectedCity, cities]);
+  }, [agencies, selectedCity, cities, t]);
 
   const formatSite = (site?: string | null) => {
     if (!site) return null;
@@ -114,7 +118,7 @@ export function AgenciesListClient() {
             <option value="">{t('common.allCities')}</option>
             {cities.map((city) => (
               <option key={city.id} value={city.id.toString()}>
-                {city.name}
+                {t(`cities.${city.name}`, { defaultValue: city.name })}
               </option>
             ))}
           </select>

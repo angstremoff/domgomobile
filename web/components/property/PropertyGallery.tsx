@@ -7,13 +7,17 @@ import { useTranslation } from 'react-i18next';
 
 interface PropertyGalleryProps {
   images: string[];
+  status?: string;
 }
 
-export function PropertyGallery({ images }: PropertyGalleryProps) {
+export function PropertyGallery({ images, status }: PropertyGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showThumbnails, setShowThumbnails] = useState(false);
   const { t } = useTranslation();
+
+  const isSoldOrRented = status && status !== 'active';
+  const statusLabel = status === 'sold' ? t('property.status.sold') : status === 'rented' ? t('property.status.rented') : '';
 
   if (!images || images.length === 0) {
     return (
@@ -42,13 +46,22 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
       <div className="space-y-4">
         {/* Главное изображение */}
         <div className="relative w-full h-96 md:h-[500px] bg-surface rounded-lg overflow-hidden group cursor-pointer"
-             onClick={() => openFullscreen(currentIndex)}>
+          onClick={() => openFullscreen(currentIndex)}>
           <Image
             src={images[currentIndex]}
             alt={t('property.photoAlt', { index: currentIndex + 1 })}
             fill
-            className="object-cover"
+            className={`object-cover ${isSoldOrRented ? 'grayscale' : ''}`}
           />
+
+          {/* Метка статуса */}
+          {isSoldOrRented && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-red-600/80 text-white px-8 py-4 rounded-lg text-3xl font-bold uppercase shadow-lg">
+                {statusLabel}
+              </div>
+            </div>
+          )}
 
           {/* Навигация */}
           {images.length > 1 && (
@@ -95,11 +108,10 @@ export function PropertyGallery({ images }: PropertyGalleryProps) {
                   <button
                     key={index}
                     onClick={() => setCurrentIndex(index)}
-                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                      index === currentIndex
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${index === currentIndex
                         ? 'border-primary'
                         : 'border-transparent hover:border-border'
-                    }`}
+                      }`}
                   >
                     <Image
                       src={image}

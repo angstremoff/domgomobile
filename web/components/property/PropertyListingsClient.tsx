@@ -337,7 +337,7 @@ export function PropertyListingsClient({
               <option value="">{t('common.allCities')}</option>
               {cities.map((city) => (
                 <option key={city.id} value={city.id.toString()}>
-                  {city.name}
+                  {t(`cities.${city.name}`, { defaultValue: city.name })}
                 </option>
               ))}
             </select>
@@ -352,7 +352,7 @@ export function PropertyListingsClient({
                 <option value="">{t('filters.allDistricts')}</option>
                 {districts.map((district) => (
                   <option key={district.id} value={district.id}>
-                    {district.name}
+                    {t(`districts.${district.name}`, { defaultValue: district.name })}
                   </option>
                 ))}
               </select>
@@ -374,8 +374,8 @@ export function PropertyListingsClient({
             <button
               onClick={() => setViewMode('list')}
               className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${viewMode === 'list'
-                  ? 'bg-primary text-white'
-                  : 'text-textSecondary hover:text-text'
+                ? 'bg-primary text-white'
+                : 'text-textSecondary hover:text-text'
                 }`}
             >
               <List className="h-4 w-4" />
@@ -384,8 +384,8 @@ export function PropertyListingsClient({
             <button
               onClick={() => setViewMode('map')}
               className={`px-4 py-2 rounded-md flex items-center gap-2 transition-colors ${viewMode === 'map'
-                  ? 'bg-primary text-white'
-                  : 'text-textSecondary hover:text-text'
+                ? 'bg-primary text-white'
+                : 'text-textSecondary hover:text-text'
                 }`}
             >
               <MapIcon className="h-4 w-4" />

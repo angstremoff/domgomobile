@@ -1,6 +1,6 @@
 'use client';
 
-import { MapPin, Bed, Maximize, Phone, Share2, Heart } from 'lucide-react';
+import { MapPin, Bed, Maximize, Phone, Share2, Heart, Building2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { PropertyGallery } from './PropertyGallery';
@@ -66,7 +66,7 @@ export function PropertyDetails({ property }: PropertyDetailsProps) {
   return (
     <div className="space-y-8">
       {/* Галерея изображений */}
-      <PropertyGallery images={property.images || []} />
+      <PropertyGallery images={property.images || []} status={property.status || 'active'} />
 
       {/* Основная информация */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -108,6 +108,7 @@ export function PropertyDetails({ property }: PropertyDetailsProps) {
             )}
             {property.property_type && (
               <div className="text-center p-4 bg-surface rounded-lg">
+                <Building2 className="h-6 w-6 mx-auto mb-2 text-primary" />
                 <p className="text-sm text-textSecondary">{t('property.propertyType')}</p>
                 <p className="text-lg font-semibold text-text">
                   {getPropertyTypeLabel(property.property_type)}
