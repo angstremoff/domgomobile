@@ -9,7 +9,9 @@ import { generateAgencyTitle, truncate } from '@/lib/seo-utils';
 import { DEFAULT_SITE_URL, setCanonicalLink, upsertJsonLd, upsertMetaTag } from '@/lib/seo-head';
 import type { Database } from '@shared/lib/database.types';
 
-type Agency = Database['public']['Tables']['agency_profiles']['Row'];
+type Agency = Database['public']['Tables']['agency_profiles']['Row'] & {
+  city?: { name: string } | null;
+};
 type Property = Database['public']['Tables']['properties']['Row'] & {
   city?: { name: string } | null;
   district?: { name: string } | null;
@@ -32,7 +34,10 @@ export function AgencyPageClient() {
       // Пробуем найти по agency_id
       const { data: agencyData } = await supabase
         .from('agency_profiles')
-        .select('*')
+        .select(`
+          *,
+          city:cities(name)
+        `)
         .eq('id', id)
         .single();
 
@@ -42,7 +47,10 @@ export function AgencyPageClient() {
       if (!resolvedAgency) {
         const { data: fallbackData } = await supabase
           .from('agency_profiles')
-          .select('*')
+          .select(`
+            *,
+            city:cities(name)
+          `)
           .eq('user_id', id)
           .single();
         resolvedAgency = fallbackData as Agency | null;
@@ -132,7 +140,7 @@ export function AgencyPageClient() {
       logo: image,
       address: {
         '@type': 'PostalAddress',
-        addressLocality: agency.city || undefined,
+        addressLocality: agency.city?.name || agency.location || undefined,
         addressCountry: 'RS',
       },
       areaServed: {
