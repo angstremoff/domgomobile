@@ -67,6 +67,9 @@
 - Статика для домена domgo.rs живёт в отдельном репо `angstremoff/domgors` (Render / GitHub Pages). `property.html`/deeplink-handler там; для новых страниц (например, agency.html) добавляем в этот репозиторий, чтобы ссылки вида `https://domgo.rs/...` работали.
 - Репозиторий `angstremoff/domgors` (локально `/Users/test/CascadeProjects/domgors`) — старый сайт на проде для домена domgo.rs: содержит статические страницы (`public/property.html`, `public/agency.html` и др.), конфиги деплоя (render.yaml, netlify/vercel, htaccess), фронт-код (src, package.json), supabase/sql вспомогательные скрипты. Любые новые публичные страницы для домgo.rs добавляем туда.
 - При достижении остатка контекста ~5% нужно сжимать контекст (конспект, выжимка последних шагов).
+- Важно (web, SEO и стабильность): страницы `/oglas` и `/agencija` переведены в client-only режим (без `generateMetadata`) из-за падений RSC при static export. Метатеги для карточек теперь ставятся только на клиенте через `PropertyPageClient`/`AgencyPageClient`, поэтому серверный HTML содержит общие метаданные. Для полноценного SEO карточек требуется вернуть серверную генерацию (динамический рендер или отказ от `output: 'export'`).
+- Supabase-клиент web: если нет `NEXT_PUBLIC_SUPABASE_URL/ANON_KEY`, возвращается безопасный мок (ошибка в ответах, но без исключений). При наличии env используется обычный `createBrowserClient`.
+- Подвал: краткий описательный текст теперь один и тянется из переводов (`footer.aboutLine` в ru/sr), убраны дубли двух языков.
 
 ## 8. Обновление версий и сборки
 - Версия приложения (отображается в настройках и в store): `package.json` → `version`, синхронизирована с `package-lock.json` (поле `version` в корне и в корневом пакете).
