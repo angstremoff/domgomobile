@@ -36,7 +36,7 @@ export function AgenciesListClient() {
     const loadAgencies = async () => {
       const { data, error: fetchError } = await supabase
         .from('agency_profiles')
-        .select('id, name, phone, email, site, location, logo_url, description')
+        .select('id, name, phone, email, site, location, logo_url, description, city_id')
         .order('name', { ascending: true })
         .limit(50);
 
@@ -54,19 +54,10 @@ export function AgenciesListClient() {
   // Фильтрация агентств по городу
   const filteredAgencies = useMemo(() => {
     if (!selectedCity) return agencies;
-    // Ищем город по id
-    const city = cities.find(c => c.id.toString() === selectedCity);
-    if (!city) return agencies;
-    // Фильтруем агентства по полю location (содержит название города)
-    const cityName = city.name.toLowerCase();
-    // Также проверяем перевод города для сербского
-    const translatedCityName = t(`cities.${city.name}`, { defaultValue: city.name }).toLowerCase();
-    return agencies.filter(agency => {
-      if (!agency.location) return false;
-      const loc = agency.location.toLowerCase();
-      return loc.includes(cityName) || loc.includes(translatedCityName);
-    });
-  }, [agencies, selectedCity, cities, t]);
+    // Фильтруем строго по city_id
+    // selectedCity это string, а city_id в базе number
+    return agencies.filter(agency => String(agency.city_id) === selectedCity);
+  }, [agencies, selectedCity]);
 
   const formatSite = (site?: string | null) => {
     if (!site) return null;
