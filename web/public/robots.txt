@@ -1,4 +1,29 @@
-User-Agent: *
+# Основные правила для всех поисковиков
+User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /profil/
+Disallow: /*.json$
 
+# Разрешаем индексацию важных страниц
+Allow: /prodaja
+Allow: /izdavanje
+Allow: /novogradnja
+Allow: /agencije
+Allow: /oglas
+
+# Запрет индексации старого домена render
+User-agent: *
+Host: domgors.onrender.com
+Disallow: /
+
+# Карта сайта
 Sitemap: https://domgo.rs/sitemap.xml
+
+# Хост (для Яндекса)
+Host: https://domgo.rs
+
+# Crawl-delay для снижения нагрузки (опционально для Яндекса)
+User-agent: Yandex
+Crawl-delay: 1

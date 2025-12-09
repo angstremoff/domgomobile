@@ -4,8 +4,9 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { FormTitle } from '@/components/forms/FormTitle';
 
 export const metadata: Metadata = {
-  title: 'Prijava - DomGo.rs',
-  description: 'Prijavite se u svoj DomGo.rs nalog',
+  title: 'Prijava | Вход',
+  description: 'Prijavite se u svoj DomGo.rs nalog. Войдите в свой аккаунт DomGo.rs.',
+  robots: { index: false, follow: true },
 };
 
 export default function PrijavaPage() {

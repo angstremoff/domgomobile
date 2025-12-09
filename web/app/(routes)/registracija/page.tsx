@@ -4,8 +4,9 @@ import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { FormTitle } from '@/components/forms/FormTitle';
 
 export const metadata: Metadata = {
-  title: 'Registracija - DomGo.rs',
-  description: 'Kreirajte nalog na DomGo.rs',
+  title: 'Registracija | Регистрация',
+  description: 'Kreirajte nalog na DomGo.rs. Создайте аккаунт на DomGo.rs.',
+  robots: { index: false, follow: true },
 };
 
 export default function RegistracijaPage() {
