@@ -15,11 +15,8 @@ export function Footer() {
           {/* О нас */}
           <div>
             <h3 className="text-lg font-semibold text-text mb-4">DomGo.rs</h3>
-            <p className="text-sm text-textSecondary mb-3">
-              {t('footer.description', 'Platforma za pretragu nekretnina u Srbiji. Platforma za pronalaženje nekretnina u Srbiji.')}
-            </p>
             <p className="text-sm text-textSecondary">
-              {t('footer.descriptionRu', 'Платформа для поиска недвижимости в Сербии.')}
+              {t('footer.aboutLine', 'Platforma za pretragu nekretnina u Srbiji.')}
             </p>
           </div>
 
