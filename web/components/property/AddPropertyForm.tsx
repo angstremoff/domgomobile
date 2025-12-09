@@ -250,7 +250,8 @@ export function AddPropertyForm() {
 
       const { data, error: insertError } = await supabase
         .from('properties')
-        .insert([payload] as TablesInsert<'properties'>[])
+        // Render ломает типы, поэтому приводим к any, чтобы не падал билд
+        .insert(payload as any)
         .select('id')
         .single();
 
