@@ -54,7 +54,7 @@ export default function MojiOglasiPage() {
           </p>
         </div>
 
-        <Link href="/oglas">
+        <Link href="/oglas/novi">
           <Button>
             <Plus className="h-5 w-5 mr-2" />
             {t('property.add')}

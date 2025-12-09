@@ -23,7 +23,11 @@ export function PropertyPageClient() {
   const supabase = createClient();
 
   useEffect(() => {
-    if (!id) return;
+    if (!id) {
+      setLoading(false);
+      setError(true);
+      return;
+    }
 
     const loadProperty = async () => {
       const { data, error: fetchError } = await supabase

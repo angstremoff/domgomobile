@@ -20,6 +20,7 @@
 - `AuthContext`/`FavoritesContext`: Supabase Auth + таблица `favorites`. Сессии в AsyncStorage (`autoRefreshToken`, `persistSession` включены).
 - `AppVersionManager`: отслеживает версию приложения/сборки, очищает AsyncStorage/FileSystem/LRU при смене версии. Expo OTA отключены, поэтому перезапуск приложения делается вручную.
 - Observability: `src/utils/sentry.ts` (DSN из `.env`, тег `app.version`) и `src/utils/logger.ts`.
+- Мобильный адрес в карточках: формат `Город, Район`, район обязателен в создании/редактировании; карта центрируется по району, названия районов переводятся.
 - Локализация: i18next (`src/translations/{ru,sr}.json`). Любые новые строки добавляем в оба файла.
 
 ## 4. Данные и Supabase
@@ -58,7 +59,7 @@
 
 ## 7. Важные напоминания
 - **Две платформы**: мобильное (Android/iOS) и веб (Next.js). Общая БД Supabase, но разные фронтенды. Веб не использует React Native Web - это отдельный Next.js проект в `/web`.
-- **Веб-особенности**: Features из БД выводятся как есть (без перевода). Hydration: клиентские компоненты с i18next требуют `mounted` проверки. Тема: используем `theme` из next-themes, не `resolvedTheme`.
+- **Веб-особенности**: Hydration: клиентские компоненты с i18next требуют `mounted` проверки. Тема: используем `theme` из next-themes, не `resolvedTheme`.
 - При шаринге объявлений используем `https://domgo.rs/property.html?id=<ID>` (GitHub Pages) — страница пытается открыть приложение, если нет — предлагает Web + Google Play.
 - Любые новые задачи, связанные с публикацией, должны учитывать требования Google Play и наличие AAB; APK используется только для локального тестирования.
 - iOS нюансы: симулятор не умеет `tel:` — в PropertyDetails показываем алерт и копируем номер в буфер; фильтры имеют safe-area паддинг и расширенный hitSlop для кнопки закрытия; заголовок DomGo.rs на iOS выровнен влево, а блок выбора города сдвинут для предотвращения наложения.
@@ -85,14 +86,20 @@
 - Агентства deep link: парсим `domgomobile://agency/...` и `https://domgo.rs/agency.html?id=...`; Android манифест содержит intent-filter (`scheme=domgomobile`, host=agency, pathPrefix=/). Статическая `agency.html` в корне репо пытается открыть приложение, иначе предлагает Web/Play Store.
 
 ## 9. Районы (districts)
-- Схема: таблица `districts` (id uuid PK, city_id FK → cities, name, is_active, sort_order), колонка `properties.district_id` (FK → districts). Индексы: `districts_city_id_idx`, `districts_city_name_unique`, `properties_district_id_idx`.
+- Схема: таблица `districts` (id uuid PK, city_id FK → cities, name, is_active, sort_order, latitude, longitude), колонка `properties.district_id` (FK → districts). Индексы: `districts_city_id_idx`, `districts_city_name_unique`, `properties_district_id_idx`.
 - RLS: включаем RLS на `districts`; политика select (как для cities). Insert/update — через service_role или нужные правила. Предупреждения Supabase про RLS нужно закрыть.
-- Миграция: `supabase/migrations/20241109120000_add_districts.sql` (создаёт таблицу, FK, индексы; есть комментарий для отката).
-- Фронт: поддержка района в фильтрах (HomeScreen — селектор «Все районы» после выбора города), формах создания/редактирования, отображении карточек/деталей (адрес `Район, Город, улица`). В выборке данных сервисы возвращают `district`.
-- Типы: `src/lib/database.types.ts` обновлены вручную, после миграции нужно прогнать `supabase gen types typescript`.
+- Миграции (актуальные): `20250218110000_add_coordinates_to_districts.sql` (latitude/longitude), `20250218110100_seed_districts.sql` (сид всех районов), `20250218110200_migrate_banja_koviljaca.sql` (перенос объявлений города Баня Ковиляча в Лозницу, район «Ковиљача Бања», архивирование города).
+- Фронт: поддержка района в фильтрах (HomeScreen — «Все районы» после выбора города), формах создания/редактирования, отображении карточек/деталей (адрес `Город, Район`). В выборке данных сервисы возвращают `district` с координатами.
+- Типы: `src/lib/database.types.ts` обновлены вручную под координаты; после миграций желательно прогнать `supabase gen types typescript`.
 - Важный фикс: в `PropertyContext` автозагрузка районов в useEffect не должна зависеть от loadDistricts, иначе цикл ререндеров. Сейчас зависимость убрана, стоит комментарий.
 
 ## 10. Веб: агентства и i18n
 - Веб агентства: список в `/web/app/(routes)/agencije/page.tsx` грузит `agency_profiles` и ведёт на детальную страницу `/web/app/(routes)/agencije/[id]/page.tsx`. Детальная (`AgencyDetails`) показывает контакты/описание и объявления агентства (сначала по `agency_id`, потом фолбек по `user_id`), карточки объявлений кликабельны.
 - UI-кнопки используют обычные `Button` без `asChild` (иначе ошибка DOM). Контакты открывают tel/mailto/сайт.
 - Переводы веб обновлены: новые ключи для агентств, 404, загрузок, фильтров, профиля и галереи (ru/sr). Домашняя страница, формы, ЛК и фильтры тянут строки из i18n. `I18nProvider` синхронизирует `document.lang`.
+- Фичи в деталях объявления переводятся через i18n (`features.*`). Карточки показывают дату по локали (ru/sr).
+- Избранное на веб: карточки имеют активное сердце, добавление/удаление идёт через таблицу `favorites`; в разделе избранного карточки остаются кликабельны, а при снятии лайка карточка удаляется из списка.
+- Списки Продажа/Аренда/Новостройки/Агентства: бесконечная подгрузка по 50 штук, фильтрация работает при выборе города даже без района, догрузка через IntersectionObserver.
+- Профиль: “Настройки” ведёт на `/profil`, “Добавить объявление” из “Мои объявления” ведёт на `/oglas/novi`.
+- Деплой Render: обязательно `Root Directory = web`, иначе Next берёт корневой lockfile; очищать build cache перед сборкой при смене root.
+- Веб-форма создания объявлений: страница `/oglas/novi` (доступна из профиля). Авторизация обязательна; город и район обязательны; минимум 1 фото (до 10, ≤5 МБ, jpg/jpeg/png/webp). Фото грузятся в Supabase Storage `properties/property-images/<userId>/...`; после сохранения редирект на `/oglas/?id=<id>`. `/oglas` без `id` теперь показывает not-found вместо бесконечной загрузки.
