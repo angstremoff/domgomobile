@@ -57,7 +57,7 @@ export function PropertyCard({ property, onFavoriteToggle, isFavorite }: Propert
           src={mainImage}
           alt={property.title}
           fill
-          className="object-cover group-hover:scale-110 transition-transform duration-500"
+          className={`object-cover group-hover:scale-110 transition-transform duration-500 ${property.status !== 'active' ? 'grayscale' : ''}`}
         />
         {/* Градиент для лучшей читаемости */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

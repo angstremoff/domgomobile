@@ -309,21 +309,19 @@ function EditPropertyContent() {
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-text">{t('property.dealType')}</label>
                                     <div className="flex flex-wrap gap-2">
-                                        {(['sale', 'rent'] as const).map((type) => (
-                                            <Button key={type} type="button" variant={dealType === type ? 'primary' : 'outline'} onClick={() => setDealType(type)}>
-                                                {type === 'sale' ? t('property.sale') : t('property.rent')}
-                                            </Button>
-                                        ))}
+                                        <span className="px-4 py-2 rounded-md bg-primary/10 text-primary border border-primary font-medium">
+                                            {dealType === 'sale' ? t('property.sale') : t('property.rent')}
+                                        </span>
+                                        <span className="text-xs text-textSecondary self-center">({t('common.notEditable')})</span>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-text">{t('property.propertyType')}</label>
                                     <div className="flex flex-wrap gap-2">
-                                        {propertyTypes.map((type) => (
-                                            <Button key={type.value} type="button" variant={propertyType === type.value ? 'primary' : 'outline'} onClick={() => setPropertyType(type.value)} className="whitespace-nowrap">
-                                                {type.label}
-                                            </Button>
-                                        ))}
+                                        <span className="px-4 py-2 rounded-md bg-primary/10 text-primary border border-primary font-medium">
+                                            {propertyTypes.find(pt => pt.value === propertyType)?.label || propertyType}
+                                        </span>
+                                        <span className="text-xs text-textSecondary self-center">({t('common.notEditable')})</span>
                                     </div>
                                 </div>
                             </div>

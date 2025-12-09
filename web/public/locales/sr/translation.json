@@ -68,7 +68,8 @@
       "notSold": "Nije prodato",
       "notRented": "Nije izdato"
     },
-    "accessDenied": "Pristup odbijen"
+    "accessDenied": "Pristup odbijen",
+    "notEditable": "ne može se menjati"
   },
   "cities": {
     "Лозница": "Loznica",

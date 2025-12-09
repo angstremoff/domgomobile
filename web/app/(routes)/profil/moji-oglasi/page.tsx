@@ -77,6 +77,22 @@ export default function MojiOglasiPage() {
     if (!confirm(t('property.confirmDelete'))) return;
 
     setActionLoading(propertyId);
+
+    // Сначала получаем объявление для списка фото
+    const property = properties.find(p => p.id === propertyId);
+
+    // Удаляем фото из Storage
+    if (property?.images && Array.isArray(property.images)) {
+      for (const imageUrl of property.images as string[]) {
+        // Извлекаем путь из URL: .../properties/property-images/userId/filename.jpg
+        const match = imageUrl.match(/property-images\/[^?]+/);
+        if (match) {
+          await supabase.storage.from('properties').remove([match[0]]);
+        }
+      }
+    }
+
+    // Удаляем запись из базы
     await supabase.from('properties').delete().eq('id', propertyId);
     await loadProperties();
     setActionLoading(null);

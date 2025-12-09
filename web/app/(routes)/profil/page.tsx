@@ -74,7 +74,7 @@ export default function ProfilPage() {
           </Link>
 
           {/* Настройки */}
-          <Link href="/profil">
+          <Link href="/profil/podesavanja">
             <Card className="hover:shadow-lg transition-all cursor-pointer">
               <CardContent className="flex items-center p-6">
                 <Settings className="h-12 w-12 text-primary mr-4" />
@@ -94,8 +94,8 @@ export default function ProfilPage() {
             <CardContent className="flex items-center p-6">
               <LogOut className="h-12 w-12 text-error mr-4" />
               <div>
-                  <h3 className="text-xl font-semibold text-text mb-1">{t('common.logout')}</h3>
-                  <p className="text-sm text-textSecondary">{t('profile.logoutDescription')}</p>
+                <h3 className="text-xl font-semibold text-text mb-1">{t('common.logout')}</h3>
+                <p className="text-sm text-textSecondary">{t('profile.logoutDescription')}</p>
               </div>
             </CardContent>
           </Card>

@@ -77,7 +77,8 @@
     "errorLoadingData": "Ошибка при загрузке данных",
     "noAvailableListings": "Нет доступных объявлений",
     "notFound": "Не найдено",
-    "accessDenied": "Доступ запрещён"
+    "accessDenied": "Доступ запрещён",
+    "notEditable": "нельзя изменить"
   },
   "cities": {
     "Лозница": "Лозница",
