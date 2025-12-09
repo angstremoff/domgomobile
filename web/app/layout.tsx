@@ -117,7 +117,7 @@ const organizationJsonLd = {
     name: 'Serbia',
   },
   sameAs: [
-    'https://play.google.com/store/apps/details?id=com.anonymous.DomGoMobile',
+    'https://play.google.com/store/apps/details?id=domgo.rs',
   ],
 };
 

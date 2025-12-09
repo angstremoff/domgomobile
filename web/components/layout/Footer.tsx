@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
+import { Play } from 'lucide-react';
 
 export function Footer() {
   const { t } = useTranslation();
@@ -91,14 +92,15 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-4">
               <a
-                href="https://play.google.com/store/apps/details?id=com.anonymous.DomGoMobile"
+                href="https://play.google.com/store/apps/details?id=domgo.rs"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-textSecondary hover:text-primary transition-colors"
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-medium text-text hover:border-primary hover:text-primary transition-colors"
+                aria-label="Google Play"
               >
-                Android App
+                <Play className="h-4 w-4" />
+                Google Play
               </a>
-              <span className="text-textSecondary">|</span>
               <span className="text-sm text-textSecondary">
                 Srbija 🇷🇸
               </span>
