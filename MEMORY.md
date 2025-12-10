@@ -130,11 +130,60 @@
 - **Hero-секция** (`app/page.tsx`): убран дублирующийся заголовок "DomGo.rs", уменьшены вертикальные отступы `py-16` → `py-6`. **CTA секция теперь учитывает авторизацию** — для залогиненных показывает кнопку "Добавить объявление" → `/oglas/novi`, для гостей — "Регистрация".
 - **Header** (`components/layout/Header.tsx`): добавлен `flex-shrink-0` к логотипу для предотвращения сжатия на мобильных; уменьшены отступы `space-x-4` → `space-x-2 sm:space-x-4` для предотвращения наезда переключателя языка на логотип.
 
-## 14. SEO и Sitemap (Web)
-- **Metadata**: Реализована динамическая генерация заголовков и описаний в `generateMetadata` для страниц `/oglas` и `/agencija` (серверный рендеринг). Заголовки включают тип, город, цену/название агентства. Хелперы в `web/lib/seo-utils.ts`.
-- **Sitemap**: Динамическая карта сайта `web/app/sitemap.ts` генерирует ссылки для всех активных объявлений (`weekly`) и агентств (`monthly`), а также статических страниц (`daily`). Статический `sitemap.xml` удалён.
-- **Deep Link Web Fallback**: `property.html` в web/public обновлён, теперь перенаправляет на `/oglas?id=...` вместо главной, если приложение не открылось.
-- **Исправления**: 
-  - Фильтрация агентств (`AgenciesListClient.tsx`) переведена на строгую проверку по `city_id` вместо fuzzy-поиска по location.
-  - В профиле (`moji-oglasi`) `loadProperties` обёрнут в `useCallback` для устранения warnings.
-  - Исправлены типы Supabase в `sitemap.ts` (явное приведение типов) и `database.types.ts` (ручное добавление `city_id` в `agency_profiles`).
+## 14. SEO и Аналитика (Web)
+
+### 14.1 Поисковая оптимизация
+- **Верификация поисковиков**:
+  - Google Search Console: `web/public/google543a84de6483d7b7.html` + мета-тег в layout.tsx
+  - Яндекс Вебмастер: `web/public/yandex_5d2c280f46e86563.html`, `yandex_5d2c288f46a86563.html`
+- **Metadata** (`web/app/layout.tsx`):
+  - Двуязычные title/description (sr + ru)
+  - 20+ ключевых слов на обоих языках
+  - Open Graph и Twitter Card теги
+  - hreflang альтернативы (sr-RS, ru-RU)
+  - viewport с темой для светлой/тёмной
+- **JSON-LD структурированные данные** (layout.tsx):
+  - `RealEstateAgent` schema для организации
+  - `WebSite` schema с SearchAction
+- **Sitemap** (`web/app/sitemap.ts`):
+  - Динамическая генерация с `force-static`
+  - Статические страницы + все активные объявления + агентства
+  - Приоритеты: главная 1.0, разделы 0.8, объявления 0.7, агентства 0.6
+- **robots.txt** (`web/public/robots.txt`):
+  - Блокировка `/api/`, `/_next/`, `/profil/`
+  - Директива `Host` для Яндекса
+  - `Crawl-delay: 1` для Яндекса
+- **Хлебные крошки**: компонент `web/components/seo/Breadcrumbs.tsx` с JSON-LD BreadcrumbList, добавлен на страницы prodaja, izdavanje, novogradnja, agencije
+- **Метаданные страниц**: уникальные title/description/keywords/canonical для каждой основной страницы
+
+### 14.2 Аналитика
+- **Google Analytics**: ID `G-B3K5RCDEFZ`
+- **Яндекс.Метрика**: ID `10081034` (webvisor, clickmap, trackLinks включены)
+- **Компонент** `web/components/Analytics.tsx`:
+  - Next.js Script с `afterInteractive`
+  - Отслеживание переходов через usePathname
+  - noscript fallback для Яндекса
+
+### 14.3 PWA и прочее
+- **manifest.json**: для добавления на главный экран
+- **Preconnect**: fonts.googleapis.com, mc.yandex.ru, googletagmanager.com
+- **Footer**: SEO-текст на двух языках, ссылка на Google Play, schema.org разметка
+
+### 14.4 Шаринг объявлений
+- Веб-версия теперь использует `https://domgo.rs/property.html?id=...` (как мобильное)
+- property.html проверяет платформу, пробует открыть приложение, fallback на сайт
+- Формируется информативный текст с ценой и городом
+- Fallback: копирование в буфер обмена если navigator.share недоступен
+
+### 14.5 Deep Link Web Fallback
+- `property.html` перенаправляет на `/oglas?id=...` если приложение не открылось
+
+### 14.6 Клиентские SEO-хелперы
+- **`web/lib/seo-utils.ts`**: функции `generatePropertyTitle()`, `generatePropertyDescription()`, `generateAgencyTitle()` для формирования SEO-заголовков на клиенте
+- **`web/lib/seo-head.ts`**: утилиты `upsertMetaTag()`, `setCanonicalLink()`, `upsertJsonLd()` для динамической вставки метатегов в DOM
+- Используются в `PropertyPageClient` и `AgencyPageClient` для установки метаданных на клиенте (т.к. серверный `generateMetadata` недоступен при static export)
+
+### 14.7 Исправления типов и фильтрации
+- **Фильтрация агентств** (`AgenciesListClient.tsx`): строгая проверка по `city_id` вместо fuzzy-поиска по location
+- **Типы в sitemap.ts**: явное приведение типов для результатов Supabase-запросов
+- **`useCallback` в moji-oglasi**: `loadProperties` обёрнут для устранения React warnings о зависимостях
