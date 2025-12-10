@@ -14,39 +14,25 @@ declare global {
     ym: (id: number, action: string, url?: string) => void;
     gtag: (...args: unknown[]) => void;
     dataLayer: unknown[];
-    requestIdleCallback?: (callback: IdleRequestCallback) => number;
   }
 }
 
 export function Analytics() {
   const pathname = usePathname();
 
-  // Откладываем трекинг до свободного слота, чтобы не мешать LCP
-  const schedule = (cb: () => void) => {
-    if (typeof window === 'undefined') return;
-    if (window.requestIdleCallback) {
-      window.requestIdleCallback(() => cb());
-    } else {
-      setTimeout(cb, 0);
-    }
-  };
-
   // Отслеживание изменений страницы
   useEffect(() => {
-    schedule(() => {
-      if (typeof window === 'undefined') return;
-      // Отправка данных в Яндекс.Метрику при изменении страницы
-      if (window.ym) {
-        window.ym(Number(YANDEX_METRIKA_ID), 'hit', pathname);
-      }
+    // Отправка данных в Яндекс.Метрику при изменении страницы
+    if (typeof window !== 'undefined' && window.ym) {
+      window.ym(Number(YANDEX_METRIKA_ID), 'hit', pathname);
+    }
 
-      // Отправка данных в Google Analytics при изменении страницы
-      if (window.gtag) {
-        window.gtag('config', GA_MEASUREMENT_ID, {
-          page_path: pathname,
-        });
-      }
-    });
+    // Отправка данных в Google Analytics при изменении страницы
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('config', GA_MEASUREMENT_ID, {
+        page_path: pathname,
+      });
+    }
   }, [pathname]);
 
   return (
@@ -54,9 +40,9 @@ export function Analytics() {
       {/* Google Analytics */}
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
-      <Script id="google-analytics" strategy="lazyOnload">
+      <Script id="google-analytics" strategy="afterInteractive">
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
@@ -68,7 +54,7 @@ export function Analytics() {
       </Script>
 
       {/* Яндекс.Метрика */}
-      <Script id="yandex-metrika" strategy="lazyOnload">
+      <Script id="yandex-metrika" strategy="afterInteractive">
         {`
           (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
           m[i].l=1*new Date();
